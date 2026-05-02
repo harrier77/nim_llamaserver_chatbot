@@ -7,6 +7,7 @@ import my_include/tools, my_include/map_key_tochar, my_include/system_prompt
 
 const
   InputBarHeight = 5          # Height of the input bar area (2 blue delimiter lines + 3 content rows)
+  InputGap = 2                 # Blank lines between last output and input bar
   MaxOutputLines = 1000        # Max lines to keep in output history
   PromptChar = "> "             # Prompt prefix for user input
   APIUrl = "http://localhost:8080/v1/chat/completions"
@@ -369,6 +370,19 @@ proc handleInput(key: Key): bool =
         state = SelectingModel
         return false
 
+      if cmd == "/new":
+        conversationHistory = @[
+          %*{
+            "role": "system",
+            "content": SYSTEM_PROMPT
+          }
+        ]
+        outputLines = @[]
+        aiResponseBuffer = ""
+        scrollOffset = 0
+        outputLines.add("System: Conversation reset. New chat started.")
+        return false
+
       # Add user message to output IMMEDIATELY (before streaming starts)
       outputLines.add("Tu: " & prompt)
       # Start async request (fire and forget)
@@ -456,7 +470,7 @@ proc main() =
   # Welcome message
   outputLines.add("Chat TUI - Connesso a llama.cpp su " & APIUrl)
   outputLines.add("   Modello: " & ModelName)
-  outputLines.add("   Premi Enter per inviare, Esc o /q per uscire, /model per cambiare")
+  outputLines.add("   Premi Enter per inviare, Esc o /q per uscire, /model per cambiare, /new per resettare")
 
 
   while true:
@@ -478,9 +492,6 @@ proc main() =
       var key = getKey()
       if key == Key.Escape or key == Key.Q: exitProc()
       continue
-
-    let outputHeight = h - InputBarHeight
-    let inputY = outputHeight
 
     # === Fill entire screen with black background ===
     tb.setBackgroundColor(bgBlack)
@@ -551,20 +562,33 @@ proc main() =
       if isProcessing and aiResponseBuffer.len == 0:
         allDisplayLines.add("... Waiting for response...")
 
-      # Determine which lines to show (always show from bottom)
-      let visibleRows = max(1, outputHeight - 1 - bannerOffset)
-      scrollOffset = max(0, min(scrollOffset, max(0, allDisplayLines.len - visibleRows)))
-      let showFrom = if allDisplayLines.len > visibleRows:
-        max(0, allDisplayLines.len - visibleRows - scrollOffset)
+      # Position input bar: float below content, or pin to bottom if overflowing
+      let contentStartY = 1 + bannerOffset
+      let inputBarNeeded = InputGap + InputBarHeight
+      var inputY: int
+      var showFrom, showTo: int
+
+      if contentStartY + allDisplayLines.len + inputBarNeeded <= h:
+        # Content fits → input bar floats just below content
+        inputY = contentStartY + allDisplayLines.len + InputGap
+        showFrom = 0
+        showTo = allDisplayLines.len
       else:
-        0
-      let showTo = min(showFrom + visibleRows, allDisplayLines.len)
+        # Content too long → pin input bar to bottom, scroll output
+        inputY = h - InputBarHeight
+        let visibleRows = max(1, inputY - contentStartY)
+        scrollOffset = max(0, min(scrollOffset, max(0, allDisplayLines.len - visibleRows)))
+        showFrom = if allDisplayLines.len > visibleRows:
+          max(0, allDisplayLines.len - visibleRows - scrollOffset)
+        else:
+          0
+        showTo = min(showFrom + visibleRows, allDisplayLines.len)
 
       # Draw visible output lines
       var y = 1 + bannerOffset
       var inAIResponse = false
       for i in showFrom ..< showTo:
-        if y >= outputHeight: break
+        if y >= inputY: break
         # Draw content with colors based on prefix
         let line = allDisplayLines[i]
         if line.startsWith("Tu:"):
