@@ -14,17 +14,28 @@ const
   # Configurazione per avvio automatico del server
   LlamaServerPath = "C:\\down\\llama-latest\\llama-server.exe"  # Percorso al server
   LlamaServerArgs* = @["--host", "0.0.0.0", "--models-preset", "config.ini", "--models-max", "1", "--no-warmup", "--parallel", "1", "--jinja"]
+  SlashMenuHeight = 8          # Max rows to display in the slash command popup
 
 type
   AppState = enum
     Chatting,
     SelectingModel
 
+  SlashCommand = object
+    name: string
+    description: string
+
 var
   ModelName = "Qwen3.5_0.8b-text"  # Current model name (can be changed)
   state: AppState = Chatting      # Current application state
   availableModels: seq[string] = @[] # List of models from server
   selectedMenuIndex: int = 0      # Index for model selection menu
+
+const SlashCommands: array[3, SlashCommand] = [
+  SlashCommand(name: "/quit",   description: "Exit the application (also /q)"),
+  SlashCommand(name: "/model",  description: "Change the current model"),
+  SlashCommand(name: "/new",    description: "Reset conversation and start new chat"),
+]
 
 const StatusFile = "status.json"
 
@@ -118,6 +129,8 @@ var
   aiResponseBuffer: string = ""     # Buffer for streaming AI response
   serverAvailable: bool = false     # True when llama-server is reachable
   lastServerCheck: float = 0.0      # Timestamp of last server check
+  showingSlashMenu: bool = false    # True when the slash popup is visible
+  slashMenuIndex: int = 0           # Highlighted item index in the menu
   # FIX: Add system message to instruct LLM about tool usage
   conversationHistory: seq[JsonNode] = @[
     %*{
@@ -136,6 +149,28 @@ proc checkServerAsync() {.async.} =
     serverAvailable = false
   finally:
     client.close()
+
+proc filterCommands(query: string): seq[int] =
+  ## Return indices of SlashCommands that match the query (text after "/").
+  ## Returns all commands if query is empty.
+  result = @[]
+  let q = strutils.strip(query).toLowerAscii()
+  for i, cmd in SlashCommands:
+    if cmd.name[1 .. ^1].startsWith(q) or cmd.name.toLowerAscii().contains(q):
+      result.add(i)
+
+proc updateSlashMenu() =
+  ## Open or close the slash menu based on current input.
+  if currentInput.len > 0 and currentInput[0] == '/':
+    showingSlashMenu = true
+    # Clamp index when filtered list shrinks
+    let filtered = filterCommands(currentInput[1 .. ^1])
+    if slashMenuIndex >= filtered.len and filtered.len > 0:
+      slashMenuIndex = filtered.len - 1
+    if filtered.len == 0:
+      showingSlashMenu = false
+  else:
+    showingSlashMenu = false
 
 proc runeLen(s: string): int =
   ## Returns the number of Unicode codepoints in s
@@ -330,6 +365,46 @@ proc handleInput(key: Key): bool =
     # Ignore input while processing chat
     return false
 
+  # --- Slash command menu navigation ---
+  if showingSlashMenu and state == Chatting:
+    case key
+    of Key.Escape:
+      showingSlashMenu = false
+      return false
+    of Key.Tab:
+      let filtered = filterCommands(currentInput[1 .. ^1])
+      if filtered.len > 0:
+        currentInput = SlashCommands[filtered[slashMenuIndex]].name
+      return false
+    of Key.Up:
+      let filtered = filterCommands(currentInput[1 .. ^1])
+      if filtered.len > 0 and slashMenuIndex > 0:
+        dec(slashMenuIndex)
+      return false
+    of Key.Down:
+      let filtered = filterCommands(currentInput[1 .. ^1])
+      if filtered.len > 0 and slashMenuIndex < filtered.len - 1:
+        inc(slashMenuIndex)
+      return false
+    of Key.Backspace, Key.Delete:
+      if currentInput.len > 0:
+        currentInput.removeLastRune()
+      updateSlashMenu()
+      return false
+    of Key.Enter:
+      # Execute highlighted command directly from menu
+      let filtered = filterCommands(currentInput[1 .. ^1])
+      if filtered.len > 0:
+        currentInput = SlashCommands[filtered[slashMenuIndex]].name
+        showingSlashMenu = false
+        # Fall through to normal Enter handler below to execute
+      else:
+        showingSlashMenu = false
+        return false
+    else:
+      # Any other key: close menu and let normal handling continue
+      showingSlashMenu = false
+
   if state == SelectingModel:
     case key
     of Key.Escape:
@@ -354,7 +429,9 @@ proc handleInput(key: Key): bool =
     return false
 
   case key
-  of Key.Escape: return true
+  of Key.Escape:
+    showingSlashMenu = false
+    return true
   of Key.Enter:
     if currentInput.len > 0:
       let prompt = currentInput
@@ -393,9 +470,15 @@ proc handleInput(key: Key): bool =
       currentInput.removeLastRune()
     return false
   of Key.Up:
+    if showingSlashMenu:
+      # Already handled above, but just in case
+      return false
     scrollOffset += 1
     return false
   of Key.Down:
+    if showingSlashMenu:
+      # Already handled above, but just in case
+      return false
     if scrollOffset > 0: scrollOffset -= 1
     return false
   of Key.Left, Key.Right:
@@ -403,6 +486,7 @@ proc handleInput(key: Key): bool =
     return false
   of Key.Slash:
     currentInput.add("/")
+    updateSlashMenu()
     return false
   else:
     let ch = keyToChar(key)
@@ -424,6 +508,8 @@ proc handleInput(key: Key): bool =
     elif ord(key) == 127 or ord(key) == 8:
       if currentInput.len > 0:
         currentInput.removeLastRune()
+    # After any character input, check if we should show the slash menu
+    updateSlashMenu()
     return false
 
 proc wrapText(text: string, width: int): seq[string] =
@@ -469,7 +555,6 @@ proc main() =
 
   # Welcome message
   outputLines.add("Chat TUI - Connesso a llama.cpp su " & APIUrl)
-  outputLines.add("   Modello: " & ModelName)
   outputLines.add("   Premi Enter per inviare, Esc o /q per uscire, /model per cambiare, /new per resettare")
 
 
@@ -514,12 +599,14 @@ proc main() =
           if i == selectedMenuIndex:
             tb.setBackgroundColor(bgBlue)
             tb.setForegroundColor(fgWhite, bright=true)
-            let line = "> " & m & " <"
+            let line = "  ▶ " & m & "  "
             tb.write((w - line.len) div 2, startY + i, line)
             tb.setBackgroundColor(bgBlack)
           else:
             tb.setForegroundColor(fgWhite)
-            tb.write((w - m.len) div 2, startY + i, m)
+            # Mark currently active model with a check
+            let prefix = if m == ModelName: "✓ " else: "  "
+            tb.write((w - (prefix & m).len) div 2, startY + i, prefix & m)
 
       tb.setForegroundColor(fgWhite)
       let help = "↑/↓: Naviga, Enter: Conferma, Esc: Annulla"
@@ -531,7 +618,7 @@ proc main() =
       tb.setBackgroundColor(bgBlue)
       tb.setForegroundColor(fgWhite, bright=true)
       let statusIcon = if isProcessing: "..." elif serverAvailable: "OK" else: "NO"
-      let title = fmt" CHAT [{outputLines.len} msg] {statusIcon} "
+      let title = fmt" CHAT [{outputLines.len} msg] {statusIcon} 🤖 {ModelName} "
       tb.write(max(1, (w - title.len) div 2), 0, title)
       tb.setBackgroundColor(bgBlack)
 
@@ -565,17 +652,26 @@ proc main() =
       # Position input bar: float below content, or pin to bottom if overflowing
       let contentStartY = 1 + bannerOffset
       let inputBarNeeded = InputGap + InputBarHeight
+      # Calculate space needed for slash menu if visible
+      let slashMenuSpace = block:
+        if showingSlashMenu and state == Chatting:
+          let filtered = filterCommands(currentInput[1 .. ^1])
+          min(filtered.len, SlashMenuHeight) + 2  # +2 for border lines
+        else:
+          0
       var inputY: int
       var showFrom, showTo: int
 
-      if contentStartY + allDisplayLines.len + inputBarNeeded <= h:
+      if contentStartY + allDisplayLines.len + inputBarNeeded + slashMenuSpace <= h:
         # Content fits → input bar floats just below content
         inputY = contentStartY + allDisplayLines.len + InputGap
         showFrom = 0
         showTo = allDisplayLines.len
       else:
         # Content too long → pin input bar to bottom, scroll output
-        inputY = h - InputBarHeight
+        inputY = h - InputBarHeight - slashMenuSpace
+        if inputY < contentStartY + 2:
+          inputY = h - InputBarHeight  # Fallback if terminal too short
         let visibleRows = max(1, inputY - contentStartY)
         scrollOffset = max(0, min(scrollOffset, max(0, allDisplayLines.len - visibleRows)))
         showFrom = if allDisplayLines.len > visibleRows:
@@ -612,7 +708,7 @@ proc main() =
       tb.setForegroundColor(fgWhite, bright=true)
       tb.write(max(1, (w - title.len) div 2), 0, title)
       tb.setBackgroundColor(bgNone)
-      tb.setForegroundColor(fgBlack)
+      tb.setForegroundColor(fgWhite)
       tb.write(max(1, (w - title.len) div 2 + title.len + 2), 0, "Esc/Q")
       tb.setBackgroundColor(bgBlue)
 
@@ -651,6 +747,50 @@ proc main() =
       # Bottom blue delimiter line (thin)
       tb.setForegroundColor(fgBlue, bright=true)
       tb.write(0, inputY + 3, strutils.repeat("_", w))
+
+      # === Draw slash command menu (if active) ===
+      if showingSlashMenu and state == Chatting:
+        let filtered = filterCommands(currentInput[1 .. ^1])
+        if filtered.len > 0:
+          let menuY = inputY + 4  # One row below bottom delimiter
+          let maxItems = min(filtered.len, SlashMenuHeight)
+
+          # Calculate menu width based on longest command + description
+          var maxCmdLen = 0
+          for idx in filtered:
+            let totalLen = SlashCommands[idx].name.len + 3 + SlashCommands[idx].description.len
+            if totalLen > maxCmdLen: maxCmdLen = totalLen
+          let menuWidth = min(w, max(w div 2, maxCmdLen + 4))
+
+          # Draw each menu item with a ">" arrow for selection
+          for row in 0 ..< maxItems:
+            if menuY + row >= h: break
+            let cmd = SlashCommands[filtered[row]]
+            let arrow = if row == slashMenuIndex: ">" else: " "
+
+            # Arrow indicator (yellow for selected)
+            if row == slashMenuIndex:
+              tb.setForegroundColor(fgYellow, bright=true)
+            else:
+              tb.setForegroundColor(fgWhite)
+            tb.write(0, menuY + row, arrow)
+
+            # Command name
+            tb.setForegroundColor(fgCyan, bright=true)
+            tb.write(2, menuY + row, cmd.name)
+
+            # Description
+            tb.setForegroundColor(fgWhite)
+            tb.write(cmd.name.len + 3, menuY + row, cmd.description)
+
+          # Draw a subtle bottom separator
+          if menuY + maxItems < h:
+            tb.setForegroundColor(fgWhite)
+            tb.write(0, menuY + maxItems, strutils.repeat("─", menuWidth))
+
+          # Reset attributes
+          tb.setBackgroundColor(bgBlack)
+          tb.setForegroundColor(fgWhite)
 
     # Restore attributes
     tb.resetAttributes()
