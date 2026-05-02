@@ -108,7 +108,7 @@ proc executeTool*(name: string, args: JsonNode): string =
   # Log tool call for debugging and visibility
   try:
     let logFile = "debug_tools.txt"
-    let logMsg = "\n--- Tool Call: " & name & " ---\n" & "Args: " & $args & "\n"
+    let logMsg = "\n=== Tool Call: " & name & " ===\nArgs:\n" & pretty(args) & "\n"
     let f = open(logFile, fmAppend)
     f.write(logMsg)
     f.close()

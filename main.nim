@@ -3,10 +3,10 @@
 
 import os, strformat, strutils, json, httpclient, asyncdispatch, uri, times
 import illwill, unicode
-import tools, map_key_tochar
+import my_include/tools, my_include/map_key_tochar, my_include/system_prompt
 
 const
-  InputBarHeight = 3          # Height of the input bar area
+  InputBarHeight = 5          # Height of the input bar area (2 blue delimiter lines + 3 content rows)
   MaxOutputLines = 1000        # Max lines to keep in output history
   PromptChar = "> "             # Prompt prefix for user input
   APIUrl = "http://localhost:8080/v1/chat/completions"
@@ -121,7 +121,7 @@ var
   conversationHistory: seq[JsonNode] = @[
     %*{
       "role": "system",
-      "content": "You have access to tools: read and bash."
+      "content": SYSTEM_PROMPT
     }
   ]  # Chat history for API
 
@@ -173,7 +173,7 @@ proc sendToLLM(prompt: string = "") {.async.} =
     }
     try:
       let f = open("debug_tools.txt", fmAppend)
-      f.write("\n--- MSG TO MODEL ---\n" & $body & "\n--- END ---\n")
+      f.write("\n--- MSG TO MODEL ---\n" & pretty(body) & "\n--- END ---\n")
       f.close()
     except: discard
     var client = newAsyncHttpClient()
@@ -259,9 +259,9 @@ proc sendToLLM(prompt: string = "") {.async.} =
     if toolCallsCollected.len > 0:
       # FIX: Assistant message must have placeholder TEXT content, not null!
       # Before: "content": null - This caused the model to keep making tool calls (infinite loop)
-      # After: "content": "Then I will answer and tell you any content..." - Matches Python version format
+      # After: "content": "Then I will answer and show any content..." - Matches Python version format
       # The model needs this placeholder text to understand it should respond with final answer, not make more tool calls
-      let assistantMsg = %*{"role": "assistant", "content": (if aiResponseBuffer.len > 0: %aiResponseBuffer else: %"Then I will answer and tell you any content..."), "tool_calls": toolCallsCollected}
+      let assistantMsg = %*{"role": "assistant", "content": (if aiResponseBuffer.len > 0: %aiResponseBuffer else: %"Then I will answer and show any content..."), "tool_calls": toolCallsCollected}
       conversationHistory.add(assistantMsg)
 
       # Execute tools and add results to history
@@ -296,7 +296,7 @@ proc sendToLLM(prompt: string = "") {.async.} =
         # DEBUG: Log extracted content
         try:
           let f = open("debug_tools.txt", fmAppend)
-          f.write("\n--- EXTRACTED CONTENT: " & content & " ---\n")
+          f.write("\n=== EXTRACTED CONTENT ===\n" & content & "\n=== END ===\n")
           f.close()
         except: discard
 
@@ -593,22 +593,27 @@ proc main() =
       tb.setBackgroundColor(bgBlue)
 
       # === Draw input bar ===
+      tb.setBackgroundColor(bgNone)
+      # Top blue delimiter line (thin)
+      tb.setForegroundColor(fgBlue, bright=true)
+      tb.write(0, inputY, strutils.repeat("_", w))
+
       # Prompt label
       tb.setForegroundColor(fgCyan, bright=true)
-      tb.write(0, inputY, " INPUT ")
+      tb.write(0, inputY + 1, " INPUT ")
       tb.setBackgroundColor(bgNone)
 
       # Prompt character
       tb.setForegroundColor(fgWhite, bright=true)
-      tb.write(0, inputY + 1, PromptChar)
+      tb.write(0, inputY + 2, PromptChar)
 
       # Current input text
       if isProcessing:
         tb.setForegroundColor(fgYellow)
-        tb.write(PromptChar.len, inputY + 1, "(processing...)")
+        tb.write(PromptChar.len, inputY + 2, "(processing...)")
       else:
         tb.setForegroundColor(fgYellow, bright=true)
-        tb.write(PromptChar.len, inputY + 1, currentInput)
+        tb.write(PromptChar.len, inputY + 2, currentInput)
 
       # Cursor block
       if not isProcessing:
@@ -616,8 +621,12 @@ proc main() =
         if cursorX < w:
           tb.setBackgroundColor(bgYellow)
           tb.setForegroundColor(fgBlack)
-          tb.write(cursorX, inputY + 1, " ")
+          tb.write(cursorX, inputY + 2, " ")
           tb.setBackgroundColor(bgNone)
+
+      # Bottom blue delimiter line (thin)
+      tb.setForegroundColor(fgBlue, bright=true)
+      tb.write(0, inputY + 3, strutils.repeat("_", w))
 
     # Restore attributes
     tb.resetAttributes()

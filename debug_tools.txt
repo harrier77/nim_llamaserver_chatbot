@@ -1,0 +1,291 @@
+--- MSG TO MODEL ---
+{
+  "model": "03_gemma4-E2B",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are an expert coding assistant. You have access to these tools:\nTool: read\nDescription: Read the content of a file. Supports offset/limit for pagination.\nParameters: file_path (required), offset (optional), limit (optional)\nTool: bash\nDescription: Execute a bash command in the current working directory. Returns stdout and stderr.\nParameters: command (required)"
+    },
+    {
+      "role": "user",
+      "content": "read colosseo.txt and show content"
+    }
+  ],
+  "stream": true,
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "read",
+        "description": "Read a file from the filesystem. Use this to read file contents.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "file_path": {
+              "type": "string",
+              "description": "Path to the file to read"
+            },
+            "offset": {
+              "type": "number",
+              "description": "Line number to start reading from (1-indexed)"
+            },
+            "limit": {
+              "type": "number",
+              "description": "Maximum number of lines to read"
+            }
+          },
+          "required": [
+            "file_path"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "bash",
+        "description": "Execute a bash command on the system. Use this for running shell commands, listing files, etc. IMPORTANT: Only call this tool ONCE per task. Do not make multiple calls to get the same information (e.g., don't call 'ls -la' then 'ls' then 'find' for the same directory - one call is enough).",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string",
+              "description": "The bash command to execute"
+            }
+          },
+          "required": [
+            "command"
+          ]
+        }
+      }
+    }
+  ]
+}
+--- END ---
+
+=== Tool Call: read ===
+Args:
+{
+  "file_path": "colosseo.txt"
+}
+
+=== EXTRACTED CONTENT ===
+The Colosseum is located in Rome, Italy. It is an iconic monument that the whole world knows. The Colosseum has baffled many with its magnificent size and grandiose built. The Colosseum today has become a must see for all who visit Rome.
+The largest amphitheater ever built, the Rome Colosseum, also called the Flavian Ampitheater, is situated in the center of Rome. Built under the Flavian Dynasty, construction started in 72 AD and was completed in 80 AD. Built of concrete and sand, the Colosseum could hold up to 80,000 people, though it usually held 65,000. Spectators would come to watch gladiator contests and other spectacles for the public, such as simulated sea wars with props, public executions and mythological dramas. It wasn’t until the medieval era that the building was converted and used as a housing facility, a Christian shrine and a fortress.
+The way it looks today is due to robbers stealing stones and earthquakes. In the age when the Colosseum was built, theaters were usually located on hillsides. However, the Colosseum is a free standing structure built on flat ground. Its size is 189 meters long, 156 meters wide with a base area of 24,000 square meters. The outer wall height is 48 meters. The center arena is 87 meters long and 55 meters wide with a 5-meter high barrier wall, which kept the performers inside while the audience sat above.
+=== END ===
+
+--- MSG TO MODEL ---
+{
+  "model": "03_gemma4-E2B",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are an expert coding assistant. You have access to these tools:\nTool: read\nDescription: Read the content of a file. Supports offset/limit for pagination.\nParameters: file_path (required), offset (optional), limit (optional)\nTool: bash\nDescription: Execute a bash command in the current working directory. Returns stdout and stderr.\nParameters: command (required)"
+    },
+    {
+      "role": "user",
+      "content": "read colosseo.txt and show content"
+    },
+    {
+      "role": "assistant",
+      "content": "Then I will answer and tell you any content...",
+      "tool_calls": [
+        {
+          "id": "qmwruGJ08iKEq6E5asesrZltQUJC2W4d",
+          "type": "function",
+          "function": {
+            "name": "read",
+            "arguments": "{\"file_path\":\"colosseo.txt\"}"
+          }
+        }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "qmwruGJ08iKEq6E5asesrZltQUJC2W4d",
+      "name": "read",
+      "content": "The Colosseum is located in Rome, Italy. It is an iconic monument that the whole world knows. The Colosseum has baffled many with its magnificent size and grandiose built. The Colosseum today has become a must see for all who visit Rome.\nThe largest amphitheater ever built, the Rome Colosseum, also called the Flavian Ampitheater, is situated in the center of Rome. Built under the Flavian Dynasty, construction started in 72 AD and was completed in 80 AD. Built of concrete and sand, the Colosseum could hold up to 80,000 people, though it usually held 65,000. Spectators would come to watch gladiator contests and other spectacles for the public, such as simulated sea wars with props, public executions and mythological dramas. It wasn’t until the medieval era that the building was converted and used as a housing facility, a Christian shrine and a fortress.\nThe way it looks today is due to robbers stealing stones and earthquakes. In the age when the Colosseum was built, theaters were usually located on hillsides. However, the Colosseum is a free standing structure built on flat ground. Its size is 189 meters long, 156 meters wide with a base area of 24,000 square meters. The outer wall height is 48 meters. The center arena is 87 meters long and 55 meters wide with a 5-meter high barrier wall, which kept the performers inside while the audience sat above."
+    }
+  ],
+  "stream": true,
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "read",
+        "description": "Read a file from the filesystem. Use this to read file contents.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "file_path": {
+              "type": "string",
+              "description": "Path to the file to read"
+            },
+            "offset": {
+              "type": "number",
+              "description": "Line number to start reading from (1-indexed)"
+            },
+            "limit": {
+              "type": "number",
+              "description": "Maximum number of lines to read"
+            }
+          },
+          "required": [
+            "file_path"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "bash",
+        "description": "Execute a bash command on the system. Use this for running shell commands, listing files, etc. IMPORTANT: Only call this tool ONCE per task. Do not make multiple calls to get the same information (e.g., don't call 'ls -la' then 'ls' then 'find' for the same directory - one call is enough).",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string",
+              "description": "The bash command to execute"
+            }
+          },
+          "required": [
+            "command"
+          ]
+        }
+      }
+    }
+  ]
+}
+--- END ---
+
+--- MSG TO MODEL ---
+{
+  "model": "03_gemma4-E2B",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are an expert coding assistant. You have access to these tools:\nTool: read\nDescription: Read the content of a file. Supports offset/limit for pagination.\nParameters: file_path (required), offset (optional), limit (optional)\nTool: bash\nDescription: Execute a bash command in the current working directory. Returns stdout and stderr.\nParameters: command (required)"
+    },
+    {
+      "role": "user",
+      "content": "who are you"
+    }
+  ],
+  "stream": true,
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "read",
+        "description": "Read a file from the filesystem. Use this to read file contents.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "file_path": {
+              "type": "string",
+              "description": "Path to the file to read"
+            },
+            "offset": {
+              "type": "number",
+              "description": "Line number to start reading from (1-indexed)"
+            },
+            "limit": {
+              "type": "number",
+              "description": "Maximum number of lines to read"
+            }
+          },
+          "required": [
+            "file_path"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "bash",
+        "description": "Execute a bash command on the system. Use this for running shell commands, listing files, etc. IMPORTANT: Only call this tool ONCE per task. Do not make multiple calls to get the same information (e.g., don't call 'ls -la' then 'ls' then 'find' for the same directory - one call is enough).",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string",
+              "description": "The bash command to execute"
+            }
+          },
+          "required": [
+            "command"
+          ]
+        }
+      }
+    }
+  ]
+}
+--- END ---
+
+--- MSG TO MODEL ---
+{
+  "model": "03_gemma4-E2B",
+  "messages": [
+    {
+      "role": "system",
+      "content": "You are an expert coding assistant. You have access to these tools:\nTool: read\nDescription: Read the content of a file. Supports offset/limit for pagination.\nParameters: file_path (required), offset (optional), limit (optional)\nTool: bash\nDescription: Execute a bash command in the current working directory. Returns stdout and stderr.\nParameters: command (required)"
+    },
+    {
+      "role": "user",
+      "content": "where is rome"
+    }
+  ],
+  "stream": true,
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "read",
+        "description": "Read a file from the filesystem. Use this to read file contents.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "file_path": {
+              "type": "string",
+              "description": "Path to the file to read"
+            },
+            "offset": {
+              "type": "number",
+              "description": "Line number to start reading from (1-indexed)"
+            },
+            "limit": {
+              "type": "number",
+              "description": "Maximum number of lines to read"
+            }
+          },
+          "required": [
+            "file_path"
+          ]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "bash",
+        "description": "Execute a bash command on the system. Use this for running shell commands, listing files, etc. IMPORTANT: Only call this tool ONCE per task. Do not make multiple calls to get the same information (e.g., don't call 'ls -la' then 'ls' then 'find' for the same directory - one call is enough).",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "command": {
+              "type": "string",
+              "description": "The bash command to execute"
+            }
+          },
+          "required": [
+            "command"
+          ]
+        }
+      }
+    }
+  ]
+}
+--- END ---
