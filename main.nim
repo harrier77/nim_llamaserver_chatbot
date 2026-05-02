@@ -1,7 +1,7 @@
 # Full-screen TUI chat client for llama.cpp server
 # Connects to llama-server on port 8080 and displays streaming responses
 
-import os, strformat, strutils, json, httpclient, asyncdispatch, uri
+import os, strformat, strutils, json, httpclient, asyncdispatch, uri, times
 import illwill, unicode
 import tools, map_key_tochar
 
@@ -10,6 +10,9 @@ const
   MaxOutputLines = 1000        # Max lines to keep in output history
   PromptChar = "> "             # Prompt prefix for user input
   APIUrl = "http://localhost:8080/v1/chat/completions"
+  # Configurazione per avvio automatico del server
+  LlamaServerPath = "C:\\down\\llama-latest\\llama-server.exe"  # Percorso al server
+  LlamaServerArgs* = @["--host", "0.0.0.0", "--models-preset", "config.ini", "--models-max", "1", "--no-warmup", "--parallel", "1", "--jinja"]
 
 type
   AppState = enum
@@ -23,6 +26,22 @@ var
   selectedMenuIndex: int = 0      # Index for model selection menu
 
 const StatusFile = "status.json"
+
+# ============================================
+# Server Management - Avvio automatico
+# ============================================
+
+proc checkServer*(): bool =
+  ## Verifica se il server llama.cpp è attivo e pronto
+  ## Restituisce true se il server è raggiungibile
+  try:
+    let client = newHttpClient()
+    client.timeout = 5000  # 5 secondi timeout
+    let response = client.get("http://localhost:8080/v1/models")
+    client.close()
+    return response.status == "200"
+  except:
+    return false
 
 proc loadModelStatus() =
   ## Load the previously selected model from status.json
@@ -53,13 +72,13 @@ proc exitProc() {.noconv.} =
 
   # 2. Deinitialize illwill (restores screen on some platforms)
   illwillDeinit()
-  
-  # 3. Explicitly send ANSI reset code to stdout. 
+
+  # 3. Explicitly send ANSI reset code to stdout.
   # \e[0m resets all attributes (colors, bold, etc.)
   # This is a fail-safe for modern terminals (Windows Terminal, CMD with ANSI enabled).
   stdout.write("\e[0m")
   stdout.flushFile()
-  
+
   showCursor()
   quit(0)
 
@@ -73,10 +92,10 @@ proc fetchModels() {.async.} =
     if jsonNode.hasKey("data"):
       for model in jsonNode["data"]:
         availableModels.add(model["id"].getStr())
-    
+
     if availableModels.len == 0:
       availableModels.add(ModelName)
-    
+
     # Find current model in the list to set default selection
     selectedMenuIndex = 0
     for i, m in availableModels:
@@ -96,6 +115,8 @@ var
   scrollOffset: int = 0            # How many lines we've scrolled up
   isProcessing: bool = false       # True when waiting for AI response
   aiResponseBuffer: string = ""     # Buffer for streaming AI response
+  serverAvailable: bool = false     # True when llama-server is reachable
+  lastServerCheck: float = 0.0      # Timestamp of last server check
   # FIX: Add system message to instruct LLM about tool usage
   conversationHistory: seq[JsonNode] = @[
     %*{
@@ -103,6 +124,17 @@ var
       "content": "You have access to tools: read and bash."
     }
   ]  # Chat history for API
+
+proc checkServerAsync() {.async.} =
+  ## Async check if server is available (non-blocking)
+  var client = newAsyncHttpClient()
+  try:
+    let response = await client.get("http://localhost:8080/v1/models")
+    serverAvailable = (response.code == Http200)
+  except:
+    serverAvailable = false
+  finally:
+    client.close()
 
 proc runeLen(s: string): int =
   ## Returns the number of Unicode codepoints in s
@@ -121,7 +153,7 @@ proc removeLastRune(s: var string) =
 proc sendToLLM(prompt: string = "") {.async.} =
   ## Send prompt to llama.cpp server and handle streaming response and tool calls
   isProcessing = true
-  
+
   if prompt.len > 0:
     aiResponseBuffer = ""
     # Add user message to history
@@ -131,7 +163,7 @@ proc sendToLLM(prompt: string = "") {.async.} =
     })
 
   var toolCallsCollected: seq[JsonNode] = @[]
-  
+
   while true:
     let body = %*{
       "model": ModelName,
@@ -146,7 +178,7 @@ proc sendToLLM(prompt: string = "") {.async.} =
     except: discard
     var client = newAsyncHttpClient()
     client.headers = newHttpHeaders({"Content-Type": "application/json"})
-    
+
     # Track partial line for SSE parsing
     var pendingLine = ""
     aiResponseBuffer = "" # Clear for current round
@@ -160,32 +192,32 @@ proc sendToLLM(prompt: string = "") {.async.} =
       while true:
         let (hasMore, chunk) = await response.bodyStream.read()
         if not hasMore or chunk.len == 0: break
-        
+
         let data = pendingLine & chunk
         pendingLine = ""
         var lines = data.splitLines()
-        
+
         if hasMore and not data.endsWith("\n"):
           pendingLine = lines[^1]
           lines = lines[0..^2]
-        
+
         for line in lines:
           if line.startsWith("data: "):
             let jsonStr = strutils.strip(line[6..^1])
             if jsonStr == "[DONE]": break
-            
+
             try:
               let jsonChunk = parseJson(jsonStr)
               if jsonChunk.hasKey("choices") and jsonChunk["choices"].len > 0:
                 let delta = jsonChunk["choices"][0].getOrDefault("delta")
-                
+
                 # 1. Handle content tokens (standard chat)
                 if delta.hasKey("content"):
                   let content = delta["content"].getStr("")
                   if content.len > 0:
                     let isFirstChunkOfResponse = aiResponseBuffer.len == 0 and toolCallsCollected.len == 0
                     aiResponseBuffer &= content
-                    
+
                     let parts = content.splitLines()
                     for i, part in parts:
                       if i == 0:
@@ -199,23 +231,23 @@ proc sendToLLM(prompt: string = "") {.async.} =
                             outputLines.add("")
                         else:
                           outputLines.add(part)
-                
+
                 # 2. Handle tool call chunks
                 if delta.hasKey("tool_calls"):
                   for tc in delta["tool_calls"]:
                     let idx = tc["index"].getInt()
                     while toolCallsCollected.len <= idx:
                       toolCallsCollected.add(%*{"id": newJNull(), "type": "function", "function": {"name": "", "arguments": ""}})
-                    
+
                     let target = toolCallsCollected[idx]
                     if tc.hasKey("id"): target["id"] = tc["id"]
                     if tc["function"].hasKey("name"): target["function"]["name"] = tc["function"]["name"]
                     if tc["function"].hasKey("arguments"):
                       target["function"]["arguments"] = %(target["function"]["arguments"].getStr() & tc["function"]["arguments"].getStr())
-            
+
             except JsonParsingError: discard
             except CatchableError: discard
-            
+
     except CatchableError as e:
       outputLines.add("❌ Error: " & e.msg)
       client.close()
@@ -231,17 +263,17 @@ proc sendToLLM(prompt: string = "") {.async.} =
       # The model needs this placeholder text to understand it should respond with final answer, not make more tool calls
       let assistantMsg = %*{"role": "assistant", "content": (if aiResponseBuffer.len > 0: %aiResponseBuffer else: %"Then I will answer and tell you any content..."), "tool_calls": toolCallsCollected}
       conversationHistory.add(assistantMsg)
-      
+
       # Execute tools and add results to history
       for tc in toolCallsCollected:
         let toolName = tc["function"]["name"].getStr()
         let toolArgs = tc["function"]["arguments"].getStr()
         let toolId = tc["id"].getStr()
-        
+
         outputLines.add("System: Tool Call -> " & toolName & "(" & toolArgs & ")")
         let result = tools.executeTool(toolName, parseJson(toolArgs))
         #outputLines.add("DEBUG result -> " & toolName & "(" & result & ")")
-        
+
         # FIX: Parse JSON result and extract content (like Python frontend does)
         # The tool returns JSON: {"content": "...", "exit_code": X}
         # We need to extract the "content" field for the LLM
@@ -260,23 +292,23 @@ proc sendToLLM(prompt: string = "") {.async.} =
             content = "Error: " & parsed["error"].getStr()
         except:
           content = "[JSON PARSE ERROR: " & result & "]"
-        
+
         # DEBUG: Log extracted content
         try:
           let f = open("debug_tools.txt", fmAppend)
           f.write("\n--- EXTRACTED CONTENT: " & content & " ---\n")
           f.close()
         except: discard
-        
+
         conversationHistory.add(%*{
           "role": "tool",
           "tool_call_id": toolId,
           "name": toolName,
           "content": content
         })
-      
+
       # Round finished, loop back to send tool results to LLM
-      continue 
+      continue
     else:
       # No tool calls, standard message finished
       if aiResponseBuffer.len > 0:
@@ -293,7 +325,7 @@ proc sendToLLM(prompt: string = "") {.async.} =
 
 proc handleInput(key: Key): bool =
   ## Process a keypress. Returns true if we should quit.
-  if isProcessing and state == Chatting:
+  if (isProcessing or not serverAvailable) and state == Chatting:
     # Ignore input while processing chat
     return false
 
@@ -326,18 +358,17 @@ proc handleInput(key: Key): bool =
     if currentInput.len > 0:
       let prompt = currentInput
       currentInput = ""
-      
+
       # FIX: Add slash commands for exiting
       let cmd = strutils.strip(prompt).toLowerAscii()
       if cmd == "/quit" or cmd == "/q":
         return true
-      
+
       if cmd == "/model":
-        # Trigger model selection
         asyncCheck fetchModels()
         state = SelectingModel
         return false
-      
+
       # Add user message to output IMMEDIATELY (before streaming starts)
       outputLines.add("Tu: " & prompt)
       # Start async request (fire and forget)
@@ -394,13 +425,13 @@ proc wrapText(text: string, width: int): seq[string] =
     if runes.len - i <= w:
       lines.add($runes[i .. ^1])
       break
-    
+
     # Look for last space within width to perform word wrap
     var lastSpace = -1
     for j in 0 ..< w:
       if runes[i + j] == Rune(32):
         lastSpace = j
-    
+
     if lastSpace != -1:
       # Found a space, wrap there
       lines.add($runes[i ..< i + lastSpace])
@@ -419,6 +450,9 @@ proc main() =
   # Load previously selected model from status.json
   loadModelStatus()
 
+  # Automatically fetch models on startup
+  asyncCheck fetchModels()
+
   # Welcome message
   outputLines.add("Chat TUI - Connesso a llama.cpp su " & APIUrl)
   outputLines.add("   Modello: " & ModelName)
@@ -426,6 +460,12 @@ proc main() =
 
 
   while true:
+    # Check server availability periodically (async, non-blocking)
+    let now = epochTime()
+    if not serverAvailable and (now - lastServerCheck > 3.0):
+      asyncCheck checkServerAsync()
+      lastServerCheck = now
+
     var tb = newTerminalBuffer(terminalWidth(), terminalHeight())
     let w = tb.width
     let h = tb.height
@@ -452,7 +492,7 @@ proc main() =
       tb.setForegroundColor(fgCyan, bright=true)
       let menuTitle = " SELEZIONA MODELLO "
       tb.write((w - menuTitle.len) div 2, 2, menuTitle)
-      
+
       let startY = 5
       if availableModels.len == 0:
         tb.setForegroundColor(fgYellow)
@@ -469,7 +509,7 @@ proc main() =
           else:
             tb.setForegroundColor(fgWhite)
             tb.write((w - m.len) div 2, startY + i, m)
-      
+
       tb.setForegroundColor(fgWhite)
       let help = "↑/↓: Naviga, Enter: Conferma, Esc: Annulla"
       tb.write((w - help.len) div 2, h - 2, help)
@@ -479,7 +519,7 @@ proc main() =
       # Title bar
       tb.setBackgroundColor(bgBlue)
       tb.setForegroundColor(fgWhite, bright=true)
-      let statusIcon = if isProcessing: "..." else: "OK"
+      let statusIcon = if isProcessing: "..." elif serverAvailable: "OK" else: "NO"
       let title = fmt" CHAT [{outputLines.len} msg] {statusIcon} "
       tb.write(max(1, (w - title.len) div 2), 0, title)
       tb.setBackgroundColor(bgBlack)
@@ -490,6 +530,15 @@ proc main() =
 
       # Reset background to black
       tb.setBackgroundColor(bgBlack)
+
+      # Server unavailable banner
+      let bannerOffset = if not serverAvailable: 1 else: 0
+      if not serverAvailable:
+        let banner = " ⚠ SERVER NON DISPONIBILE - Avvia llama-server.exe ⚠ "
+        tb.setBackgroundColor(bgRed)
+        tb.setForegroundColor(fgWhite, bright=true)
+        tb.write(max(1, (w - banner.len) div 2), 1, banner)
+        tb.setBackgroundColor(bgBlack)
 
       # Collect display lines with word wrapping
       # FIX: Using rune-aware wrapping to handle UTF-8 and spaces correctly.
@@ -503,7 +552,7 @@ proc main() =
         allDisplayLines.add("... Waiting for response...")
 
       # Determine which lines to show (always show from bottom)
-      let visibleRows = max(1, outputHeight - 1)
+      let visibleRows = max(1, outputHeight - 1 - bannerOffset)
       scrollOffset = max(0, min(scrollOffset, max(0, allDisplayLines.len - visibleRows)))
       let showFrom = if allDisplayLines.len > visibleRows:
         max(0, allDisplayLines.len - visibleRows - scrollOffset)
@@ -512,7 +561,7 @@ proc main() =
       let showTo = min(showFrom + visibleRows, allDisplayLines.len)
 
       # Draw visible output lines
-      var y = 1
+      var y = 1 + bannerOffset
       var inAIResponse = false
       for i in showFrom ..< showTo:
         if y >= outputHeight: break
