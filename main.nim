@@ -3,7 +3,7 @@
 
 import os, strformat, strutils, json, httpclient, asyncdispatch, uri
 import illwill, unicode
-import tools
+import tools, map_key_tochar
 
 const
   InputBarHeight = 3          # Height of the input bar area
@@ -21,6 +21,26 @@ var
   state: AppState = Chatting      # Current application state
   availableModels: seq[string] = @[] # List of models from server
   selectedMenuIndex: int = 0      # Index for model selection menu
+
+const StatusFile = "status.json"
+
+proc loadModelStatus() =
+  ## Load the previously selected model from status.json
+  if not fileExists(StatusFile): return
+  try:
+    let content = readFile(StatusFile)
+    let j = parseJson(content)
+    if j.hasKey("selected_model"):
+      ModelName = j["selected_model"].getStr()
+      echo "Modello caricato da status.json: ", ModelName
+  except: discard
+
+proc saveModelStatus() =
+  ## Save the currently selected model to status.json
+  try:
+    let j = %*{"selected_model": ModelName}
+    writeFile(StatusFile, $j)
+  except: discard
 
 proc exitProc() {.noconv.} =
   # FIX: To ensure the terminal doesn't stay orange/yellow after exit:
@@ -80,7 +100,7 @@ var
   conversationHistory: seq[JsonNode] = @[
     %*{
       "role": "system",
-      "content": "You have access to tools: read and bash. IMPORTANT: When using the bash tool, only call it ONCE per task. Do NOT make multiple bash calls to get the same information. For example, if you need to list directory contents, use 'ls -la' once - do not follow up with additional calls like 'find' or 'ls' again. One bash call is sufficient for most tasks."
+      "content": "You have access to tools: read and bash."
     }
   ]  # Chat history for API
 
@@ -98,106 +118,6 @@ proc removeLastRune(s: var string) =
     dec(i)
   s.setLen(i)
 
-proc keyToChar(key: Key): string =
-  ## Convert a printable key to its character representation
-  case key
-  of Key.Space: result = " "
-  of Key.ExclamationMark: result = "!"
-  of Key.DoubleQuote: result = "\""
-  of Key.Hash: result = "#"
-  of Key.Dollar: result = "$"
-  of Key.Percent: result = "%"
-  of Key.Ampersand: result = "&"
-  of Key.SingleQuote: result = "'"
-  of Key.LeftParen: result = "("
-  of Key.RightParen: result = ")"
-  of Key.Asterisk: result = "*"
-  of Key.Plus: result = "+"
-  of Key.Comma: result = ","
-  of Key.Minus: result = "-"
-  of Key.Dot: result = "."
-  of Key.Slash: result = "/"
-  of Key.Zero: result = "0"
-  of Key.One: result = "1"
-  of Key.Two: result = "2"
-  of Key.Three: result = "3"
-  of Key.Four: result = "4"
-  of Key.Five: result = "5"
-  of Key.Six: result = "6"
-  of Key.Seven: result = "7"
-  of Key.Eight: result = "8"
-  of Key.Nine: result = "9"
-  of Key.Colon: result = ":"
-  of Key.Semicolon: result = ";"
-  of Key.LessThan: result = "<"
-  of Key.Equals: result = "="
-  of Key.GreaterThan: result = ">"
-  of Key.QuestionMark: result = "?"
-  of Key.At: result = "@"
-  of Key.LeftBracket: result = "["
-  of Key.Backslash: result = "\\"
-  of Key.RightBracket: result = "]"
-  of Key.Caret: result = "^"
-  of Key.Underscore: result = "_"
-  of Key.GraveAccent: result = "`"
-  of Key.LeftBrace: result = "{"
-  of Key.Pipe: result = "|"
-  of Key.RightBrace: result = "}"
-  of Key.Tilde: result = "~"
-  of Key.A: result = "a"
-  of Key.B: result = "b"
-  of Key.C: result = "c"
-  of Key.D: result = "d"
-  of Key.E: result = "e"
-  of Key.F: result = "f"
-  of Key.G: result = "g"
-  of Key.H: result = "h"
-  of Key.I: result = "i"
-  of Key.J: result = "j"
-  of Key.K: result = "k"
-  of Key.L: result = "l"
-  of Key.M: result = "m"
-  of Key.N: result = "n"
-  of Key.O: result = "o"
-  of Key.P: result = "p"
-  of Key.Q: result = "q"
-  of Key.R: result = "r"
-  of Key.S: result = "s"
-  of Key.T: result = "t"
-  of Key.U: result = "u"
-  of Key.V: result = "v"
-  of Key.W: result = "w"
-  of Key.X: result = "x"
-  of Key.Y: result = "y"
-  of Key.Z: result = "z"
-  of Key.ShiftA: result = "A"
-  of Key.ShiftB: result = "B"
-  of Key.ShiftC: result = "C"
-  of Key.ShiftD: result = "D"
-  of Key.ShiftE: result = "E"
-  of Key.ShiftF: result = "F"
-  of Key.ShiftG: result = "G"
-  of Key.ShiftH: result = "H"
-  of Key.ShiftI: result = "I"
-  of Key.ShiftJ: result = "J"
-  of Key.ShiftK: result = "K"
-  of Key.ShiftL: result = "L"
-  of Key.ShiftM: result = "M"
-  of Key.ShiftN: result = "N"
-  of Key.ShiftO: result = "O"
-  of Key.ShiftP: result = "P"
-  of Key.ShiftQ: result = "Q"
-  of Key.ShiftR: result = "R"
-  of Key.ShiftS: result = "S"
-  of Key.ShiftT: result = "T"
-  of Key.ShiftU: result = "U"
-  of Key.ShiftV: result = "V"
-  of Key.ShiftW: result = "W"
-  of Key.ShiftX: result = "X"
-  of Key.ShiftY: result = "Y"
-  of Key.ShiftZ: result = "Z"
-  else: result = ""
-
 proc sendToLLM(prompt: string = "") {.async.} =
   ## Send prompt to llama.cpp server and handle streaming response and tool calls
   isProcessing = true
@@ -212,35 +132,13 @@ proc sendToLLM(prompt: string = "") {.async.} =
 
   var toolCallsCollected: seq[JsonNode] = @[]
   
-  # Recursive-like loop to handle potential multiple tool call rounds
   while true:
-    # Prepare request body with streaming enabled and tools schema
-    # Create messages without system prompt to avoid model confusion
-    # The system prompt is only needed in the first request
-    var messagesWithoutSystem: seq[JsonNode] = @[]
-    for msg in conversationHistory:
-      if msg{"role"}.getStr() != "system":
-        messagesWithoutSystem.add(msg)
-    
-    # FIX: Only include tools in FIRST request (when there's only user message)
-    # After tool calls, don't repeat tool definitions - model already knows them
-    # To always include tools: uncomment the tools line below
-    var body: JsonNode
-    if messagesWithoutSystem.len == 1 and messagesWithoutSystem[0]["role"].getStr() == "user":
-      # First request - include tools
-      body = %*{
-        "model": ModelName,
-        "messages": messagesWithoutSystem,
-        "stream": true,
-        "tools": tools.ToolsSchema
-      }
-    else:
-      # Subsequent requests (after tool calls) - don't include tools
-      body = %*{
-        "model": ModelName,
-        "messages": messagesWithoutSystem,
-        "stream": true
-      }
+    let body = %*{
+      "model": ModelName,
+      "messages": conversationHistory,
+      "stream": true,
+      "tools": tools.ToolsSchema
+    }
     try:
       let f = open("debug_tools.txt", fmAppend)
       f.write("\n--- MSG TO MODEL ---\n" & $body & "\n--- END ---\n")
@@ -415,6 +313,7 @@ proc handleInput(key: Key): bool =
     of Key.Enter:
       if availableModels.len > 0:
         ModelName = availableModels[selectedMenuIndex]
+        saveModelStatus()
         outputLines.add("System: Modello cambiato a " & ModelName)
       state = Chatting
       return false
@@ -423,11 +322,6 @@ proc handleInput(key: Key): bool =
 
   case key
   of Key.Escape: return true
-  of Key.Q:
-    if currentInput.len == 0: return true
-    else:
-      currentInput.add(keyToChar(key))
-      return false
   of Key.Enter:
     if currentInput.len > 0:
       let prompt = currentInput
@@ -459,18 +353,32 @@ proc handleInput(key: Key): bool =
   of Key.Down:
     if scrollOffset > 0: scrollOffset -= 1
     return false
+  of Key.Left, Key.Right:
+    # Arrow keys not used for navigation in input - ignore gracefully
+    return false
+  of Key.Slash:
+    currentInput.add("/")
+    return false
   else:
     let ch = keyToChar(key)
+    # DEBUG: log every key that reaches the else branch
+    #try:
+    #  let f = open("debug_keys.txt", fmAppend)
+    #  f.write("KEY pressed: ord=" & $ord(key) & " key=" & $key & " keyToChar='" & ch & "'\n")
+    #  f.close()
+    #except: discard
     if ch.len > 0:
       currentInput.add(ch)
-    # Fallback for backspace on Windows - illwill doesn't always map
-    # backspace to Key.Backspace/Key.Delete, so we check raw key codes
-    # 127 = Backspace (ASCII), 8 = Backspace (control char)
+    # Fallback for slash on Windows - codes 47, 191 (OEM), 111 (Divide)
+    elif ord(key) == 47 or ord(key) == 191 or ord(key) == 111:
+      currentInput.add("/")
+    # Fallback for other printable ASCII
+    elif ord(key) >= 32 and ord(key) <= 126:
+      currentInput.add(chr(ord(key)))
+    # Fallback for backspace on Windows - 127 = Backspace (ASCII), 8 = Backspace (control char)
     elif ord(key) == 127 or ord(key) == 8:
       if currentInput.len > 0:
         currentInput.removeLastRune()
-    else:
-      echo "Unknown key: ", ord(key), " ", key
     return false
 
 proc wrapText(text: string, width: int): seq[string] =
@@ -507,6 +415,9 @@ proc main() =
   illwillInit(fullscreen=true)
   setControlCHook(exitProc)
   hideCursor()
+
+  # Load previously selected model from status.json
+  loadModelStatus()
 
   # Welcome message
   outputLines.add("Chat TUI - Connesso a llama.cpp su " & APIUrl)
@@ -665,6 +576,13 @@ proc main() =
 
     # Process input (non-blocking)
     var key = getKey()
+    # DEBUG: log every key returned by getKey()
+    #if key != Key.None:
+    #  try:
+    #    let f = open("debug_keys.txt", fmAppend)
+    #    f.write("getKey returned: ord=" & $ord(key) & " key=" & $key & "\n")
+    #    f.close()
+    #  except: discard
     if key != Key.None:
       if handleInput(key):
         exitProc()
