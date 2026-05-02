@@ -7,10 +7,14 @@ import my_include/tools, my_include/map_key_tochar, my_include/system_prompt
 
 const
   InputBarHeight = 5          # Height of the input bar area (2 blue delimiter lines + 3 content rows)
+  StatusBarHeight = 1         # Height of the status bar
   InputGap = 2                 # Blank lines between last output and input bar
   MaxOutputLines = 1000        # Max lines to keep in output history
   PromptChar = "> "             # Prompt prefix for user input
-  APIUrl = "http://localhost:8080/v1/chat/completions"
+
+var
+  ServerBaseUrl = "http://localhost:8080"  # Base URL for llama-server (loaded from status.json)
+  APIUrl = ServerBaseUrl & "/v1/chat/completions"  # Full API endpoint
   # Configurazione per avvio automatico del server
   LlamaServerPath = "C:\\down\\llama-latest\\llama-server.exe"  # Percorso al server
   LlamaServerArgs* = @["--host", "0.0.0.0", "--models-preset", "config.ini", "--models-max", "1", "--no-warmup", "--parallel", "1", "--jinja"]
@@ -27,6 +31,7 @@ type
 
 var
   ModelName = "Qwen3.5_0.8b-text"  # Current model name (can be changed)
+  maxHistoryMessages: int = 20    # Max messages to keep in conversation history (sliding window)
   state: AppState = Chatting      # Current application state
   availableModels: seq[string] = @[] # List of models from server
   selectedMenuIndex: int = 0      # Index for model selection menu
@@ -37,7 +42,7 @@ const SlashCommands: array[3, SlashCommand] = [
   SlashCommand(name: "/new",    description: "Reset conversation and start new chat"),
 ]
 
-const StatusFile = "status.json"
+const StatusFile = "my_include/status.json"
 
 # ============================================
 # Server Management - Avvio automatico
@@ -49,14 +54,14 @@ proc checkServer*(): bool =
   try:
     let client = newHttpClient()
     client.timeout = 5000  # 5 secondi timeout
-    let response = client.get("http://localhost:8080/v1/models")
+    let response = client.get(ServerBaseUrl & "/v1/models")
     client.close()
     return response.status == "200"
   except:
     return false
 
 proc loadModelStatus() =
-  ## Load the previously selected model from status.json
+  ## Load the previously selected model and settings from status.json
   if not fileExists(StatusFile): return
   try:
     let content = readFile(StatusFile)
@@ -64,12 +69,23 @@ proc loadModelStatus() =
     if j.hasKey("selected_model"):
       ModelName = j["selected_model"].getStr()
       echo "Modello caricato da status.json: ", ModelName
+    if j.hasKey("max_history_messages"):
+      maxHistoryMessages = j["max_history_messages"].getInt()
+      echo "Max history messages caricato: ", maxHistoryMessages
+    if j.hasKey("server_url"):
+      ServerBaseUrl = j["server_url"].getStr()
+      APIUrl = ServerBaseUrl & "/v1/chat/completions"
+      echo "Server URL caricato da status.json: ", ServerBaseUrl
   except: discard
 
 proc saveModelStatus() =
-  ## Save the currently selected model to status.json
+  ## Save the currently selected model and settings to status.json
   try:
-    let j = %*{"selected_model": ModelName}
+    let j = %*{
+      "selected_model": ModelName,
+      "max_history_messages": maxHistoryMessages,
+      "server_url": ServerBaseUrl
+    }
     writeFile(StatusFile, $j)
   except: discard
 
@@ -98,7 +114,7 @@ proc fetchModels() {.async.} =
   ## Fetch available models from the server
   var client = newAsyncHttpClient()
   try:
-    let response = await client.get("http://localhost:8080/v1/models")
+    let response = await client.get(ServerBaseUrl & "/v1/models")
     let jsonNode = parseJson(await response.body())
     availableModels = @[]
     if jsonNode.hasKey("data"):
@@ -143,7 +159,7 @@ proc checkServerAsync() {.async.} =
   ## Async check if server is available (non-blocking)
   var client = newAsyncHttpClient()
   try:
-    let response = await client.get("http://localhost:8080/v1/models")
+    let response = await client.get(ServerBaseUrl & "/v1/models")
     serverAvailable = (response.code == Http200)
   except:
     serverAvailable = false
@@ -161,7 +177,8 @@ proc filterCommands(query: string): seq[int] =
 
 proc updateSlashMenu() =
   ## Open or close the slash menu based on current input.
-  if currentInput.len > 0 and currentInput[0] == '/':
+  ## Disable menu if input contains spaces (has arguments)
+  if currentInput.len > 0 and currentInput[0] == '/' and not currentInput.contains(' '):
     showingSlashMenu = true
     # Clamp index when filtered list shrinks
     let filtered = filterCommands(currentInput[1 .. ^1])
@@ -186,6 +203,27 @@ proc removeLastRune(s: var string) =
     dec(i)
   s.setLen(i)
 
+proc trimConversationHistory() =
+  ## Apply sliding window to conversationHistory
+  ## Keeps system message + last N messages
+  if conversationHistory.len <= maxHistoryMessages + 1:  # +1 for system prompt
+    return
+  
+  # Always keep system message if present
+  var newHistory: seq[JsonNode] = @[]
+  if conversationHistory.len > 0 and conversationHistory[0].hasKey("role") and 
+     conversationHistory[0]["role"].getStr() == "system":
+    newHistory.add(conversationHistory[0])
+  
+  # Keep last maxHistoryMessages
+  let startIndex = max(if newHistory.len > 0: 1 else: 0, 
+                       conversationHistory.len - maxHistoryMessages)
+  for i in startIndex..<conversationHistory.len:
+    newHistory.add(conversationHistory[i])
+  
+  conversationHistory = newHistory
+  echo "History trimmed to ", conversationHistory.len, " messages"
+
 proc sendToLLM(prompt: string = "") {.async.} =
   ## Send prompt to llama.cpp server and handle streaming response and tool calls
   isProcessing = true
@@ -197,6 +235,8 @@ proc sendToLLM(prompt: string = "") {.async.} =
       "role": "user",
       "content": prompt
     })
+    # Apply sliding window after adding user message
+    trimConversationHistory()
 
   var toolCallsCollected: seq[JsonNode] = @[]
 
@@ -358,6 +398,8 @@ proc sendToLLM(prompt: string = "") {.async.} =
   if outputLines.len > MaxOutputLines:
     outputLines = outputLines[outputLines.len - MaxOutputLines .. ^1]
   scrollOffset = 0
+  # Apply sliding window after assistant response is added
+  trimConversationHistory()
 
 proc handleInput(key: Key): bool =
   ## Process a keypress. Returns true if we should quit.
@@ -460,6 +502,28 @@ proc handleInput(key: Key): bool =
         outputLines.add("System: Conversation reset. New chat started.")
         return false
 
+      # Parse command with arguments properly
+      let cmdParts = strutils.splitWhitespace(cmd)
+      if cmdParts.len > 0:
+        case cmdParts[0]
+        of "/history":
+          if cmdParts.len == 2:
+            try:
+              let newVal = cmdParts[1].parseInt()
+              if newVal >= 1 and newVal <= 100:
+                maxHistoryMessages = newVal
+                saveModelStatus()
+                outputLines.add("System: Max history messages set to " & $maxHistoryMessages)
+              else:
+                outputLines.add("System: Value must be between 1 and 100")
+            except:
+              outputLines.add("System: Invalid number. Usage: /history <number>")
+          else:
+            outputLines.add("System: Current max history: " & $maxHistoryMessages & ". Usage: /history <number>")
+          return false
+        else:
+          discard
+
       # Add user message to output IMMEDIATELY (before streaming starts)
       outputLines.add("Tu: " & prompt)
       # Start async request (fire and forget)
@@ -542,6 +606,21 @@ proc wrapText(text: string, width: int): seq[string] =
       i += w
   return lines
 
+proc drawStatusBar(tb: var TerminalBuffer, y, w: int) =
+  ## Draw a status bar at the bottom of the screen
+  tb.setBackgroundColor(bgBlue)
+  tb.setForegroundColor(fgWhite, bright=true)
+  
+  let serverStatus = if serverAvailable: "🟢" else: "🔴"
+  let processStatus = if isProcessing: "⏳ Processing..." else: "✓ Ready"
+  let modelShort = if ModelName.len > 15: ModelName[0..14] & "..." else: ModelName
+  
+  let statusText = fmt" {serverStatus} {processStatus} | Model: {modelShort} | Messages: {outputLines.len} "
+  
+  tb.write(0, y, strutils.repeat(" ", w))
+  tb.write(0, y, statusText)
+  tb.setBackgroundColor(bgNone)
+
 proc main() =
   illwillInit(fullscreen=true)
   setControlCHook(exitProc)
@@ -554,8 +633,10 @@ proc main() =
   asyncCheck fetchModels()
 
   # Welcome message
-  outputLines.add("Chat TUI - Connesso a llama.cpp su " & APIUrl)
-  outputLines.add("   Premi Enter per inviare, Esc o /q per uscire, /model per cambiare, /new per resettare")
+  outputLines.add("Chat TUI - Connesso a llama.cpp su " & ServerBaseUrl)
+  outputLines.add("   Premi Enter per inviare, Esc o /q per uscire")
+  outputLines.add("   /model: cambia modello | /new: reset chat")
+  outputLines.add("   /history <num>: memoria messaggi (attuale: " & $maxHistoryMessages & ")")
 
 
   while true:
@@ -569,7 +650,7 @@ proc main() =
     let w = tb.width
     let h = tb.height
 
-    if h <= InputBarHeight + 2 or w < 20:
+    if h <= InputBarHeight + StatusBarHeight + 2 or w < 20:
       tb.setForegroundColor(fgRed, bright=true)
       tb.write(0, 0, "Terminal too small! Resize to continue.")
       tb.display()
@@ -610,15 +691,14 @@ proc main() =
 
       tb.setForegroundColor(fgWhite)
       let help = "↑/↓: Naviga, Enter: Conferma, Esc: Annulla"
-      tb.write((w - help.len) div 2, h - 2, help)
+      tb.write((w - help.len) div 2, h - StatusBarHeight - 1, help)
     else:
       # === Draw output area ===
       # MEMO: Borders (│, ─, ┌, etc.) have been removed to maximize horizontal space.
       # Title bar
       tb.setBackgroundColor(bgBlue)
       tb.setForegroundColor(fgWhite, bright=true)
-      let statusIcon = if isProcessing: "..." elif serverAvailable: "OK" else: "NO"
-      let title = fmt" CHAT [{outputLines.len} msg] {statusIcon} 🤖 {ModelName} "
+      let title = fmt" CHAT 🤖 {ModelName} "
       tb.write(max(1, (w - title.len) div 2), 0, title)
       tb.setBackgroundColor(bgBlack)
 
@@ -650,6 +730,7 @@ proc main() =
         allDisplayLines.add("... Waiting for response...")
 
       # Position input bar: float below content, or pin to bottom if overflowing
+      # Status bar is at the very bottom (h - StatusBarHeight)
       let contentStartY = 1 + bannerOffset
       let inputBarNeeded = InputGap + InputBarHeight
       # Calculate space needed for slash menu if visible
@@ -662,16 +743,19 @@ proc main() =
       var inputY: int
       var showFrom, showTo: int
 
-      if contentStartY + allDisplayLines.len + inputBarNeeded + slashMenuSpace <= h:
+      # Total space needed at bottom: input bar + slash menu + status bar
+      let bottomSpaceNeeded = inputBarNeeded + slashMenuSpace + StatusBarHeight
+
+      if contentStartY + allDisplayLines.len + bottomSpaceNeeded <= h:
         # Content fits → input bar floats just below content
         inputY = contentStartY + allDisplayLines.len + InputGap
         showFrom = 0
         showTo = allDisplayLines.len
       else:
-        # Content too long → pin input bar to bottom, scroll output
-        inputY = h - InputBarHeight - slashMenuSpace
+        # Content too long → pin input bar above status bar, scroll output
+        inputY = h - StatusBarHeight - InputBarHeight - slashMenuSpace
         if inputY < contentStartY + 2:
-          inputY = h - InputBarHeight  # Fallback if terminal too short
+          inputY = h - StatusBarHeight - InputBarHeight  # Fallback if terminal too short
         let visibleRows = max(1, inputY - contentStartY)
         scrollOffset = max(0, min(scrollOffset, max(0, allDisplayLines.len - visibleRows)))
         showFrom = if allDisplayLines.len > visibleRows:
@@ -689,7 +773,7 @@ proc main() =
         let line = allDisplayLines[i]
         if line.startsWith("Tu:"):
           inAIResponse = false
-          tb.setForegroundColor(fgCyan, bright=true)
+          tb.setForegroundColor(fgWhite)
         elif line.startsWith("AI:"):
           inAIResponse = true
           tb.setForegroundColor(fgGreen, bright=true)
@@ -697,6 +781,8 @@ proc main() =
           tb.setForegroundColor(fgYellow, bright=true)
         elif inAIResponse:
           tb.setForegroundColor(fgGreen, bright=true)
+        elif line.startsWith("Chat TUI") or line.startsWith("   Premi") or line.startsWith("   /model") or line.startsWith("   /history") or line.startsWith("System:"):
+          tb.setForegroundColor(fgYellow, bright=true)
         else:
           tb.setForegroundColor(fgWhite)
         # Write at x=0
@@ -729,10 +815,10 @@ proc main() =
 
       # Current input text
       if isProcessing:
-        tb.setForegroundColor(fgYellow)
+        tb.setForegroundColor(fgWhite)
         tb.write(PromptChar.len, inputY + 2, "(processing...)")
       else:
-        tb.setForegroundColor(fgYellow, bright=true)
+        tb.setForegroundColor(fgWhite)
         tb.write(PromptChar.len, inputY + 2, currentInput)
 
       # Cursor block
@@ -791,6 +877,9 @@ proc main() =
           # Reset attributes
           tb.setBackgroundColor(bgBlack)
           tb.setForegroundColor(fgWhite)
+
+      # === Draw status bar at the bottom ===
+      drawStatusBar(tb, h - StatusBarHeight, w)
 
     # Restore attributes
     tb.resetAttributes()
