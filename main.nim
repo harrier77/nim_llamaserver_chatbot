@@ -128,22 +128,70 @@ proc main() =
     tb.display()
 
     # (f) Get key → handleInput
+    #
+    # ----------------------------------------------------------------
+    # NOTE ON MOUSE WHEEL FIX (2026-05-03):
+    #
+    # The mouse wheel did not work on Windows because of a bug in illwill
+    # (v0.4.1) that consumed and discarded mouse events before the mouse
+    # handler could process them. Three patches were applied to illwill.nim:
+    #
+    # ROOT CAUSE:
+    #   getchTimeout() (illwill.nim, ~line 412) used readConsoleInput()
+    #   directly to pull events from the Windows console buffer.  When a
+    #   MOUSE_EVENT was encountered (eventType != 1), the function simply
+    #   continued its loop — but the event had already been consumed and
+    #   was lost.  hasMouseInput() (called afterwards) found nothing.
+    #
+    # FIX LOCATION 1 — getchTimeout() (illwill.nim, ~line 421-428):
+    #   Added a PeekConsoleInputA() call BEFORE readConsoleInput().
+    #   If the peeked event is a MOUSE_EVENT, the function returns
+    #   immediately WITHOUT consuming it, leaving the event in the buffer
+    #   for hasMouseInput() to handle.
+    #
+    # FIX LOCATION 2 — hasMouseInput() (illwill.nim, ~line 842-846):
+    #   Added a guard: only call readConsoleInput() if the FIRST event
+    #   in the buffer is a MOUSE_EVENT.  This prevents consuming keyboard
+    #   events when scanning for mouse events.
+    #
+    # FIX LOCATION 3 — getKey() & getKeyWithTimeout() (illwill.nim,
+    #   ~line 855-869 and ~line 872-886):
+    #   Swapped the order: hasMouseInput() is now called BEFORE
+    #   getKeyAsync(), so mouse events are captured before getchTimeout()
+    #   has a chance to peek at (and skip) them.
+    #
+    # ⚠️  If illwill is updated, these three patches MUST be reapplied.
+    #     Search for "FIX:" in the patched functions to locate them.
+    # ----------------------------------------------------------------
     var key = getKey()
     if key != illwill.Key.None:
       if key == illwill.Key.Mouse:
         # Handle mouse wheel scrolling
         let mi = illwill.getMouse()
-        # DEBUG: salva tutti i dati
+        # DEBUG: log all mouse event data to mouse_debug.txt
         try:
           let f = open("mouse_debug.txt", fmAppend)
-          f.write("Mouse: scroll=" & $mi.scroll & " dir=" & $mi.scrollDir & " btn=" & $mi.button & " act=" & $mi.action & " move=" & $mi.move & " x=" & $mi.x & " y=" & $mi.y & "\n")
+          f.write("Time=" & $now() & " scroll=" & $mi.scroll & " dir=" & $mi.scrollDir & " btn=" & $mi.button & " act=" & $mi.action & " move=" & $mi.move & " x=" & $mi.x & " y=" & $mi.y & "\n")
           f.close()
         except: discard
+
         if mi.scroll:
-          if mi.scrollDir == ScrollDirection.sdUp:
-            scrollOffset += 1
-          elif mi.scrollDir == ScrollDirection.sdDown:
-            if scrollOffset > 0: scrollOffset -= 1
+          if state == SelectingModel:
+            # Scroll the model selection menu
+            if mi.scrollDir == sdUp:
+              if selectedMenuIndex > 0: dec(selectedMenuIndex)
+            elif mi.scrollDir == sdDown:
+              if selectedMenuIndex < availableModels.len - 1: inc(selectedMenuIndex)
+          else:
+            # Scroll the chat history
+            # Standard mouse wheel behavior:
+            # sdUp (Away) -> Scroll UP (see older) -> Increase offset
+            # sdDown (Towards) -> Scroll DOWN (see newer) -> Decrease offset
+            if mi.scrollDir == sdUp:
+              scrollOffset += 3  # Increase for faster wheel scrolling
+            elif mi.scrollDir == sdDown:
+              if scrollOffset >= 3: scrollOffset -= 3
+              else: scrollOffset = 0
       elif input.handleInput(key):
         exitProc()
 

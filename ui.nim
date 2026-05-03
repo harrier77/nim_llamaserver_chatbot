@@ -246,7 +246,16 @@ proc drawChatScreen*(tb: var TerminalBuffer, w, h: int) =
 
   # --- Draw visible output lines ---
   var y = 1 + bannerOffset
+
+  # FIX: determine inAIResponse state before showFrom so scrolled-in
+  # continuation lines keep the correct green AI color
   var inAIResponse = false
+  for j in 0 ..< showFrom:
+    if allDisplayLines[j].startsWith("AI:"):
+      inAIResponse = true
+    elif allDisplayLines[j].startsWith("Tu:"):
+      inAIResponse = false
+
   for i in showFrom ..< showTo:
     if y >= inputY: break
     let line = allDisplayLines[i]

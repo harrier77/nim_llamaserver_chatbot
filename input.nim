@@ -13,7 +13,7 @@
 # IMPORTANT: do not import main.nim
 # ============================================================
 
-import strutils, illwill, asyncdispatch
+import strutils, illwill, asyncdispatch, os
 import config
 import server   # for fetchModels
 import chat     # for sendToLLM
@@ -203,6 +203,33 @@ proc handleInput*(key: illwill.Key): bool =
             ui.openInMicro(filename)
           else:
             outputLines.add("System: Usage: /edit <filename>")
+          return false
+        of "/read":
+          if cmdParts.len >= 2:
+            let filename = cmdParts[1]
+            if fileExists(filename):
+              try:
+                let content = readFile(filename)
+                let header = "System: [File: " & filename & "]"
+                outputLines.add(header)
+                # Add file content line by line (limit to avoid huge files)
+                var lineCount = 0
+                const maxReadLines = 500
+                for line in content.splitLines():
+                  if lineCount >= maxReadLines:
+                    outputLines.add("... (file truncated at " & $maxReadLines & " lines)")
+                    break
+                  outputLines.add(line)
+                  inc(lineCount)
+                outputLines.add("System: [End of file: " & $lineCount & " lines read]")
+                # Reset scroll to bottom so user sees the end
+                scrollOffset = 0
+              except:
+                outputLines.add("System: Error reading file: " & getCurrentExceptionMsg())
+            else:
+              outputLines.add("System: File not found: " & filename)
+          else:
+            outputLines.add("System: Usage: /read <filename>")
           return false
         else:
           discard

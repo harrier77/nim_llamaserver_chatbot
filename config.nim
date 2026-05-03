@@ -24,7 +24,7 @@ const
   InputGap* = 2                 ## Blank lines between output and input bar
   MaxOutputLines* = 1000        ## Max lines kept in output history
   PromptChar* = "> "            ## Prompt prefix
-  SlashMenuHeight* = 8          ## Max rows in slash command popup
+  SlashMenuHeight* = 10         ## Max rows in slash command popup
 
 # ============================================================
 # 2. File path constants
@@ -61,11 +61,12 @@ type SlashCommand* = object
   name*: string
   description*: string
 
-const SlashCommands*: array[4, SlashCommand] = [
+const SlashCommands*: array[5, SlashCommand] = [
   SlashCommand(name: "/quit",   description: "Exit the application (also /q)"),
   SlashCommand(name: "/model",  description: "Change the current model"),
   SlashCommand(name: "/new",    description: "Reset conversation and start new chat"),
   SlashCommand(name: "/edit",   description: "Open file in micro editor"),
+  SlashCommand(name: "/read",   description: "Read a file into the chat output"),
 ]
 
 # ============================================================
