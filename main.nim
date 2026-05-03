@@ -73,7 +73,7 @@ proc main() =
   ## (e.g. sleep interval, server check frequency), modify here.
 
   # --- TUI initialization ---
-  illwillInit(fullscreen = true)
+  illwillInit(fullscreen = true, mouse = true)
   setControlCHook(exitProc)
   hideCursor()
 
@@ -130,7 +130,21 @@ proc main() =
     # (f) Get key → handleInput
     var key = getKey()
     if key != illwill.Key.None:
-      if input.handleInput(key):
+      if key == illwill.Key.Mouse:
+        # Handle mouse wheel scrolling
+        let mi = illwill.getMouse()
+        # DEBUG: salva tutti i dati
+        try:
+          let f = open("mouse_debug.txt", fmAppend)
+          f.write("Mouse: scroll=" & $mi.scroll & " dir=" & $mi.scrollDir & " btn=" & $mi.button & " act=" & $mi.action & " move=" & $mi.move & " x=" & $mi.x & " y=" & $mi.y & "\n")
+          f.close()
+        except: discard
+        if mi.scroll:
+          if mi.scrollDir == ScrollDirection.sdUp:
+            scrollOffset += 1
+          elif mi.scrollDir == ScrollDirection.sdDown:
+            if scrollOffset > 0: scrollOffset -= 1
+      elif input.handleInput(key):
         exitProc()
 
     # (g) Poll async events

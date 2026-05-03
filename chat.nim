@@ -261,6 +261,8 @@ proc sendToLLM*(prompt: string = "") {.async.} =
   isProcessing = false
   if outputLines.len > MaxOutputLines:
     outputLines = outputLines[outputLines.len - MaxOutputLines .. ^1]
-  scrollOffset = 0
+  # Don't reset scrollOffset: let the user keep their scroll position.
+  # If they were at the bottom (scrollOffset=0), new content auto-scrolls
+  # into view because the renderer always shows the last visibleRows.
   # Apply the sliding window after adding the assistant response
   trimConversationHistory()

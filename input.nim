@@ -86,9 +86,18 @@ proc handleInput*(key: illwill.Key): bool =
   ## 2. Add the logic below in the "Slash commands" section
   ## 3. If it takes arguments, add a handleXXXCommand proc above
 
-  # Ignore input while processing (except in SelectingModel state)
+  # Ignore input while processing (except scrolling and SelectingModel state)
   if (isProcessing or not serverAvailable) and state == Chatting:
-    return false
+    # Allow scrolling even while the LLM is generating
+    case key
+    of illwill.Key.Up:
+      scrollOffset += 1
+      return false
+    of illwill.Key.Down:
+      if scrollOffset > 0: scrollOffset -= 1
+      return false
+    else:
+      return false
 
   # --- Slash menu navigation ---
   if showingSlashMenu and state == Chatting:
