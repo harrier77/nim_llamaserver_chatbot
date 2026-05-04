@@ -87,7 +87,7 @@ proc handleInput*(key: illwill.Key): bool =
   ## 3. If it takes arguments, add a handleXXXCommand proc above
 
   # Ignore input while processing (except scrolling and SelectingModel state)
-  if (isProcessing or not serverAvailable) and state == Chatting:
+  if (isProcessing or (not serverAvailable and not OpenCodeEnabled)) and state == Chatting:
     # Allow scrolling even while the LLM is generating
     case key
     of illwill.Key.Up:
@@ -97,7 +97,12 @@ proc handleInput*(key: illwill.Key): bool =
       if scrollOffset > 0: scrollOffset -= 1
       return false
     else:
-      return false
+      # Allow slash commands even when server is unavailable
+      # This enables /model to select online models (e.g., OpenCode)
+      if currentInput.len > 0 and currentInput[0] == '/' or key == illwill.Key.Slash:
+        discard  # Continue to rest of input handling
+      else:
+        return false
 
   # --- Slash menu navigation ---
   if showingSlashMenu and state == Chatting:
@@ -158,6 +163,14 @@ proc handleInput*(key: illwill.Key): bool =
         ModelName = availableModels[selectedMenuIndex]
         server.saveModelStatus()
         outputLines.add("System: Model changed to " & ModelName)
+        # If it's an OpenCode model, set serverAvailable true to skip localhost checks
+        var isOpenCode = false
+        for m in OpenCodeModelIds:
+          if m == ModelName:
+            isOpenCode = true
+            break
+        if isOpenCode:
+          serverAvailable = true
       state = Chatting
       return false
     else: discard

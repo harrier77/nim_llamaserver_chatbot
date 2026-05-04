@@ -127,49 +127,52 @@ proc fetchModels*() {.async.} =
   ##
   ## EDIT: if you need to change how models are filtered/sorted,
   ## modify the logic after JSON parsing.
+  availableModels = @[]
+  
+  # 1. Try to fetch local models (don't block if it fails)
   var client = newAsyncHttpClient()
   try:
     let response = await client.get(ServerBaseUrl & "/v1/models")
     let jsonNode = parseJson(await response.body())
-    availableModels = @[]
     if jsonNode.hasKey("data"):
       for model in jsonNode["data"]:
         availableModels.add(model["id"].getStr())
-
-    if availableModels.len == 0:
-      availableModels.add(ModelName)
-
-    # --- Aggiungi modelli OpenCode ---
-    if OpenCodeEnabled:
-      var ocClient = newAsyncHttpClient()
-      try:
-        ocClient.headers = newHttpHeaders({
-          "Authorization": "Bearer " & OpenCodeApiKey
-        })
-        let modelsUrl = OpenCodeModelsUrl & "/models"
-        let response = await ocClient.get(modelsUrl)
-        if response.code == Http200:
-          let jsonNode = parseJson(await response.body())
-          if jsonNode.hasKey("data"):
-            for model in jsonNode["data"]:
-              let mName = model["id"].getStr()
-              let lowerName = mName.toLowerAscii()
-              # Filtra: solo "big pickle" (cerca "pickle") o modelli con "free" nel nome
-              if lowerName.contains("pickle") or lowerName.contains("free"):
-                availableModels.add(mName)
-                OpenCodeModelIds.add(mName)
-      except: discard  # Fallback: continua con i soli modelli locali
-      finally:
-        ocClient.close()
-
-    # Find the current model in the list to set the default selection
-    selectedMenuIndex = 0
-    for i, m in availableModels:
-      if m == ModelName:
-        selectedMenuIndex = i
-        break
   except:
-    availableModels = @[ModelName]
-    selectedMenuIndex = 0
+    discard # Ignore local server error for now
   finally:
     client.close()
+
+  # 2. Try to fetch OpenCode models (if enabled)
+  if OpenCodeEnabled:
+    var ocClient = newAsyncHttpClient()
+    try:
+      ocClient.headers = newHttpHeaders({
+        "Authorization": "Bearer " & OpenCodeApiKey
+      })
+      let modelsUrl = OpenCodeModelsUrl & "/models"
+      let response = await ocClient.get(modelsUrl)
+      if response.code == Http200:
+        let jsonNode = parseJson(await response.body())
+        if jsonNode.hasKey("data"):
+          for model in jsonNode["data"]:
+            let mName = model["id"].getStr()
+            let lowerName = mName.toLowerAscii()
+            # Filtra: solo "big pickle" (cerca "pickle") o modelli con "free" nel nome
+            if lowerName.contains("pickle") or lowerName.contains("free"):
+              availableModels.add(mName)
+              OpenCodeModelIds.add(mName)
+    except:
+      discard # Ignore OpenCode error
+    finally:
+      ocClient.close()
+
+  # Fallback if nothing was found
+  if availableModels.len == 0:
+    availableModels.add(ModelName)
+  
+  # Find the current model in the list to set the default selection
+  selectedMenuIndex = 0
+  for i, m in availableModels:
+    if m == ModelName:
+      selectedMenuIndex = i
+      break
