@@ -110,7 +110,7 @@ proc drawStatusBar*(tb: var TerminalBuffer, y, w: int) =
   let processStatus = if isProcessing: "⏳ Processing..." else: "✓ Ready"
   let modelShort = if ModelName.len > 15: ModelName[0 .. 14] & "..." else: ModelName
 
-  let statusText = fmt" {serverStatus} {processStatus} | Model: {modelShort} | Messages: {outputLines.len} "
+  let statusText = fmt" {serverStatus} {processStatus} | Model: {modelShort} | Messages: {conversationHistory.len} "
 
   tb.write(0, y, strutils.repeat(" ", w))
   tb.write(0, y, statusText)
@@ -200,17 +200,32 @@ proc drawChatScreen*(tb: var TerminalBuffer, w, h: int) =
 
   # --- Collect output lines with word wrapping ---
   var allDisplayLines: seq[string] = @[]
+  var prevType = ""  # "Tu", "AI", or ""
   for line in outputLines:
+    var curType = ""
+    if line.startsWith("Tu:"):
+      curType = "Tu"
+    elif line.startsWith("AI:"):
+      curType = "AI"
+
+    # Insert blank line between Tu and AI transitions
+    if prevType != "" and curType != "" and prevType != curType:
+      allDisplayLines.add("")
+
     for wrapped in wrapText(line, w):
       allDisplayLines.add(wrapped)
+
+    if curType != "":
+      prevType = curType
 
   # Processing indicator if waiting
   if isProcessing and aiResponseBuffer.len == 0:
     allDisplayLines.add("... Waiting for response...")
 
   # --- Calculate input bar position ---
+  let inputBarActualRows = 4  # delimiter + label + prompt + delimiter
   let contentStartY = 1 + bannerOffset
-  let inputBarNeeded = InputGap + InputBarHeight
+  let inputBarNeeded = InputGap + inputBarActualRows
 
   # Space needed for the slash menu if visible
   let slashMenuSpace = block:
@@ -233,9 +248,10 @@ proc drawChatScreen*(tb: var TerminalBuffer, w, h: int) =
     showTo = allDisplayLines.len
   else:
     # Content too long → pin input bar above status bar, scroll output
-    inputY = h - StatusBarHeight - InputBarHeight - slashMenuSpace
+    let inputBarActualRows = 4  # delimiter + label + prompt + delimiter
+    inputY = h - StatusBarHeight - inputBarActualRows - slashMenuSpace
     if inputY < contentStartY + 2:
-      inputY = h - StatusBarHeight - InputBarHeight  # Fallback
+      inputY = h - StatusBarHeight - inputBarActualRows  # Fallback
     let visibleRows = max(1, inputY - contentStartY)
     scrollOffset = max(0, min(scrollOffset, max(0, allDisplayLines.len - visibleRows)))
     showFrom = if allDisplayLines.len > visibleRows:

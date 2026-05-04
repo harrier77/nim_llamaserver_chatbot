@@ -10,7 +10,7 @@
 # IMPORTANT: do not import chat.nim, input.nim, ui.nim, main.nim
 # ============================================================
 
-import httpclient, asyncdispatch, json, uri, os
+import httpclient, asyncdispatch, json, uri, os, strutils
 import config
 
 # ============================================================
@@ -42,6 +42,42 @@ proc checkServerAsync*() {.async.} =
     serverAvailable = false
   finally:
     client.close()
+
+# ============================================================
+# OpenCode config loader
+# ============================================================
+
+proc loadOpenCodeConfig*() =
+  ## Legge ~/.nim_chatbot/models.json e auth.json.
+  ## Se entrambi esistono e contengono dati validi per opencode,
+  ## abilita il server OpenCode (OpenCodeEnabled = true).
+  if not fileExists(ExternalModelsFile): return
+  if not fileExists(AuthFile): return
+
+  try:
+    # --- models.json ---
+    let modelsContent = readFile(ExternalModelsFile)
+    let modelsJson = parseJson(modelsContent)
+    let ocProvider = modelsJson["providers"]["opencode"]
+    let ocBaseUrl = ocProvider["baseUrl"].getStr()
+    if ocBaseUrl.len == 0: return
+
+    # Deriva la base URL per la lista modelli:
+    # da ".../v1/chat/completions" → ".../v1"
+    let idx = ocBaseUrl.find("/chat/completions")
+    if idx < 0: return
+    OpenCodeModelsUrl = ocBaseUrl[0 .. idx - 1]  # ".../v1"
+
+    # --- auth.json ---
+    let authContent = readFile(AuthFile)
+    let authJson = parseJson(authContent)
+    OpenCodeApiKey = authJson["opencode"]["key"].getStr()
+    if OpenCodeApiKey.len == 0: return
+
+    # Tutto ok → abilita
+    OpenCodeBaseUrl = ocBaseUrl
+    OpenCodeEnabled = true
+  except: discard
 
 # ============================================================
 # State persistence (status.json)
@@ -102,6 +138,29 @@ proc fetchModels*() {.async.} =
 
     if availableModels.len == 0:
       availableModels.add(ModelName)
+
+    # --- Aggiungi modelli OpenCode ---
+    if OpenCodeEnabled:
+      var ocClient = newAsyncHttpClient()
+      try:
+        ocClient.headers = newHttpHeaders({
+          "Authorization": "Bearer " & OpenCodeApiKey
+        })
+        let modelsUrl = OpenCodeModelsUrl & "/models"
+        let response = await ocClient.get(modelsUrl)
+        if response.code == Http200:
+          let jsonNode = parseJson(await response.body())
+          if jsonNode.hasKey("data"):
+            for model in jsonNode["data"]:
+              let mName = model["id"].getStr()
+              let lowerName = mName.toLowerAscii()
+              # Filtra: solo "big pickle" (cerca "pickle") o modelli con "free" nel nome
+              if lowerName.contains("pickle") or lowerName.contains("free"):
+                availableModels.add(mName)
+                OpenCodeModelIds.add(mName)
+      except: discard  # Fallback: continua con i soli modelli locali
+      finally:
+        ocClient.close()
 
     # Find the current model in the list to set the default selection
     selectedMenuIndex = 0

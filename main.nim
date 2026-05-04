@@ -80,6 +80,9 @@ proc main() =
   # Register exitProc for openInMicro (callback to avoid circular dependencies)
   ui.setOpenInMicroExit(exitProc)
 
+  # Load OpenCode config from ~/.nim_chatbot/
+  server.loadOpenCodeConfig()
+
   # --- Load previous state ---
   server.loadModelStatus()
 

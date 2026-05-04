@@ -10,9 +10,11 @@
 # IMPORTANT: do not import input.nim, ui.nim, main.nim
 # ============================================================
 
-import asyncdispatch, httpclient, json, strutils
+import asyncdispatch, httpclient, json, strutils, times, math
 import config
-import my_include/tools
+import tools
+
+# ============================================================
 
 # ============================================================
 # Conversation history management (sliding window)
@@ -43,7 +45,6 @@ proc trimConversationHistory*() =
     newHistory.add(conversationHistory[i])
 
   conversationHistory = newHistory
-  echo "History trimmed to ", conversationHistory.len, " messages"
 
 # ============================================================
 # Sending messages to the LLM (streaming + tool calls)
@@ -65,7 +66,21 @@ proc sendToLLM*(prompt: string = "") {.async.} =
   ## - To change request parameters (e.g. temperature, top_p),
   ##   modify the JSON body before the POST.
   ## - To add new tools, modify them in my_include/tools.nim.
-  ## - The debug_tools.txt file is used for debugging tool calls.
+  ## - To add new tools, modify them in my_include/tools.nim.
+
+
+
+  # --- Determina se il modello è OpenCode ---
+  var isOcModel = false
+  if OpenCodeEnabled:
+    for m in OpenCodeModelIds:
+      if m == ModelName:
+        isOcModel = true
+        break
+
+
+  # Costruisci URL e headers in base al tipo di modello
+  let requestUrl = if isOcModel: OpenCodeBaseUrl else: APIUrl
 
   isProcessing = true
 
@@ -91,29 +106,44 @@ proc sendToLLM*(prompt: string = "") {.async.} =
       "tools": tools.ToolsSchema
     }
 
-    # DEBUG: writes the sent message to debug_tools.txt
-    try:
-      let f = open("debug_tools.txt", fmAppend)
-      f.write("\n--- MSG TO MODEL ---\n" & pretty(body) & "\n--- END ---\n")
-      f.close()
-    except: discard
+
 
     var client = newAsyncHttpClient()
-    client.headers = newHttpHeaders({"Content-Type": "application/json"})
+    if isOcModel:
+      client.headers = newHttpHeaders({
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " & OpenCodeApiKey
+      })
+    else:
+      client.headers = newHttpHeaders({"Content-Type": "application/json"})
+
+
 
     # Variables for SSE parsing
     var pendingLine = ""
     aiResponseBuffer = ""
     toolCallsCollected = @[]
+    var tokenCount = 0
+
+    # --- Chunk smoothing for remote models ---
+    # Accumulates content text and flushes at most MaxOcLinesPerChunk lines
+    # per network chunk, preventing bursty UI updates.
+    var ocPendingBuffer = ""
+    var ocResponseStarted = false
+    const MaxOcLinesPerChunk = 3
 
     try:
       # Send POST request with streaming
-      let response = await client.post(APIUrl, body = $body)
+
+      let response = await client.post(requestUrl, body = $body)
+
 
       # Read the response in streaming mode
       while true:
         let (hasMore, chunk) = await response.bodyStream.read()
         if not hasMore or chunk.len == 0: break
+        inc(tokenCount)
+
 
         let data = pendingLine & chunk
         pendingLine = ""
@@ -138,24 +168,63 @@ proc sendToLLM*(prompt: string = "") {.async.} =
                 if delta.hasKey("content"):
                   let content = delta["content"].getStr("")
                   if content.len > 0:
-                    let isFirstChunkOfResponse =
-                      aiResponseBuffer.len == 0 and toolCallsCollected.len == 0
                     aiResponseBuffer &= content
 
-                    # Add lines to the TUI output
-                    let parts = content.splitLines()
-                    for i, part in parts:
-                      if i == 0:
-                        if isFirstChunkOfResponse:
-                          outputLines.add("AI: " & part)
+                    if not isOcModel:
+                      # --- Local server: immediate output (existing behavior) ---
+                      let isFirstChunkOfResponse =
+                        aiResponseBuffer.len == content.len and toolCallsCollected.len == 0
+                      let parts = content.splitLines()
+                      for i, part in parts:
+                        if i == 0:
+                          if isFirstChunkOfResponse:
+                            outputLines.add("AI: " & part)
+                          else:
+                            outputLines[^1] &= part
                         else:
-                          outputLines[^1] &= part
+                          if part.len == 0:
+                            if outputLines.len > 0 and outputLines[^1].len > 0:
+                              outputLines.add("")
+                          else:
+                            outputLines.add(part)
+                    else:
+                      # --- Remote model: chunk smoothing ---
+                      ocPendingBuffer &= content
+
+                      # Split accumulated buffer into lines
+                      var allParts = ocPendingBuffer.splitLines()
+
+                      # If stream still active and buffer doesn't end with newline,
+                      # the last part is incomplete — save it for next chunk
+                      if allParts.len > 0 and not ocPendingBuffer.endsWith('\n'):
+                        ocPendingBuffer = allParts[^1]
+                        if allParts.len > 1:
+                          allParts = allParts[0 .. ^2]
+                        else:
+                          allParts = @[]
                       else:
-                        if part.len == 0:
-                          if outputLines.len > 0 and outputLines[^1].len > 0:
-                            outputLines.add("")
+                        ocPendingBuffer = ""
+
+                      # Process at most MaxOcLinesPerChunk lines this round
+                      let toProcess = min(allParts.len, MaxOcLinesPerChunk)
+                      for i in 0 ..< toProcess:
+                        let part = allParts[i]
+                        if not ocResponseStarted:
+                          outputLines.add("AI: " & part)
+                          ocResponseStarted = true
                         else:
-                          outputLines.add(part)
+                          if part.len == 0:
+                            if outputLines.len > 0 and outputLines[^1].len > 0:
+                              outputLines.add("")
+                          else:
+                            outputLines.add(part)
+
+                      # Save remaining unprocessed lines back to buffer
+                      for i in toProcess ..< allParts.len:
+                        if ocPendingBuffer.len > 0:
+                          ocPendingBuffer &= "\n" & allParts[i]
+                        else:
+                          ocPendingBuffer = allParts[i]
 
                 # --- 2. Handle tool call chunks ---
                 if delta.hasKey("tool_calls"):
@@ -183,11 +252,30 @@ proc sendToLLM*(prompt: string = "") {.async.} =
             except CatchableError: discard
 
     except CatchableError as e:
+
       outputLines.add("❌ Error: " & e.msg)
       client.close()
       break
     finally:
       client.close()
+
+
+
+    # Flush remaining smoothed buffer (remote models only)
+    if isOcModel and ocPendingBuffer.len > 0:
+      let remainingParts = ocPendingBuffer.splitLines()
+      for part in remainingParts:
+        if not ocResponseStarted:
+          outputLines.add("AI: " & part)
+          ocResponseStarted = true
+        else:
+          if part.len == 0:
+            if outputLines.len > 0 and outputLines[^1].len > 0:
+              outputLines.add("")
+          else:
+            outputLines.add(part)
+      ocPendingBuffer = ""
+
 
     # After streaming ends, check if there are tool calls to execute
     if toolCallsCollected.len > 0:
@@ -231,12 +319,7 @@ proc sendToLLM*(prompt: string = "") {.async.} =
         except:
           content = "[JSON PARSE ERROR: " & result & "]"
 
-        # DEBUG: log extracted content
-        try:
-          let f = open("debug_tools.txt", fmAppend)
-          f.write("\n=== EXTRACTED CONTENT ===\n" & content & "\n=== END ===\n")
-          f.close()
-        except: discard
+
 
         conversationHistory.add(%*{
           "role": "tool",

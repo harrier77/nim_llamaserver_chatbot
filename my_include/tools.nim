@@ -47,12 +47,14 @@ let ToolsSchema* = %*[
 ]
 
 proc readTool(args: JsonNode): string =
+  const MaxReadLines = 1000
+
   let path = if args.hasKey("file_path"): args["file_path"].getStr() else: ""
   if path == "": return $(%*{"error": "Missing file_path parameter"})
-  
+
   let offset = if args.hasKey("offset"): args["offset"].getInt() else: 1
   let limit = if args.hasKey("limit"): args["limit"].getInt() else: -1
-  
+
   # FIX: File path must be resolved relative to program's current working directory (not user home or other path)
   # Before: path was used directly without resolution, so relative paths like "colosseo.txt" failed
   # After: normalize path and resolve relative to cwd, matching Python version behavior
@@ -61,28 +63,37 @@ proc readTool(args: JsonNode): string =
   if not resolvedPath.startsWith("/") and not (resolvedPath.len >= 2 and resolvedPath[1] == ':'):
     # Relative path - resolve relative to current working directory
     resolvedPath = getCurrentDir() / resolvedPath
-  
+
   if not fileExists(resolvedPath):
     return $(%*{"error": "File not found: " & resolvedPath})
-    
+
   try:
     let lines = readFile(resolvedPath).splitLines()
     if offset > lines.len:
       return $(%*{"error": "Offset beyond file length"})
-      
+
     let startIdx = max(0, offset - 1)
-    let endIdx = if limit == -1: lines.len - 1 else: min(lines.len - 1, startIdx + limit - 1)
-    
+    let effectiveLimit = if limit == -1: MaxReadLines else: min(limit, MaxReadLines)
+    let endIdx = min(lines.len - 1, startIdx + effectiveLimit - 1)
+
     let slice = lines[startIdx .. endIdx]
+    var content = slice.join("\n")
+
+    # Add truncation notice if the file has more content beyond what was returned
+    let totalLines = lines.len
+    let lastLineReturned = endIdx + 1
+    if lastLineReturned < totalLines:
+      content &= "\n[... truncated at " & $MaxReadLines & " lines, use offset/limit to read more]"
+
     # Return JSON format
-    return $(%*{"content": slice.join("\n")})
+    return $(%*{"content": content})
   except Exception as e:
     return $(%*{"error": e.msg})
 
 proc bashTool(args: JsonNode): string =
   let command = if args.hasKey("command"): args["command"].getStr() else: ""
   if command == "": return $(%*{"error": "Missing command parameter"})
-  
+
   try:
     var res = ""
     var exitCode = 0
@@ -94,7 +105,7 @@ proc bashTool(args: JsonNode): string =
       (res, exitCode) = execCmdEx(quoteShell(gitBashPath) & " -c " & quoteShell(fullCommand))
     else:
       (res, exitCode) = execCmdEx(command)
-    
+
     # Return JSON format (like Python _bash_impl)
     # The frontend will parse this and extract the content
     return $(%*{
@@ -105,15 +116,6 @@ proc bashTool(args: JsonNode): string =
     return $(%*{"error": e.msg})
 
 proc executeTool*(name: string, args: JsonNode): string =
-  # Log tool call for debugging and visibility
-  try:
-    let logFile = "debug_tools.txt"
-    let logMsg = "\n=== Tool Call: " & name & " ===\nArgs:\n" & pretty(args) & "\n"
-    let f = open(logFile, fmAppend)
-    f.write(logMsg)
-    f.close()
-  except: discard
-
   case name
   of "read": return readTool(args)
   of "bash": return bashTool(args)

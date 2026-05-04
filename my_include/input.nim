@@ -18,7 +18,7 @@ import config
 import server   # for fetchModels
 import chat     # for sendToLLM
 import ui       # for openInMicro
-import my_include/map_key_tochar
+import map_key_tochar
 
 # ============================================================
 # Slash command menu

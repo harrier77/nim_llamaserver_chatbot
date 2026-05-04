@@ -11,8 +11,8 @@
 # - New slash command? → add to SlashCommands AND handle in input.nim
 # ============================================================
 
-import strutils, json, unicode
-import my_include/system_prompt
+import os, strutils, json, unicode
+import system_prompt
 
 # ============================================================
 # 1. Layout and UI constants
@@ -32,6 +32,12 @@ const
 
 const
   StatusFile* = "my_include/status.json"  ## State persistence file
+
+# --- External config paths (~/.nim_chatbot/) ---
+const
+  NimChatbotDir*      = getHomeDir() / ".nim_chatbot"
+  ExternalModelsFile* = NimChatbotDir / "models.json"
+  AuthFile*           = NimChatbotDir / "auth.json"
 
 # ============================================================
 # 3. Default arguments for the llama.cpp server
@@ -79,6 +85,13 @@ var
   # --- Server ---
   ServerBaseUrl*: string = "http://localhost:8080"
   APIUrl*: string = "http://localhost:8080/v1/chat/completions"
+
+  # --- OpenCode remote server ---
+  OpenCodeBaseUrl*: string = ""     # full URL from models.json (…/chat/completions)
+  OpenCodeModelsUrl*: string = ""  # base URL for model listing (…/v1)
+  OpenCodeApiKey*: string = ""
+  OpenCodeEnabled*: bool = false
+  OpenCodeModelIds*: seq[string] = @[]  # lista dei modelli OpenCode fetchati
 
   # --- Model and history ---
   ModelName*: string = "Qwen3.5_0.8b-text"
