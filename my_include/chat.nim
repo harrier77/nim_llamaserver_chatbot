@@ -72,15 +72,21 @@ proc sendToLLM*(prompt: string = "") {.async.} =
 
   # --- Determina se il modello è OpenCode ---
   var isOcModel = false
+  var isOllamaModel = false
   if OpenCodeEnabled:
     for m in OpenCodeModelIds:
       if m == ModelName:
         isOcModel = true
         break
+  if OllamaEnabled:
+    for m in OllamaModelIds:
+      if m == ModelName:
+        isOllamaModel = true
+        break
 
 
   # Costruisci URL e headers in base al tipo di modello
-  let requestUrl = if isOcModel: OpenCodeBaseUrl else: APIUrl
+  let requestUrl = if isOcModel: OpenCodeBaseUrl elif isOllamaModel: OllamaBaseUrl else: APIUrl
 
   isProcessing = true
 
@@ -114,6 +120,11 @@ proc sendToLLM*(prompt: string = "") {.async.} =
         "Content-Type": "application/json",
         "Authorization": "Bearer " & OpenCodeApiKey
       })
+    elif isOllamaModel:
+      client.headers = newHttpHeaders({
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " & OllamaApiKey
+      })
     else:
       client.headers = newHttpHeaders({"Content-Type": "application/json"})
 
@@ -128,9 +139,11 @@ proc sendToLLM*(prompt: string = "") {.async.} =
     # --- Chunk smoothing for remote models ---
     # Accumulates content text and flushes at most MaxOcLinesPerChunk lines
     # per network chunk, preventing bursty UI updates.
+    # OpenCode and Ollama may have different chunk sizes.
     var ocPendingBuffer = ""
     var ocResponseStarted = false
-    const MaxOcLinesPerChunk = 3
+    const MaxOcLinesPerChunk = 3   # Max lines per flush for OpenCode
+    const MaxOllamaLinesPerChunk = 1  # Max lines per flush for Ollama (has larger chunks)
 
     try:
       # Send POST request with streaming
@@ -170,7 +183,7 @@ proc sendToLLM*(prompt: string = "") {.async.} =
                   if content.len > 0:
                     aiResponseBuffer &= content
 
-                    if not isOcModel:
+                    if not isOcModel and not isOllamaModel:
                       # --- Local server: immediate output (existing behavior) ---
                       let isFirstChunkOfResponse =
                         aiResponseBuffer.len == content.len and toolCallsCollected.len == 0
@@ -206,7 +219,8 @@ proc sendToLLM*(prompt: string = "") {.async.} =
                         ocPendingBuffer = ""
 
                       # Process at most MaxOcLinesPerChunk lines this round
-                      let toProcess = min(allParts.len, MaxOcLinesPerChunk)
+                      let maxLines = if isOllamaModel: MaxOllamaLinesPerChunk else: MaxOcLinesPerChunk
+                      let toProcess = min(allParts.len, maxLines)
                       for i in 0 ..< toProcess:
                         let part = allParts[i]
                         if not ocResponseStarted:
@@ -262,7 +276,7 @@ proc sendToLLM*(prompt: string = "") {.async.} =
 
 
     # Flush remaining smoothed buffer (remote models only)
-    if isOcModel and ocPendingBuffer.len > 0:
+    if (isOcModel or isOllamaModel) and ocPendingBuffer.len > 0:
       let remainingParts = ocPendingBuffer.splitLines()
       for part in remainingParts:
         if not ocResponseStarted:

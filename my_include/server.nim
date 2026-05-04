@@ -79,6 +79,44 @@ proc loadOpenCodeConfig*() =
     OpenCodeEnabled = true
   except: discard
 
+proc loadOllamaConfig*() =
+  ## Legge ~/.nim_chatbot/models.json e auth.json.
+  ## Se entrambi esistono e contengono dati validi per ollama,
+  ## abilita il server Ollama (OllamaEnabled = true).
+  if not fileExists(ExternalModelsFile): return
+  if not fileExists(AuthFile): return
+
+  try:
+    # --- models.json ---
+    let modelsContent = readFile(ExternalModelsFile)
+    let modelsJson = parseJson(modelsContent)
+    let ollamaProvider = modelsJson["providers"]["ollama"]
+    let ollamaBaseUrl = ollamaProvider["baseUrl"].getStr()
+    if ollamaBaseUrl.len == 0: return
+
+    # Deriva la base URL per la lista modelli:
+    # da "https://ollama.com/v1" → "https://ollama.com"
+    let idx = ollamaBaseUrl.find("/v1")
+    if idx < 0: return
+    OllamaModelsUrl = ollamaBaseUrl[0 .. idx - 1]  # "https://ollama.com"
+
+    # Leggi i modelli direttamente da models.json
+    let modelList = ollamaProvider["models"]
+    for m in modelList:
+      OllamaModelIds.add(m.getStr())
+
+    # --- auth.json ---
+    let authContent = readFile(AuthFile)
+    let authJson = parseJson(authContent)
+    let apiKey = authJson["ollama"]["key"].getStr()
+    if apiKey.len == 0: return
+    OllamaApiKey = apiKey
+
+    # Tutto ok → abilita
+    OllamaBaseUrl = ollamaBaseUrl & "/chat/completions"
+    OllamaEnabled = true
+  except: discard
+
 # ============================================================
 # State persistence (status.json)
 # ============================================================
@@ -165,6 +203,11 @@ proc fetchModels*() {.async.} =
       discard # Ignore OpenCode error
     finally:
       ocClient.close()
+
+  # 3. Add Ollama models (if enabled)
+  if OllamaEnabled:
+    for mName in OllamaModelIds:
+      availableModels.add(mName)
 
   # Fallback if nothing was found
   if availableModels.len == 0:

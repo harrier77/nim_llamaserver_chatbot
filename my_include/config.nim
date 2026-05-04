@@ -93,6 +93,13 @@ var
   OpenCodeEnabled*: bool = false
   OpenCodeModelIds*: seq[string] = @[]  # lista dei modelli OpenCode fetchati
 
+  # --- Ollama remote server ---
+  OllamaBaseUrl*: string = ""      # full URL from models.json (…/chat/completions)
+  OllamaModelsUrl*: string = ""   # base URL for model listing (…/v1)
+  OllamaApiKey*: string = ""
+  OllamaEnabled*: bool = false
+  OllamaModelIds*: seq[string] = @[]  # lista dei modelli Ollama
+
   # --- Model and history ---
   ModelName*: string = "Qwen3.5_0.8b-text"
   maxHistoryMessages*: int = 20

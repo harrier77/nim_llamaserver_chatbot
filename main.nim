@@ -87,6 +87,9 @@ proc main() =
   # Load OpenCode config from ~/.nim_chatbot/
   server.loadOpenCodeConfig()
 
+  # Load Ollama config from ~/.nim_chatbot/
+  server.loadOllamaConfig()
+
   # --- Load previous state ---
   server.loadModelStatus()
 
