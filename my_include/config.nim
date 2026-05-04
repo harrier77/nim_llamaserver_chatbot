@@ -110,7 +110,7 @@ var
   scrollOffset*: int = 0
   isProcessing*: bool = false
   aiResponseBuffer*: string = ""
-  serverAvailable*: bool = false
+  serverAvailable*: bool = true
   lastServerCheck*: float = 0.0
   showingSlashMenu*: bool = false
   slashMenuIndex*: int = 0

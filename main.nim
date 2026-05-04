@@ -80,6 +80,10 @@ proc main() =
   # Register exitProc for openInMicro (callback to avoid circular dependencies)
   ui.setOpenInMicroExit(exitProc)
 
+  # Initialize lastServerCheck to now to prevent immediate async check
+  # after the synchronous startup check
+  lastServerCheck = epochTime()
+
   # Load OpenCode config from ~/.nim_chatbot/
   server.loadOpenCodeConfig()
 
@@ -88,6 +92,10 @@ proc main() =
 
   # --- Fetch models at startup (async) ---
   asyncCheck server.fetchModels()
+
+  # --- Initial server check removed ---
+  # Server availability is now checked asynchronously.
+  # Default is true (set in config.nim), async check will update if needed.
 
   # --- Welcome messages ---
   outputLines.add("Chat TUI - Connected to llama.cpp at " & ServerBaseUrl)
@@ -99,8 +107,10 @@ proc main() =
   # --- Main loop ---
   while true:
     # (a) Periodic server check (async, non-blocking)
+    # EDIT: check runs every 30s regardless of current state to detect
+    # both server going offline and coming back online.
     let now = epochTime()
-    if not serverAvailable and (now - lastServerCheck > 3.0):
+    if (now - lastServerCheck > 30.0):
       asyncCheck server.checkServerAsync()
       lastServerCheck = now
 

@@ -185,7 +185,7 @@ proc drawChatScreen*(tb: var TerminalBuffer, w, h: int) =
   tb.write(titleX, 0, title)
 
   # Help text next to the title
-  tb.setForegroundColor(fgWhite)
+  tb.setForegroundColor(fgWhite, bright = true)
   tb.write(titleX + title.len + 2, 0, "Esc/Q=quit")
   tb.setBackgroundColor(bgNone)
 
@@ -298,10 +298,8 @@ proc drawChatScreen*(tb: var TerminalBuffer, w, h: int) =
   tb.setBackgroundColor(bgBlue)
   tb.setForegroundColor(fgWhite, bright = true)
   tb.write(titleX, 0, title)
-  tb.setBackgroundColor(bgNone)
-  tb.setForegroundColor(fgWhite)
   tb.write(titleX + title.len + 2, 0, "Esc/Q")
-  tb.setBackgroundColor(bgBlue)
+  tb.setBackgroundColor(bgNone)
 
   # --- Input bar ---
   tb.setBackgroundColor(bgNone)
