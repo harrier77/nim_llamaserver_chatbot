@@ -180,7 +180,6 @@ proc drawModelSelectionMenu*(tb: var TerminalBuffer, w, h: int) =
       # Category header
       let catSelected = (catIdx == selectedCategoryIndex)
       if catSelected:
-        tb.setBackgroundColor(bgBlue)
         tb.setForegroundColor(fgWhite, bright = true)
       else:
         tb.setForegroundColor(fgCyan, bright = true)
