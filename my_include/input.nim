@@ -46,10 +46,15 @@ proc updateSlashMenu*() =
 # Commands with arguments (/history, /edit) are handled here to
 # keep handleInput more readable.
 
-proc handleHistoryCommand*(cmdParts: seq[string]) =
+proc handleHistoryCommand*(cmdParts: seq[string], showOnly: bool = false) =
   ## Handles the /history <num> command.
-  ## Modifies maxHistoryMessages (sliding window).
-  if cmdParts.len == 2:
+  ## If showOnly is true, just displays the current value.
+  ## If showOnly is false, tries to set a new value.
+  if showOnly or cmdParts.len == 1:
+    # Just show current value
+    outputLines.add("System: Current history: " & $maxHistoryMessages & " messages")
+    outputLines.add("System: Usage: /history <number> (1-100)")
+  elif cmdParts.len == 2:
     try:
       let newVal = cmdParts[1].parseInt()
       if newVal >= 1 and newVal <= 100:
@@ -146,20 +151,73 @@ proc handleInput*(key: illwill.Key): bool =
 
   # --- Model selection ---
   if state == SelectingModel:
+    # Build categories list (same as in ui.nim)
+    var categories: seq[tuple[name, icon: string, models: seq[string]]] = @[]
+    if llamaCppModels.len > 0:
+      categories.add((name: "llamacpp", icon: "🖥", models: llamaCppModels))
+    if openCodeModels.len > 0:
+      categories.add((name: "opencode", icon: "☁", models: openCodeModels))
+    if ollamaModels.len > 0:
+      categories.add((name: "ollama", icon: "🐳", models: ollamaModels))
+    if categories.len == 0:
+      categories.add((name: "all", icon: "📋", models: availableModels))
+
+    # Clamp selectedCategoryIndex
+    if selectedCategoryIndex >= categories.len:
+      selectedCategoryIndex = max(0, categories.len - 1)
+
     case key
     of illwill.Key.Escape:
       state = Chatting
       return false
+    of illwill.Key.Left:
+      # Move to previous category
+      if selectedCategoryIndex > 0:
+        dec(selectedCategoryIndex)
+        # Reset model index to first in new category
+        selectedMenuIndex = 0
+      return false
+    of illwill.Key.Right:
+      # Move to next category (also acts as Enter to expand)
+      if selectedCategoryIndex < categories.len - 1:
+        inc(selectedCategoryIndex)
+        selectedMenuIndex = 0
+      return false
     of illwill.Key.Up:
-      if selectedMenuIndex > 0:
+      # Find current category range
+      var catStart = 0
+      for i in 0 ..< selectedCategoryIndex:
+        catStart += categories[i].models.len
+      # Move up within current category
+      if selectedMenuIndex > catStart:
         dec(selectedMenuIndex)
+      else:
+        # Wrap to previous category's last model
+        if selectedCategoryIndex > 0:
+          dec(selectedCategoryIndex)
+          var prevCatStart = 0
+          for i in 0 ..< selectedCategoryIndex:
+            prevCatStart += categories[i].models.len
+          selectedMenuIndex = prevCatStart + categories[selectedCategoryIndex].models.len - 1
       return false
     of illwill.Key.Down:
-      if selectedMenuIndex < availableModels.len - 1:
+      # Find current category range
+      var catStartDown = 0
+      for i in 0 ..< selectedCategoryIndex:
+        catStartDown += categories[i].models.len
+      let catEnd = catStartDown + categories[selectedCategoryIndex].models.len - 1
+
+      # Move down within current category
+      if selectedMenuIndex < catEnd:
         inc(selectedMenuIndex)
+      else:
+        # Wrap to next category's first model
+        if selectedCategoryIndex < categories.len - 1:
+          inc(selectedCategoryIndex)
+          selectedMenuIndex = catEnd + 1
       return false
     of illwill.Key.Enter:
-      if availableModels.len > 0:
+      if availableModels.len > 0 and selectedMenuIndex < availableModels.len:
         ModelName = availableModels[selectedMenuIndex]
         server.saveModelStatus()
         outputLines.add("System: Model changed to " & ModelName)
@@ -206,7 +264,7 @@ proc handleInput*(key: illwill.Key): bool =
       let cmdParts = strutils.splitWhitespace(cmd)
       if cmdParts.len > 0:
         case cmdParts[0]
-        of "/history":
+        of "/history", "/h":
           handleHistoryCommand(cmdParts)
           return false
         of "/edit":

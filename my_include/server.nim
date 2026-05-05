@@ -160,12 +160,16 @@ proc saveModelStatus*() =
 
 proc fetchModels*() {.async.} =
   ## Fetches the list of available models from the server (/v1/models).
-  ## Updates the global variables: availableModels, selectedMenuIndex.
+  ## Updates the global variables: availableModels, selectedMenuIndex,
+  ## and the categorized lists (llamaCppModels, openCodeModels, ollamaModels).
   ## If the server does not respond, uses the current model as fallback.
   ##
   ## EDIT: if you need to change how models are filtered/sorted,
   ## modify the logic after JSON parsing.
   availableModels = @[]
+  llamaCppModels = @[]
+  openCodeModels = @[]
+  ollamaModels = @[]
   
   # 1. Try to fetch local models (don't block if it fails)
   var client = newAsyncHttpClient()
@@ -174,7 +178,9 @@ proc fetchModels*() {.async.} =
     let jsonNode = parseJson(await response.body())
     if jsonNode.hasKey("data"):
       for model in jsonNode["data"]:
-        availableModels.add(model["id"].getStr())
+        let mName = model["id"].getStr()
+        availableModels.add(mName)
+        llamaCppModels.add(mName)
   except:
     discard # Ignore local server error for now
   finally:
@@ -198,6 +204,7 @@ proc fetchModels*() {.async.} =
             # Filtra: solo "big pickle" (cerca "pickle") o modelli con "free" nel nome
             if lowerName.contains("pickle") or lowerName.contains("free"):
               availableModels.add(mName)
+              openCodeModels.add(mName)
               OpenCodeModelIds.add(mName)
     except:
       discard # Ignore OpenCode error
@@ -208,6 +215,7 @@ proc fetchModels*() {.async.} =
   if OllamaEnabled:
     for mName in OllamaModelIds:
       availableModels.add(mName)
+      ollamaModels.add(mName)
 
   # Fallback if nothing was found
   if availableModels.len == 0:

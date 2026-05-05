@@ -110,7 +110,7 @@ proc drawStatusBar*(tb: var TerminalBuffer, y, w: int) =
   let processStatus = if isProcessing: "⏳ Processing..." else: "✓ Ready"
   let modelShort = if ModelName.len > 15: ModelName[0 .. 14] & "..." else: ModelName
 
-  let statusText = fmt" {serverStatus} {processStatus} | Model: {modelShort} | Messages: {conversationHistory.len} "
+  let statusText = fmt" {serverStatus} {processStatus} | Model: {modelShort} | Hist: {maxHistoryMessages} | Msgs: {conversationHistory.len - 1} "
 
   tb.write(0, y, strutils.repeat(" ", w))
   tb.write(0, y, statusText)
@@ -122,7 +122,10 @@ proc drawStatusBar*(tb: var TerminalBuffer, y, w: int) =
 
 proc drawModelSelectionMenu*(tb: var TerminalBuffer, w, h: int) =
   ## Draws the model selection menu (SelectingModel state).
-  ## Shows the list of available models with navigation.
+  ## Shows a tree structure with categories:
+  ## - 🖥 llama.cpp (local server)
+  ## - ☁ OpenCode
+  ## - 🐳 Ollama
   ##
   ## EDIT: to change the menu layout, modify here.
   tb.setForegroundColor(fgCyan, bright = true)
@@ -134,23 +137,92 @@ proc drawModelSelectionMenu*(tb: var TerminalBuffer, w, h: int) =
     tb.setForegroundColor(fgYellow)
     tb.write((w - 20) div 2, startY, "Loading models...")
   else:
-    for i, m in availableModels:
-      if startY + i >= h - 2: break
-      if i == selectedMenuIndex:
+    # Define categories with their models and icons
+    type Category = object
+      name: string
+      icon: string
+      models: seq[string]
+
+    var categories: seq[Category] = @[]
+
+    if llamaCppModels.len > 0:
+      categories.add(Category(name: "llamacpp", icon: "🖥", models: llamaCppModels))
+    if openCodeModels.len > 0:
+      categories.add(Category(name: "opencode", icon: "☁", models: openCodeModels))
+    if ollamaModels.len > 0:
+      categories.add(Category(name: "ollama", icon: "🐳", models: ollamaModels))
+
+    # If no categories have models, show all in one category
+    if categories.len == 0:
+      categories.add(Category(name: "all", icon: "📋", models: availableModels))
+
+    # Clamp selectedCategoryIndex to valid range
+    if selectedCategoryIndex >= categories.len:
+      selectedCategoryIndex = max(0, categories.len - 1)
+
+    # Calculate the current category and model index range
+    var catStartIndex = 0
+    var currentCatIdx = 0
+    var currentModelIdxInCat = 0
+
+    for catIdx, cat in categories:
+      if selectedMenuIndex >= catStartIndex and selectedMenuIndex < catStartIndex + cat.models.len:
+        currentCatIdx = catIdx
+        currentModelIdxInCat = selectedMenuIndex - catStartIndex
+        break
+      catStartIndex += cat.models.len
+
+    # Draw categories and their models as a tree
+    var y = startY
+    catStartIndex = 0
+
+    for catIdx, cat in categories:
+      # Category header
+      let catSelected = (catIdx == selectedCategoryIndex)
+      if catSelected:
         tb.setBackgroundColor(bgBlue)
         tb.setForegroundColor(fgWhite, bright = true)
-        let line = "  ▶ " & m & "  "
-        tb.write((w - line.len) div 2, startY + i, line)
-        tb.setBackgroundColor(bgBlack)
       else:
-        tb.setForegroundColor(fgWhite)
-        # Mark the currently active model with a checkmark
-        let prefix = if m == ModelName: "✓ " else: "  "
-        tb.write((w - (prefix & m).len) div 2, startY + i, prefix & m)
+        tb.setForegroundColor(fgCyan, bright = true)
 
-  tb.setForegroundColor(fgWhite)
-  let help = "↑/↓: Navigate, Enter: Confirm, Esc: Cancel"
-  tb.write((w - help.len) div 2, h - StatusBarHeight - 1, help)
+      let catLine = "  " & cat.icon & " " & cat.name.toUpperAscii() & " "
+      tb.write((w - catLine.len) div 2, y, catLine)
+      inc(y)
+
+
+      # Draw models in this category (only if category is expanded)
+      if catSelected:
+        for modelIdx, m in cat.models:
+          if y >= h - 2: break
+          if catStartIndex + modelIdx == selectedMenuIndex:
+            # Selected model
+            tb.setBackgroundColor(bgCyan)
+            tb.setForegroundColor(fgBlack, bright = true)
+            let line = "    ▶ " & m & "  "
+            tb.write((w - line.len) div 2, y, line)
+          else:
+            # Regular model
+            tb.setBackgroundColor(bgBlack)
+            tb.setForegroundColor(fgWhite)
+            let prefix = if m == ModelName: "    ✓ " else: "      "
+            let line = prefix & m
+            tb.write((w - line.len) div 2, y, line)
+          # Always reset background to prevent bleeding to next line
+          tb.setBackgroundColor(bgBlack)
+          inc(y)
+      else:
+        # Category collapsed - show model count
+        tb.setForegroundColor(fgWhite)
+        let countLine = "      (" & $cat.models.len & " models)"
+        tb.write((w - countLine.len) div 2, y, countLine)
+        inc(y)
+
+      catStartIndex += cat.models.len
+
+    # Handle Left/Right keys to expand/collapse categories (processed in input.nim)
+    tb.setForegroundColor(fgWhite)
+    let help = "←/→: Category | ↑/↓: Model | Enter: Confirm | Esc: Cancel"
+    tb.write((w - help.len) div 2, h - StatusBarHeight - 1, help)
 
 # ============================================================
 # Full chat screen rendering

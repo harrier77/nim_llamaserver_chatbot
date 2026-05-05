@@ -67,10 +67,11 @@ type SlashCommand* = object
   name*: string
   description*: string
 
-const SlashCommands*: array[5, SlashCommand] = [
+const SlashCommands*: array[6, SlashCommand] = [
   SlashCommand(name: "/quit",   description: "Exit the application (also /q)"),
   SlashCommand(name: "/model",  description: "Change the current model"),
   SlashCommand(name: "/new",    description: "Reset conversation and start new chat"),
+  SlashCommand(name: "/history", description: "Set history length (also /h)"),
   SlashCommand(name: "/edit",   description: "Open file in micro editor"),
   SlashCommand(name: "/read",   description: "Read a file into the chat output"),
 ]
@@ -107,7 +108,15 @@ var
   # --- App state ---
   state*: AppState = Chatting
   availableModels*: seq[string] = @[]
+
+  # --- Categorized models for tree view ---
+  llamaCppModels*: seq[string] = @[]     ## Models from local llama.cpp server
+  openCodeModels*: seq[string] = @[]   ## Models from OpenCode remote
+  ollamaModels*: seq[string] = @[]       ## Models from Ollama remote
+
+  # --- Model selection navigation ---
   selectedMenuIndex*: int = 0
+  selectedCategoryIndex*: int = 0        ## Index of selected category (0=llamacpp, 1=opencode, 2=ollama)
 
   # --- TUI output ---
   outputLines*: seq[string] = @[]
