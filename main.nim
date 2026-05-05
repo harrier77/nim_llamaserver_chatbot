@@ -148,6 +148,9 @@ proc main() =
 
     # (f) Get key → handleInput
     #
+    # Flush input buffer first (handles paste / bulk input)
+    input.flushInputBuffer()
+    #
     # ----------------------------------------------------------------
     # NOTE ON MOUSE WHEEL FIX (2026-05-03):
     #

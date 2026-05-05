@@ -389,21 +389,36 @@ proc drawChatScreen*(tb: var TerminalBuffer, w, h: int) =
   tb.setForegroundColor(fgWhite, bright = true)
   tb.write(0, inputY + 2, PromptChar)
 
-  # Current input text
+  # Current input text (with wrap for long lines)
   if isProcessing:
     tb.setForegroundColor(fgWhite)
     tb.write(PromptChar.len, inputY + 2, "(processing...)")
   else:
     tb.setForegroundColor(fgWhite)
-    tb.write(PromptChar.len, inputY + 2, currentInput)
+    # Wrap input text to fit terminal width (including inputBuffer)
+    let inputMaxWidth = w - PromptChar.len - 1
+    let fullInput = currentInput & inputBuffer
+    let wrappedLines = config.wrapText(fullInput, inputMaxWidth)
+    for i, line in wrappedLines:
+      if i < InputBarHeight - 2:
+        tb.write(PromptChar.len, inputY + 2 + i, line)
 
-  # Block cursor
+  # Block cursor (on last line of wrapped input + buffer)
   if not isProcessing:
-    let cursorX = PromptChar.len + countRunes(currentInput)
+    let inputMaxWidth = w - PromptChar.len - 1
+    let fullInput = currentInput & inputBuffer
+    let wrappedLines = config.wrapText(fullInput, inputMaxWidth)
+    var cursorY = inputY + 2
+    var cursorX = PromptChar.len
+    if wrappedLines.len > 0:
+      cursorX = PromptChar.len + countRunes(wrappedLines[^1])
+      cursorY = inputY + 2 + (wrappedLines.len - 1)
+      if cursorY >= inputY + InputBarHeight - 1:
+        cursorY = inputY + InputBarHeight - 2
     if cursorX < w:
       tb.setBackgroundColor(bgYellow)
       tb.setForegroundColor(fgBlack)
-      tb.write(cursorX, inputY + 2, " ")
+      tb.write(cursorX, cursorY, " ")
       tb.setBackgroundColor(bgNone)
 
   # Bottom delimiter line

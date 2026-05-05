@@ -25,6 +25,8 @@ const
   MaxOutputLines* = 1000        ## Max lines kept in output history
   PromptChar* = "> "            ## Prompt prefix
   SlashMenuHeight* = 10         ## Max rows in slash command popup
+  InputBufferDelay* = 30      ## ms to wait before flushing input buffer
+  InputBufferThreshold* = 10   ## min chars to force flush (paste detection)
 
 # ============================================================
 # 2. File path constants
@@ -131,6 +133,8 @@ var
 
   # --- Input ---
   currentInput*: string = ""
+  inputBuffer*: string = ""            ## Temporary buffer for incoming characters (paste support)
+  lastInputCharTime*: float = 0.0       ## Timestamp of last character received
   scrollOffset*: int = 0
   isProcessing*: bool = false
   aiResponseBuffer*: string = ""
@@ -194,3 +198,21 @@ proc filterSlashCommands*(query: string): seq[int] =
   for i, cmd in SlashCommands:
     if cmd.name[1 .. ^1].startsWith(q) or cmd.name.toLowerAscii().contains(q):
       result.add(i)
+
+proc wrapText*(text: string, maxWidth: int): seq[string] =
+  ## Wraps text to fit within maxWidth columns.
+  ## Handles UTF-8 correctly using runes.
+  result = @[]
+  if text.len == 0 or maxWidth <= 0:
+    result.add("")
+    return
+  var currentLine = ""
+  for rune in text.runes:
+    let runeLen = if ord(rune) < 128: 1 else: 1  # Simple width estimate
+    if countRunes(currentLine) + runeLen > maxWidth:
+      if currentLine.len > 0:
+        result.add(currentLine)
+        currentLine = ""
+    currentLine.add($rune)
+  if currentLine.len > 0:
+    result.add(currentLine)

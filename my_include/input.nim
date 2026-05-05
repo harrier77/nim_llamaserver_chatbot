@@ -13,7 +13,7 @@
 # IMPORTANT: do not import main.nim
 # ============================================================
 
-import strutils, illwill, asyncdispatch, os
+import strutils, illwill, asyncdispatch, os, times
 import config
 import server   # for fetchModels
 import chat     # for sendToLLM
@@ -38,6 +38,33 @@ proc updateSlashMenu*() =
       showingSlashMenu = false
   else:
     showingSlashMenu = false
+
+proc flushInputBuffer*() =
+  ## Flushes inputBuffer to currentInput when buffer delay has elapsed
+  ## OR when buffer has enough characters (handles paste / bulk input).
+  ## Handles newlines as message separators (Enter between lines).
+  if inputBuffer.len > 0:
+    let now = epochTime()
+    let elapsedMs = (now - lastInputCharTime) * 1000.0
+    # Flush if: delay elapsed OR buffer has many chars (paste detected)
+    if elapsedMs >= InputBufferDelay.float or inputBuffer.len >= InputBufferThreshold:
+      # Check for newlines - if present, split and process each line
+      if "\n" in inputBuffer:
+        let lines = inputBuffer.split("\n")
+        for i, line in lines:
+          if line.len > 0:
+            if currentInput.len > 0:
+              # First flush any pending currentInput
+              currentInput &= line
+            else:
+              currentInput = line
+        inputBuffer = ""
+        updateSlashMenu()
+      else:
+        # No newlines - normal append
+        currentInput &= inputBuffer
+        inputBuffer = ""
+        updateSlashMenu()
 
 # ============================================================
 # Slash commands with arguments
@@ -339,16 +366,19 @@ proc handleInput*(key: illwill.Key): bool =
     return false
 
   else:
-    # Printable characters
+    # Printable characters → add to input buffer (not directly to currentInput)
     let ch = keyToChar(key)
     if ch.len > 0:
-      currentInput.add(ch)
+      inputBuffer.add(ch)
+      lastInputCharTime = epochTime()
     # Fallback for slash on Windows
     elif ord(key) == 47 or ord(key) == 191 or ord(key) == 111:
-      currentInput.add("/")
+      inputBuffer.add("/")
+      lastInputCharTime = epochTime()
     # Fallback for other printable ASCII characters
     elif ord(key) >= 32 and ord(key) <= 126:
-      currentInput.add(chr(ord(key)))
+      inputBuffer.add(chr(ord(key)))
+      lastInputCharTime = epochTime()
     # Fallback for backspace
     elif ord(key) == 127 or ord(key) == 8:
       if currentInput.len > 0:
