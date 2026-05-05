@@ -151,6 +151,8 @@ proc drawModelSelectionMenu*(tb: var TerminalBuffer, w, h: int) =
       categories.add(Category(name: "opencode", icon: "☁", models: openCodeModels))
     if ollamaModels.len > 0:
       categories.add(Category(name: "ollama", icon: "🐳", models: ollamaModels))
+    if nvidiaModels.len > 0:
+      categories.add(Category(name: "nvidia", icon: "🔷", models: nvidiaModels))
 
     # If no categories have models, show all in one category
     if categories.len == 0:

@@ -90,6 +90,9 @@ proc main() =
   # Load Ollama config from ~/.nim_chatbot/
   server.loadOllamaConfig()
 
+  # Load Nvidia config from ~/.nim_chatbot/
+  server.loadNvidiaConfig()
+
   # --- Load previous state ---
   server.loadModelStatus()
 

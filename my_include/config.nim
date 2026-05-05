@@ -101,6 +101,13 @@ var
   OllamaEnabled*: bool = false
   OllamaModelIds*: seq[string] = @[]  # lista dei modelli Ollama
 
+  # --- Nvidia remote server ---
+  NvidiaBaseUrl*: string = ""      # full URL from models.json (…/chat/completions)
+  NvidiaModelsUrl*: string = ""  # base URL for model listing (…/v1)
+  NvidiaApiKey*: string = ""
+  NvidiaEnabled*: bool = false
+  NvidiaModelIds*: seq[string] = @[]  # lista dei modelli Nvidia
+
   # --- Model and history ---
   ModelName*: string = "Qwen3.5_0.8b-text"
   maxHistoryMessages*: int = 20
@@ -113,10 +120,11 @@ var
   llamaCppModels*: seq[string] = @[]     ## Models from local llama.cpp server
   openCodeModels*: seq[string] = @[]   ## Models from OpenCode remote
   ollamaModels*: seq[string] = @[]       ## Models from Ollama remote
+  nvidiaModels*: seq[string] = @[]       ## Models from Nvidia remote
 
   # --- Model selection navigation ---
   selectedMenuIndex*: int = 0
-  selectedCategoryIndex*: int = 0        ## Index of selected category (0=llamacpp, 1=opencode, 2=ollama)
+  selectedCategoryIndex*: int = 0        ## Index of selected category (0=llamacpp, 1=opencode, 2=ollama, 3=nvidia)
 
   # --- TUI output ---
   outputLines*: seq[string] = @[]

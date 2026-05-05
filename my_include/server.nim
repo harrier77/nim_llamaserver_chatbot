@@ -54,6 +54,9 @@ proc loadOpenCodeConfig*() =
   if not fileExists(ExternalModelsFile): return
   if not fileExists(AuthFile): return
 
+  # Clear previous model list to avoid duplicates
+  OpenCodeModelIds = @[]
+
   try:
     # --- models.json ---
     let modelsContent = readFile(ExternalModelsFile)
@@ -86,6 +89,9 @@ proc loadOllamaConfig*() =
   if not fileExists(ExternalModelsFile): return
   if not fileExists(AuthFile): return
 
+  # Clear previous model list to avoid duplicates
+  OllamaModelIds = @[]
+
   try:
     # --- models.json ---
     let modelsContent = readFile(ExternalModelsFile)
@@ -115,6 +121,47 @@ proc loadOllamaConfig*() =
     # Tutto ok → abilita
     OllamaBaseUrl = ollamaBaseUrl & "/chat/completions"
     OllamaEnabled = true
+  except: discard
+
+proc loadNvidiaConfig*() =
+  ## Legge ~/.nim_chatbot/models.json e auth.json.
+  ## Se entrambi esistono e contengono dati validi per nvidia,
+  ## abilita il server Nvidia (NvidiaEnabled = true).
+  if not fileExists(ExternalModelsFile): return
+  if not fileExists(AuthFile): return
+
+  # Clear previous model list to avoid duplicates
+  NvidiaModelIds = @[]
+
+  try:
+    # --- models.json ---
+    let modelsContent = readFile(ExternalModelsFile)
+    let modelsJson = parseJson(modelsContent)
+    let nvidiaProvider = modelsJson["providers"]["nvidia"]
+    let nvidiaBaseUrl = nvidiaProvider["baseUrl"].getStr()
+    if nvidiaBaseUrl.len == 0: return
+
+    # Deriva la base URL per la lista modelli:
+    # da ".../v1/chat/completions" → ".../v1"
+    let idx = nvidiaBaseUrl.find("/chat/completions")
+    if idx < 0: return
+    NvidiaModelsUrl = nvidiaBaseUrl[0 .. idx - 1]  # ".../v1"
+
+    # Leggi i modelli direttamente da models.json
+    let modelList = nvidiaProvider["models"]
+    for m in modelList:
+      NvidiaModelIds.add(m.getStr())
+
+    # --- auth.json ---
+    let authContent = readFile(AuthFile)
+    let authJson = parseJson(authContent)
+    let apiKey = authJson["nvidia"]["key"].getStr()
+    if apiKey.len == 0: return
+    NvidiaApiKey = apiKey
+
+    # Tutto ok → abilita
+    NvidiaBaseUrl = nvidiaBaseUrl
+    NvidiaEnabled = true
   except: discard
 
 # ============================================================
@@ -161,7 +208,7 @@ proc saveModelStatus*() =
 proc fetchModels*() {.async.} =
   ## Fetches the list of available models from the server (/v1/models).
   ## Updates the global variables: availableModels, selectedMenuIndex,
-  ## and the categorized lists (llamaCppModels, openCodeModels, ollamaModels).
+  ## and the categorized lists (llamaCppModels, openCodeModels, ollamaModels, nvidiaModels).
   ## If the server does not respond, uses the current model as fallback.
   ##
   ## EDIT: if you need to change how models are filtered/sorted,
@@ -170,6 +217,7 @@ proc fetchModels*() {.async.} =
   llamaCppModels = @[]
   openCodeModels = @[]
   ollamaModels = @[]
+  nvidiaModels = @[]
   
   # 1. Try to fetch local models (don't block if it fails)
   var client = newAsyncHttpClient()
@@ -216,6 +264,12 @@ proc fetchModels*() {.async.} =
     for mName in OllamaModelIds:
       availableModels.add(mName)
       ollamaModels.add(mName)
+
+  # 4. Add Nvidia models (if enabled)
+  if NvidiaEnabled:
+    for mName in NvidiaModelIds:
+      availableModels.add(mName)
+      nvidiaModels.add(mName)
 
   # Fallback if nothing was found
   if availableModels.len == 0:

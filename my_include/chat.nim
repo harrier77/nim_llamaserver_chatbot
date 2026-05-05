@@ -70,23 +70,29 @@ proc sendToLLM*(prompt: string = "") {.async.} =
 
 
 
-  # --- Determina se il modello è OpenCode ---
+  # --- Determina se il modello è OpenCode, Ollama o Nvidia ---
   var isOcModel = false
   var isOllamaModel = false
-  if OpenCodeEnabled:
+  var isNvidiaModel = false
+  if OpenCodeEnabled and OpenCodeModelIds.len > 0:
     for m in OpenCodeModelIds:
       if m == ModelName:
         isOcModel = true
         break
-  if OllamaEnabled:
+  if OllamaEnabled and OllamaModelIds.len > 0:
     for m in OllamaModelIds:
       if m == ModelName:
         isOllamaModel = true
         break
+  if NvidiaEnabled and NvidiaModelIds.len > 0:
+    for m in NvidiaModelIds:
+      if m == ModelName:
+        isNvidiaModel = true
+        break
 
 
   # Costruisci URL e headers in base al tipo di modello
-  let requestUrl = if isOcModel: OpenCodeBaseUrl elif isOllamaModel: OllamaBaseUrl else: APIUrl
+  let requestUrl = if isOcModel: OpenCodeBaseUrl elif isOllamaModel: OllamaBaseUrl elif isNvidiaModel: NvidiaBaseUrl else: APIUrl
 
   isProcessing = true
 
@@ -125,6 +131,11 @@ proc sendToLLM*(prompt: string = "") {.async.} =
         "Content-Type": "application/json",
         "Authorization": "Bearer " & OllamaApiKey
       })
+    elif isNvidiaModel:
+      client.headers = newHttpHeaders({
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " & NvidiaApiKey
+      })
     else:
       client.headers = newHttpHeaders({"Content-Type": "application/json"})
 
@@ -144,6 +155,7 @@ proc sendToLLM*(prompt: string = "") {.async.} =
     var ocResponseStarted = false
     const MaxOcLinesPerChunk = 3   # Max lines per flush for OpenCode
     const MaxOllamaLinesPerChunk = 1  # Max lines per flush for Ollama (has larger chunks)
+    const MaxNvidiaLinesPerChunk = 1  # Max lines per flush for Nvidia
 
     try:
       # Send POST request with streaming
@@ -183,7 +195,7 @@ proc sendToLLM*(prompt: string = "") {.async.} =
                   if content.len > 0:
                     aiResponseBuffer &= content
 
-                    if not isOcModel and not isOllamaModel:
+                    if not isOcModel and not isOllamaModel and not isNvidiaModel:
                       # --- Local server: immediate output (existing behavior) ---
                       let isFirstChunkOfResponse =
                         aiResponseBuffer.len == content.len and toolCallsCollected.len == 0
@@ -219,7 +231,7 @@ proc sendToLLM*(prompt: string = "") {.async.} =
                         ocPendingBuffer = ""
 
                       # Process at most MaxOcLinesPerChunk lines this round
-                      let maxLines = if isOllamaModel: MaxOllamaLinesPerChunk else: MaxOcLinesPerChunk
+                      let maxLines = if isOllamaModel: MaxOllamaLinesPerChunk elif isNvidiaModel: MaxNvidiaLinesPerChunk else: MaxOcLinesPerChunk
                       let toProcess = min(allParts.len, maxLines)
                       for i in 0 ..< toProcess:
                         let part = allParts[i]
@@ -276,7 +288,7 @@ proc sendToLLM*(prompt: string = "") {.async.} =
 
 
     # Flush remaining smoothed buffer (remote models only)
-    if (isOcModel or isOllamaModel) and ocPendingBuffer.len > 0:
+    if (isOcModel or isOllamaModel or isNvidiaModel) and ocPendingBuffer.len > 0:
       let remainingParts = ocPendingBuffer.splitLines()
       for part in remainingParts:
         if not ocResponseStarted:
