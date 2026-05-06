@@ -16,6 +16,7 @@ import config   # constants, global variables, types
 import server   # server and model management
 import input    # keyboard input handling
 import ui       # TUI rendering
+import webui/httpdserver  # WebUI HTTP server
 
 # ============================================================
 # Exit proc (terminal cleanup)
@@ -102,6 +103,9 @@ proc main() =
   # --- Initial server check removed ---
   # Server availability is now checked asynchronously.
   # Default is true (set in config.nim), async check will update if needed.
+
+  # --- Start WebUI server ---
+  startServer(Port(8000))
 
   # --- Welcome messages ---
   outputLines.add("Chat TUI - Connected to llama.cpp at " & ServerBaseUrl)

@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" href="miostile.css">
+</head>
+<body>
+  <div role="main">
+    <div class="pointer-events-none">
+      <div class="mb-8 text-center">
+        <h1>Hello there</h1>
+        <p class="text-muted-foreground">Type a message or upload files to get started</p>
+      </div>
+    </div>
+
+    <div class="conversation-chat-form">
+      <div class="relative">
+        <input type="file" multiple class="hidden">
+        <form>
+          
+          <div data-slot="input-area">
+            <div class="relative">
+              <div class="flex">
+                <textarea placeholder="Type a message..."></textarea>
+              </div>
+              <div style="display: flex; justify-content: flex-end; gap: 0.5rem;">
+                <div style="display: none;">
+                  <div>
+                    <button data-slot="dropdown-menu-trigger" name="Attach files" id="bits-c42" aria-haspopup="menu" aria-expanded="false" data-state="closed" type="button">
+                      <button data-slot="tooltip-trigger" class="file-upload-button" id="bits-c43" data-state="closed" data-delay-duration="500" tabindex="0" type="button">
+                        <button data-slot="button" class="file-upload-button" type="button">
+                          <span class="sr-only">Add files, prompts, tools or MCP Servers</span>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon">
+                            <path d="M5 12h14"></path>
+                            <path d="M12 5v14"></path>
+                          </svg>
+                        </button>
+                      </button>
+                    </button>
+                  </div>
+                </div>
+
+                <div id="model-selector-container">
+                  <button id="model-selector-btn" type="button">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon">
+                      <path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"></path>
+                      <path d="M12 22V12"></path>
+                      <polyline points="3.29 7 12 12 20.71 7"></polyline>
+                      <path d="m7.5 4.27 9 5.15"></path>
+                    </svg>
+                    <span id="model-selector-label">Select model</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon">
+                      <path d="m6 9 6 6 6-6"></path>
+                    </svg>
+                  </button>
+                  <button id="send-btn" type="submit" disabled>
+                    <span class="sr-only">Send</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="m5 12 7-7 7 7"></path>
+                      <path d="M12 19V5"></path>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var isDark = false;
+    var currentModel = null;
+    var conversationHistory = [];
+    var isProcessing = false;
+
+    // ============ THEME TOGGLE ============
+    function initTheme() {
+      // Check saved preference
+      const savedTheme = localStorage.getItem('theme');
+      if (savedTheme === 'dark') {
+        isDark = true;
+        document.documentElement.classList.add('dark');
+      }
+    }
+
+    function toggleTheme() {
+      isDark = !isDark;
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+        localStorage.setItem('theme', 'dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+        localStorage.setItem('theme', 'light');
+      }
+      // Update dropdown colors if open
+      const dropdown = document.querySelector('.dropdown');
+      if (dropdown) {
+        const items = dropdown.querySelectorAll('.dropdown-item');
+        const names = dropdown.querySelectorAll('.dropdown-item .name');
+        const color = isDark ? '#f9fafb' : '#1f2937';
+        items.forEach(item => item.style.color = color);
+        names.forEach(name => name.style.color = color);
+      }
+    }
+
+    // Create theme toggle button
+    function createThemeButton() {
+      const btn = document.createElement('button');
+      btn.className = 'theme-toggle';
+      btn.textContent = isDark ? 'Light' : 'Dark';
+      btn.addEventListener('click', () => {
+        toggleTheme();
+        btn.textContent = isDark ? 'Light' : 'Dark';
+      });
+      document.body.appendChild(btn);
+    }
+
+    // Initialize
+    initTheme();
+    createThemeButton();
+
+    // ============ FILE UPLOAD HANDLING ============
+    (function() {
+      const dropZone = document.querySelector('[role="main"]');
+      const fileInput = dropZone?.querySelector('input[type="file"]');
+      const uploadButton = dropZone?.querySelector('.file-upload-button');
+
+      if (uploadButton && fileInput) {
+        uploadButton.addEventListener('click', () => fileInput.click());
+      }
+
+      if (dropZone && fileInput) {
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+          dropZone.addEventListener(eventName, e => {
+            e.preventDefault();
+            e.stopPropagation();
+          });
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+          dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-over'));
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+          dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-over'));
+        });
+
+        dropZone.addEventListener('drop', e => {
+          const files = e.dataTransfer.files;
+          if (files.length > 0) {
+            fileInput.files = files;
+            fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        });
+      }
+    })();
+
+    // ============ CHAT FORM HANDLER ============
+    (function() {
+      const chatForm = document.querySelector('.conversation-chat-form form');
+      const chatInput = chatForm?.querySelector('textarea');
+      const sendBtn = chatForm?.querySelector('button[type="submit"]');
+
+      if (chatForm && chatInput && sendBtn) {
+        // Handle form submit (Enter key)
+        chatForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const message = chatInput.value.trim();
+          if (!message) return;
+          chatInput.value = '';
+          await sendMessage(message);
+        });
+
+        // Handle button click directly
+        sendBtn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          const message = chatInput.value.trim();
+          if (!message) return;
+          chatInput.value = '';
+          await sendMessage(message);
+        });
+
+        // Handle Enter key in textarea
+        chatInput.addEventListener('keydown', async (e) => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            const message = chatInput.value.trim();
+            if (!message) return;
+            chatInput.value = '';
+            await sendMessage(message);
+          }
+        });
+
+        // Enable/disable based on input
+        chatInput.addEventListener('input', () => {
+          const hasText = chatInput.value.trim().length > 0;
+          sendBtn.disabled = !hasText;
+        });
+      }
+    })();
+
+    // ============ ADD CHAT MESSAGE ============
+    function addChatMessage(role, content) {
+      const mainDiv = document.querySelector('[role="main"]');
+      const outputArea = mainDiv?.querySelector('.pointer-events-none');
+
+      // Hide welcome message
+      const textArea = outputArea?.querySelector('h1');
+      if (textArea) textArea.style.display = 'none';
+      const p = outputArea?.querySelector('p');
+      if (p) p.style.display = 'none';
+
+      let chatDiv = document.querySelector('.chat-messages');
+      if (!chatDiv) {
+        chatDiv = document.createElement('div');
+        chatDiv.className = 'chat-messages';
+        outputArea?.insertBefore(chatDiv, outputArea.firstChild);
+      }
+
+      const msgDiv = document.createElement('div');
+      msgDiv.className = 'flex ' + (role === 'user' ? 'justify-end' : 'justify-start');
+
+      const bubble = document.createElement('div');
+      bubble.className = 'message-bubble ' +
+        (role === 'user' ? 'message-user' :
+          role === 'system' ? 'message-system' :
+          'message-assistant');
+      bubble.textContent = content;
+
+      msgDiv.appendChild(bubble);
+      chatDiv.appendChild(msgDiv);
+      mainDiv.scrollTo({ top: mainDiv.scrollHeight, behavior: 'smooth' });
+
+      // Restituisci il bubble per aggiornarlo dopo in streaming
+      return bubble;
+    }
+
+    // ============ SEND MESSAGE ============
+    async function sendMessage(message) {
+      if (isProcessing) return;
+      isProcessing = true;
+
+      conversationHistory.push({ role: 'user', content: message });
+      addChatMessage('user', message);
+      const aiBubble = addChatMessage('assistant', '...');
+
+      let aiBuffer = '';
+
+      try {
+        const response = await fetch('http://localhost:8080/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: currentModel,
+            messages: conversationHistory,
+            stream: true
+          })
+        });
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let pending = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const data = pending + decoder.decode(value);
+          pending = '';
+          const lines = data.split('\n');
+
+          for (let i = 0; i < lines.length - 1; i++) {
+            const line = lines[i].trim();
+            if (line.startsWith('data: ')) {
+              const jsonStr = line.slice(6);
+              if (jsonStr === '[DONE]') break;
+              try {
+                const chunk = JSON.parse(jsonStr);
+                const content = chunk.choices?.[0]?.delta?.content;
+                if (content) {
+                  aiBuffer += content;
+                  if (aiBubble) aiBubble.textContent = aiBuffer;
+                }
+              } catch(e) {}
+            }
+          }
+
+          if (!data.endsWith('\n')) {
+            pending = lines[lines.length - 1];
+          }
+        }
+
+        conversationHistory.push({ role: 'assistant', content: aiBuffer });
+      } catch (e) {
+        if (aiBubble) aiBubble.textContent = 'Error: ' + e.message;
+      }
+      isProcessing = false;
+    }
+
+    // ============ MODEL SELECTOR DROPDOWN ============
+    (function() {
+      const btn = document.getElementById('model-selector-btn');
+      const label = document.getElementById('model-selector-label');
+
+      let models = [];
+      let selectedModel = null;
+      let isOpen = false;
+      let dropdownEl = null;
+      let modelsLoaded = false;
+
+      async function fetchModels() {
+        try {
+          label.textContent = 'Loading...';
+          const res = await fetch('http://localhost:8080/models');
+          const data = await res.json();
+          models = data.data || [];
+          modelsLoaded = true;
+
+          // Find and set the currently loaded model
+          for (const m of models) {
+            if (m.status?.value === 'loaded') {
+              currentModel = m.id;
+              label.textContent = m.id;
+              selectedModel = m.id;
+              break;
+            }
+          }
+          if (!currentModel) {
+            label.textContent = 'Select model';
+          }
+        } catch (e) {
+          console.error('Failed to fetch models:', e);
+          label.textContent = 'Select model';
+          models = [];
+        }
+      }
+
+      // Fetch models on page load
+      fetchModels();
+
+      function createDropdown() {
+        const dropdown = document.createElement('div');
+        dropdown.className = 'dropdown';
+
+        const btnRect = btn.getBoundingClientRect();
+        // Open upward - position above the button
+        dropdown.style.position = 'absolute';
+        dropdown.style.bottom = (window.innerHeight - btnRect.top + 10) + 'px';
+        dropdown.style.left = btnRect.left + 'px';
+        dropdown.style.top = 'auto';
+
+        // Search
+        const searchDiv = document.createElement('div');
+        searchDiv.className = 'dropdown-search';
+        const searchInput = document.createElement('input');
+        searchInput.type = 'text';
+        searchInput.placeholder = 'Search models...';
+        searchInput.addEventListener('input', (e) => renderList(e.target.value));
+        searchDiv.appendChild(searchInput);
+        dropdown.appendChild(searchDiv);
+
+        // List
+        const listDiv = document.createElement('div');
+        listDiv.className = 'dropdown-list';
+        listDiv.id = 'models-list';
+        dropdown.appendChild(listDiv);
+
+        const closeHandler = (e) => {
+          if (!dropdown.contains(e.target) && !btn.contains(e.target)) closeDropdown();
+        };
+        setTimeout(() => document.addEventListener('click', closeHandler), 0);
+
+        return dropdown;
+      }
+
+      function renderList(filter = '') {
+        if (!dropdownEl) return;
+        const listContainer = dropdownEl.querySelector('#models-list');
+        if (!listContainer) return;
+
+        listContainer.innerHTML = '';
+
+        const filtered = models.filter(m => m.id.toLowerCase().includes(filter.toLowerCase()));
+
+        if (filtered.length === 0) {
+          const empty = document.createElement('p');
+          empty.className = 'dropdown-empty';
+          empty.textContent = 'No models found';
+          listContainer.appendChild(empty);
+          return;
+        }
+
+        filtered.forEach(model => {
+          const item = document.createElement('button');
+          item.className = 'dropdown-item';
+          item.style.color = isDark ? '#f9fafb' : '#1f2937';
+          if (model.id === selectedModel) item.classList.add('selected');
+
+          const status = document.createElement('span');
+          status.className = 'status';
+          const modelStatus = model.status?.value || 'unloaded';
+          if (modelStatus === 'loaded') status.classList.add('loaded');
+          else if (modelStatus === 'loading') status.classList.add('loading');
+          else status.classList.add('unloaded');
+          item.appendChild(status);
+
+          const name = document.createElement('span');
+          name.className = 'name';
+          name.textContent = model.id;
+          name.style.color = isDark ? '#f9fafb' : '#1f2937';
+          item.appendChild(name);
+
+          item.addEventListener('click', () => selectModel(model.id));
+          listContainer.appendChild(item);
+        });
+      }
+
+      function openDropdown() {
+        dropdownEl = createDropdown();
+        document.body.appendChild(dropdownEl);
+        isOpen = true;
+        btn.setAttribute('aria-expanded', 'true');
+        btn.setAttribute('data-state', 'open');
+        // Render list immediately
+        renderList();
+      }
+
+      function closeDropdown() {
+        if (dropdownEl) {
+          dropdownEl.remove();
+          dropdownEl = null;
+        }
+        isOpen = false;
+        btn.setAttribute('aria-expanded', 'false');
+        btn.setAttribute('data-state', 'closed');
+      }
+
+      async function selectModel(modelId) {
+        selectedModel = modelId;
+        currentModel = modelId;
+        label.textContent = modelId;
+        closeDropdown();
+
+        const foundModel = models.find(m => m.id === modelId);
+        const isLoaded = foundModel?.status?.value === 'loaded';
+
+        if (isLoaded) {
+          addChatMessage('system', 'OK Model already loaded: ' + modelId);
+          return;
+        }
+
+        addChatMessage('system', 'Loading model: ' + modelId + '...');
+
+        try {
+          // Use test content instead of empty string to avoid 501
+          const response = await fetch('http://localhost:8080/embedding', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ content: 'test', model: modelId })
+          });
+
+          if (response.ok) {
+            addChatMessage('system', 'OK Model loaded: ' + modelId);
+          } else {
+            addChatMessage('system', 'OK Model selected: ' + modelId);
+          }
+          await fetchModels();
+        } catch (e) {
+          addChatMessage('system', 'OK Model selected: ' + modelId);
+        }
+      }
+
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        console.log('Model button clicked, isOpen:', isOpen, 'modelsLoaded:', modelsLoaded);
+        if (isOpen) {
+          closeDropdown();
+        } else {
+          if (!modelsLoaded) {
+            await fetchModels();
+          }
+          if (models.length > 0) {
+            openDropdown();
+          } else {
+            console.log('No models to display');
+          }
+        }
+      });
+
+      btn.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowDown' || e.key === 'Enter') {
+          e.preventDefault();
+          if (!modelsLoaded) fetchModels().then(openDropdown);
+          else openDropdown();
+        }
+      });
+    })();
+  </script>
+</html>
