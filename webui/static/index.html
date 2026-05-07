@@ -4,11 +4,14 @@
   <link rel="stylesheet" href="miostile.css">
 </head>
 <body>
-  <div role="main">
-    <div class="pointer-events-none">
+  <button id="new-chat-btn" class="new-chat-btn" title="New chat" type="button">
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg>
+  </button>
+  <div role="main" style="position: relative;">
+    <div>
       <div class="mb-8 text-center">
         <h1>Hello there</h1>
-        <p class="text-muted-foreground">Type a message or upload files to get started</p>
+        <p class="text-muted-foreground">Type a message to get started</p>
       </div>
     </div>
 
@@ -73,6 +76,46 @@
     var currentModel = null;
     var conversationHistory = [];
     var isProcessing = false;
+    var availableTools = [];
+
+    // System prompt that instructs the model how to use tools
+    const SYSTEM_PROMPT = "You are an expert coding assistant. You have access to these tools:\n\nTool: read\nDescription: Read the content of a file. Supports offset/limit for pagination.\nParameters: file_path (required), offset (optional), limit (optional)\n\nTool: bash\nDescription: Execute a command in the current working directory. Returns stdout and stderr.\nParameters: command (required)\n\nIMPORTANT: When you need to read a file or run a command, you MUST call the tool and wait for the result. Do NOT try to read files or execute commands directly.";
+
+    // ============ FETCH TOOLS FROM SERVER ============
+    async function fetchTools() {
+      try {
+        const res = await fetch('http://localhost:8000/api/tools');
+        availableTools = await res.json();
+      } catch (e) {
+        console.error('Failed to fetch tools:', e);
+        availableTools = [];
+      }
+    }
+
+    // Fetch tools on page load
+    fetchTools();
+
+    // New chat button handler
+    document.getElementById('new-chat-btn').addEventListener('click', () => {
+      conversationHistory = [];
+      initConversation();
+      // Clear chat messages from DOM
+      const chatDiv = document.querySelector('.chat-messages');
+      if (chatDiv) chatDiv.remove();
+      // Show welcome message
+      const h1 = document.querySelector('[role="main"] h1');
+      const p = document.querySelector('[role="main"] p');
+      if (h1) h1.style.display = '';
+      if (p) p.style.display = '';
+    });
+
+    function initConversation() {
+      // Ensure system prompt exists but don't add duplicates
+      const hasSystem = conversationHistory.some(m => m.role === 'system');
+      if (!hasSystem) {
+        conversationHistory.splice(0, 0, { role: 'system', content: SYSTEM_PROMPT });
+      }
+    }
 
     // ============ THEME TOGGLE ============
     function initTheme() {
@@ -203,23 +246,24 @@
     // ============ ADD CHAT MESSAGE ============
     function addChatMessage(role, content) {
       const mainDiv = document.querySelector('[role="main"]');
-      const outputArea = mainDiv?.querySelector('.pointer-events-none');
 
       // Hide welcome message
-      const textArea = outputArea?.querySelector('h1');
+      const textArea = mainDiv?.querySelector('h1');
       if (textArea) textArea.style.display = 'none';
-      const p = outputArea?.querySelector('p');
+      const p = mainDiv?.querySelector('p');
       if (p) p.style.display = 'none';
 
       let chatDiv = document.querySelector('.chat-messages');
       if (!chatDiv) {
         chatDiv = document.createElement('div');
         chatDiv.className = 'chat-messages';
-        outputArea?.insertBefore(chatDiv, outputArea.firstChild);
+        if (mainDiv) {
+          mainDiv.insertBefore(chatDiv, mainDiv.firstChild);
+        }
       }
 
       const msgDiv = document.createElement('div');
-      msgDiv.className = 'flex ' + (role === 'user' ? 'justify-end' : 'justify-start');
+      msgDiv.className = 'flex justify-start';
 
       const bubble = document.createElement('div');
       bubble.className = 'message-bubble ' +
@@ -236,65 +280,168 @@
       return bubble;
     }
 
-    // ============ SEND MESSAGE ============
+    // ============ TOOL EXECUTION ============
+    async function executeTool(name, args) {
+      try {
+        const res = await fetch('http://localhost:8000/api/' + name, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(args)
+        });
+        const text = await res.text();
+        try {
+          return JSON.parse(text);
+        } catch(e) {
+          return { content: text };
+        }
+      } catch (e) {
+        return { error: e.message };
+      }
+    }
+
+    // ============ SEND MESSAGE (with tool calling) ============
     async function sendMessage(message) {
       if (isProcessing) return;
       isProcessing = true;
 
-      conversationHistory.push({ role: 'user', content: message });
-      addChatMessage('user', message);
-      const aiBubble = addChatMessage('assistant', '...');
+      if (message) {
+        conversationHistory.push({ role: 'user', content: message });
+        addChatMessage('user', message);
+      }
 
-      let aiBuffer = '';
+      // Main loop: continues until there are no more tool calls
+      while (true) {
+        initConversation();
+        const aiBubble = addChatMessage('assistant', '...');
+        let aiBuffer = '';
+        let toolCallsCollected = [];
 
-      try {
-        const response = await fetch('http://localhost:8080/v1/chat/completions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: currentModel,
-            messages: conversationHistory,
-            stream: true
-          })
-        });
+        try {
+          const response = await fetch('http://localhost:8080/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              model: currentModel,
+              messages: conversationHistory,
+              stream: true,
+              tools: availableTools
+            })
+          });
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let pending = '';
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let pending = '';
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-          const data = pending + decoder.decode(value);
-          pending = '';
-          const lines = data.split('\n');
+            const data = pending + decoder.decode(value);
+            pending = '';
+            const lines = data.split('\n');
 
-          for (let i = 0; i < lines.length - 1; i++) {
-            const line = lines[i].trim();
-            if (line.startsWith('data: ')) {
-              const jsonStr = line.slice(6);
-              if (jsonStr === '[DONE]') break;
-              try {
-                const chunk = JSON.parse(jsonStr);
-                const content = chunk.choices?.[0]?.delta?.content;
-                if (content) {
-                  aiBuffer += content;
-                  if (aiBubble) aiBubble.textContent = aiBuffer;
-                }
-              } catch(e) {}
+            for (let i = 0; i < lines.length - 1; i++) {
+              const line = lines[i].trim();
+              if (line.startsWith('data: ')) {
+                const jsonStr = line.slice(6);
+                if (jsonStr === '[DONE]') break;
+                try {
+                  const chunk = JSON.parse(jsonStr);
+                  const delta = chunk.choices?.[0]?.delta;
+                  if (!delta) continue;
+
+
+                  // Handle content tokens
+                  if (delta.content) {
+                    aiBuffer += delta.content;
+                    if (aiBubble) aiBubble.textContent = aiBuffer;
+                  }
+
+                  // Handle tool calls
+                  if (delta.tool_calls && delta.tool_calls.length > 0) {
+                    for (const tc of delta.tool_calls) {
+                      const idx = tc.index;
+                      while (toolCallsCollected.length <= idx) {
+                        toolCallsCollected.push({
+                          id: null,
+                          type: 'function',
+                          function: { name: '', arguments: '' }
+                        });
+                      }
+                      const target = toolCallsCollected[idx];
+                      if (tc.id) target.id = tc.id;
+                      if (tc.function?.name) target.function.name = tc.function.name;
+                      if (tc.function?.arguments) {
+                        target.function.arguments += tc.function.arguments;
+                      }
+                    }
+                  }
+                } catch(e) {}
+              }
+            }
+
+            if (!data.endsWith('\n')) {
+              pending = lines[lines.length - 1];
             }
           }
 
-          if (!data.endsWith('\n')) {
-            pending = lines[lines.length - 1];
-          }
-        }
+          // After streaming ends, check for tool calls
+          if (toolCallsCollected.length > 0) {
+            // Add assistant message with tool calls
+            const assistantContent = aiBuffer.length > 0 ? aiBuffer : 'Then I will answer and show any content...';
+            conversationHistory.push({
+              role: 'assistant',
+              content: assistantContent,
+              tool_calls: toolCallsCollected
+            });
 
-        conversationHistory.push({ role: 'assistant', content: aiBuffer });
-      } catch (e) {
-        if (aiBubble) aiBubble.textContent = 'Error: ' + e.message;
+            // Execute each tool and add results to history
+            for (const tc of toolCallsCollected) {
+              const toolName = tc.function.name;
+              let toolArgs = {};
+              try {
+                toolArgs = JSON.parse(tc.function.arguments);
+              } catch(e) { toolArgs = {}; }
+              const toolId = tc.id;
+
+              addChatMessage('system', 'Tool Call -> ' + toolName + '(' + tc.function.arguments + ')');
+
+              const result = await executeTool(toolName, toolArgs);
+              let content = JSON.stringify(result);
+
+              // Extract content from result if it exists
+              if (result.content !== undefined) {
+                content = result.content;
+                if (result.exit_code && result.exit_code !== '0') {
+                  content = '[Exit code: ' + result.exit_code + ']\n' + content;
+                }
+              } else if (result.error) {
+                content = 'Error: ' + result.error;
+              }
+
+              conversationHistory.push({
+                role: 'tool',
+                tool_call_id: toolId,
+                name: toolName,
+                content: content
+              });
+            }
+
+            // Continue loop to send tool results back to model
+            continue;
+          } else {
+            // No tool calls, normal response complete
+            if (aiBuffer.length > 0) {
+              conversationHistory.push({ role: 'assistant', content: aiBuffer });
+            }
+            break;
+          }
+        } catch (e) {
+          if (aiBubble) aiBubble.textContent = 'Error: ' + e.message;
+          break;
+        }
       }
+
       isProcessing = false;
     }
 
@@ -473,7 +620,6 @@
 
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
-        console.log('Model button clicked, isOpen:', isOpen, 'modelsLoaded:', modelsLoaded);
         if (isOpen) {
           closeDropdown();
         } else {
@@ -482,8 +628,6 @@
           }
           if (models.length > 0) {
             openDropdown();
-          } else {
-            console.log('No models to display');
           }
         }
       });

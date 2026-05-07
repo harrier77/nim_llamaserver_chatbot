@@ -1,6 +1,7 @@
 import json, os, osproc, strutils
 
 # FIX: Matches parameter names from demo.ts (e.g., file_path instead of path)
+# Export ToolsSchema for use by other modules (e.g., webui server)
 let ToolsSchema* = %*[
   {
     "type": "function",
@@ -46,7 +47,7 @@ let ToolsSchema* = %*[
   }
 ]
 
-proc readTool(args: JsonNode): string =
+proc readTool*(args: JsonNode): string =
   const MaxReadLines = 1000
 
   let path = if args.hasKey("file_path"): args["file_path"].getStr() else: ""
@@ -90,7 +91,7 @@ proc readTool(args: JsonNode): string =
   except Exception as e:
     return $(%*{"error": e.msg})
 
-proc bashTool(args: JsonNode): string =
+proc bashTool*(args: JsonNode): string =
   let command = if args.hasKey("command"): args["command"].getStr() else: ""
   if command == "": return $(%*{"error": "Missing command parameter"})
 

@@ -194,12 +194,6 @@ proc main() =
       if key == illwill.Key.Mouse:
         # Handle mouse wheel scrolling
         let mi = illwill.getMouse()
-        # DEBUG: log all mouse event data to mouse_debug.txt
-        try:
-          let f = open("mouse_debug.txt", fmAppend)
-          f.write("Time=" & $now() & " scroll=" & $mi.scroll & " dir=" & $mi.scrollDir & " btn=" & $mi.button & " act=" & $mi.action & " move=" & $mi.move & " x=" & $mi.x & " y=" & $mi.y & "\n")
-          f.close()
-        except: discard
 
         if mi.scroll:
           if state == SelectingModel:
