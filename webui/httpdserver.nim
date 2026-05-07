@@ -80,7 +80,8 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
     let headers = newHttpHeaders([("Content-Type", "application/json")])
 
     if filePath == "":
-      await req.respond(Http200, ${"error": "Missing file_path parameter"}, headers)
+      let response = %*{"error": "Missing file_path parameter"}
+      await req.respond(Http200, $response, headers)
       return
 
     var resolvedPath = filePath.replace("\\", "/")
@@ -88,7 +89,8 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
       resolvedPath = getCurrentDir() / resolvedPath
 
     if not fileExists(resolvedPath):
-      await req.respond(Http200, ${"error": "File not found: " & resolvedPath}, headers)
+      let response = %*{"error": "File not found: " & resolvedPath}
+      await req.respond(Http200, $response, headers)
       return
 
     try:
@@ -100,9 +102,11 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
       var content = slice.join("\n")
       if endIdx + 1 < lines.len:
         content &= "\n[... truncated at " & $MaxReadLines & " lines]"
-      await req.respond(Http200, ${"content": content}, headers)
+      let response = %*{"content": content}
+      await req.respond(Http200, $response, headers)
     except Exception as e:
-      await req.respond(Http200, ${"error": e.msg}, headers)
+      let response = %*{"error": e.msg}
+      await req.respond(Http200, $response, headers)
     return
 
   if path == "/api/bash":
@@ -113,7 +117,8 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
     let headers = newHttpHeaders([("Content-Type", "application/json")])
 
     if command == "":
-      await req.respond(Http200, ${"error": "Missing command parameter"}, headers)
+      let response = %*{"error": "Missing command parameter"}
+      await req.respond(Http200, $response, headers)
       return
 
     try:
@@ -126,9 +131,11 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
         (res, exitCode) = execCmdEx(quoteShell(gitBashPath) & " -c " & quoteShell(fullCommand))
       else:
         (res, exitCode) = execCmdEx(command)
-      await req.respond(Http200, ${"content": res.strip(), "exit_code": $exitCode}, headers)
+      let response = %*{"content": res.strip(), "exit_code": $exitCode}
+      await req.respond(Http200, $response, headers)
     except Exception as e:
-      await req.respond(Http200, ${"error": e.msg}, headers)
+      let response = %*{"error": e.msg}
+      await req.respond(Http200, $response, headers)
     return
 
   if path == "/":

@@ -2,6 +2,20 @@
 <html>
 <head>
   <link rel="stylesheet" href="miostile.css">
+  <style>
+    .message-tool {
+      background-color: #f0f0f0;
+      border-left: 3px solid #4a9eff;
+      padding: 10px;
+      margin: 5px 0;
+      font-family: monospace;
+      white-space: pre-wrap;
+    }
+    .dark .message-tool {
+      background-color: #2d2d2d;
+      border-left-color: #4a9eff;
+    }
+  </style>
 </head>
 <body>
   <button id="new-chat-btn" class="new-chat-btn" title="New chat" type="button">
@@ -79,6 +93,12 @@
     var conversationHistory = [];
     var isProcessing = false;
     var availableTools = [];
+
+    // ============ PATH NORMALIZATION ============
+    function normalizePath(str) {
+      // Sostituisce tutti i backslash con forward slash
+      return str.replace(/\\/g, '/');
+    }
 
     // System prompt that instructs the model how to use tools
     const SYSTEM_PROMPT = "You are an expert coding assistant. You have access to these tools:\n\nTool: read\nDescription: Read the content of a file. Supports offset/limit for pagination.\nParameters: file_path (required), offset (optional), limit (optional)\n\nTool: bash\nDescription: Execute a command in the current working directory. Returns stdout and stderr.\nParameters: command (required)\n\nIMPORTANT: When you need to read a file or run a command, you MUST call the tool and wait for the result. Do NOT try to read files or execute commands directly.";
@@ -272,6 +292,7 @@
       bubble.className = 'message-bubble ' +
         (role === 'user' ? 'message-user' :
           role === 'system' ? 'message-system' :
+          role === 'tool' ? 'message-tool' :
           'message-assistant');
       bubble.textContent = content;
 
@@ -310,6 +331,9 @@
     async function sendMessage(message) {
       if (isProcessing) return;
       isProcessing = true;
+
+      // Normalizza i backslash in slash nel messaggio dell'utente
+      message = normalizePath(message);
 
       if (message) {
         conversationHistory.push({ role: 'user', content: message });
@@ -421,17 +445,25 @@
               addChatMessage('system', 'Tool Call -> ' + toolName + '(' + tc.function.arguments + ')');
 
               const result = await executeTool(toolName, toolArgs);
-              let content = JSON.stringify(result);
+              let content = '';
 
-              // Extract content from result if it exists
+              // Extract content from result, ensuring it's a string
               if (result.content !== undefined) {
-                content = result.content;
+                content = typeof result.content === 'string' ? result.content : JSON.stringify(result.content);
                 if (result.exit_code && result.exit_code !== '0') {
                   content = '[Exit code: ' + result.exit_code + ']\n' + content;
                 }
               } else if (result.error) {
                 content = 'Error: ' + result.error;
+              } else {
+                // If no content field, use the stringified result (fallback)
+                content = JSON.stringify(result);
               }
+
+              // Format and display tool result like TUI (--- and ***Title***)
+              const toolTitle = (toolName === 'read' && toolArgs.file_path) ? toolArgs.file_path : toolName;
+              const formattedResult = `--- \n ***${toolTitle}***: \n ${content}`;
+              addChatMessage('tool', formattedResult);
 
               conversationHistory.push({
                 role: 'tool',
@@ -446,7 +478,19 @@
           } else {
             // No tool calls, normal response complete
             if (aiBuffer.length > 0) {
-              conversationHistory.push({ role: 'assistant', content: aiBuffer });
+              // Clean response: if it's JSON with a content field, extract it
+              let finalContent = aiBuffer;
+              try {
+                const parsed = JSON.parse(aiBuffer);
+                if (parsed.content) {
+                  finalContent = parsed.content;
+                  // Update the displayed bubble to show cleaned content
+                  if (aiBubble) aiBubble.textContent = finalContent;
+                }
+              } catch(e) {
+                // Not JSON, keep original
+              }
+              conversationHistory.push({ role: 'assistant', content: finalContent });
             }
             break;
           }
