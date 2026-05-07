@@ -188,6 +188,8 @@ proc handleInput*(key: illwill.Key): bool =
       categories.add((name: "ollama", icon: "🐳", models: ollamaModels))
     if nvidiaModels.len > 0:
       categories.add((name: "nvidia", icon: "🔷", models: nvidiaModels))
+    if zayaModels.len > 0:
+      categories.add((name: "zaya", icon: "🔮", models: zayaModels))
     if categories.len == 0:
       categories.add((name: "all", icon: "📋", models: availableModels))
 

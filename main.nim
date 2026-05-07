@@ -94,6 +94,9 @@ proc main() =
   # Load Nvidia config from ~/.nim_chatbot/
   server.loadNvidiaConfig()
 
+  # Load Zaya config from ~/.nim_chatbot/
+  server.loadZayaConfig()
+
   # --- Load previous state ---
   server.loadModelStatus()
 

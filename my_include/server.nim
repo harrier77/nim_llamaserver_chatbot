@@ -164,6 +164,45 @@ proc loadNvidiaConfig*() =
     NvidiaEnabled = true
   except: discard
 
+proc loadZayaConfig*() =
+  ## Legge ~/.nim_chatbot/models.json e auth.json.
+  ## Se entrambi esistono e contengono dati validi per zaya,
+  ## abilita il server Zaya (ZayaEnabled = true).
+  if not fileExists(ExternalModelsFile): return
+  if not fileExists(AuthFile): return
+
+  # Clear previous model list to avoid duplicates
+  ZayaModelIds = @[]
+
+  try:
+    # --- models.json ---
+    let modelsContent = readFile(ExternalModelsFile)
+    let modelsJson = parseJson(modelsContent)
+    let zayaProvider = modelsJson["providers"]["zaya"]
+    let zayaBaseUrl = zayaProvider["baseUrl"].getStr()
+    if zayaBaseUrl.len == 0: return
+
+    # Deriva la base URL per la lista modelli:
+    # da ".../api/v1" → ".../api/v1" (stessa, ma per completezza)
+    ZayaModelsUrl = zayaBaseUrl
+
+    # Leggi i modelli direttamente da models.json
+    let modelList = zayaProvider["models"]
+    for m in modelList:
+      ZayaModelIds.add(m.getStr())
+
+    # --- auth.json ---
+    let authContent = readFile(AuthFile)
+    let authJson = parseJson(authContent)
+    let apiKey = authJson["zaya"]["key"].getStr()
+    if apiKey.len == 0: return
+    ZayaApiKey = apiKey
+
+    # Tutto ok → abilita
+    ZayaBaseUrl = zayaBaseUrl & "/chat/completions"
+    ZayaEnabled = true
+  except: discard
+
 # ============================================================
 # State persistence (status.json)
 # ============================================================
@@ -218,6 +257,7 @@ proc fetchModels*() {.async.} =
   openCodeModels = @[]
   ollamaModels = @[]
   nvidiaModels = @[]
+  zayaModels = @[]
   
   # 1. Try to fetch local models (don't block if it fails)
   var client = newAsyncHttpClient()
@@ -270,6 +310,12 @@ proc fetchModels*() {.async.} =
     for mName in NvidiaModelIds:
       availableModels.add(mName)
       nvidiaModels.add(mName)
+
+  # 5. Add Zaya models (if enabled)
+  if ZayaEnabled:
+    for mName in ZayaModelIds:
+      availableModels.add(mName)
+      zayaModels.add(mName)
 
   # Fallback if nothing was found
   if availableModels.len == 0:

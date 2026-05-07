@@ -110,6 +110,13 @@ var
   NvidiaEnabled*: bool = false
   NvidiaModelIds*: seq[string] = @[]  # lista dei modelli Nvidia
 
+  # --- Zaya remote server ---
+  ZayaBaseUrl*: string = ""      # full URL from models.json (…/chat/completions)
+  ZayaModelsUrl*: string = ""    # base URL for model listing (…/v1)
+  ZayaApiKey*: string = ""
+  ZayaEnabled*: bool = false
+  ZayaModelIds*: seq[string] = @[]  # lista dei modelli Zaya
+
   # --- Model and history ---
   ModelName*: string = "Qwen3.5_0.8b-text"
   maxHistoryMessages*: int = 20
@@ -123,10 +130,11 @@ var
   openCodeModels*: seq[string] = @[]   ## Models from OpenCode remote
   ollamaModels*: seq[string] = @[]       ## Models from Ollama remote
   nvidiaModels*: seq[string] = @[]       ## Models from Nvidia remote
+  zayaModels*: seq[string] = @[]         ## Models from Zaya remote
 
   # --- Model selection navigation ---
   selectedMenuIndex*: int = 0
-  selectedCategoryIndex*: int = 0        ## Index of selected category (0=llamacpp, 1=opencode, 2=ollama, 3=nvidia)
+  selectedCategoryIndex*: int = 0        ## Index of selected category (0=llamacpp, 1=opencode, 2=ollama, 3=nvidia, 4=zaya)
 
   # --- TUI output ---
   outputLines*: seq[string] = @[]
