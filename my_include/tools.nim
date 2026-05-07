@@ -44,6 +44,27 @@ let ToolsSchema* = %*[
         "required": ["command"]
       }
     }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "readDelibera",
+      "description": "Read a delibera file from the summary directory. Automatically composes filename as delibera_XXXX_YYYY.txt where XXXX is 4-digit zero-padded number and YYYY is the year.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "number": {
+            "type": "string",
+            "description": "The delibera number (e.g., '1' becomes '0001')"
+          },
+          "year": {
+            "type": "string",
+            "description": "The year of the delibera (e.g., '2026')"
+          }
+        },
+        "required": ["number", "year"]
+      }
+    }
   }
 ]
 
@@ -116,8 +137,79 @@ proc bashTool*(args: JsonNode): string =
   except Exception as e:
     return $(%*{"error": e.msg})
 
+proc cleanDeliberaText*(text: string): string =
+  # If "Pag 1 di" is found in the text, remove everything before it
+  let searchStr = "Pag 1 di"
+  let pos = text.find(searchStr)
+  if pos >= 0:
+    # Return text starting from "Pag 1 di"
+    return text[pos..<text.len]
+  return text
+
+proc readDelibera*(args: JsonNode): string =
+    var path_for_summary="C:/Users/pr30565/Desktop/python/flask_root/principale/pareri/delibere/testi"
+    
+    # Get number and year parameters
+    let numberNode = args{"number"}
+    let yearNode = args{"year"}
+    
+    if numberNode.isNil or yearNode.isNil:
+        return $(%*{"error": "Missing number or year parameter"})
+    
+    # Extract number as string (handle both JSON int and string)
+    let numberStr = case numberNode.kind
+      of JInt: $(numberNode.getInt())
+      of JString: numberNode.getStr()
+      else: ""
+    
+    # Extract year as string (handle both JSON int and string)
+    let yearStr = case yearNode.kind
+      of JInt: $(yearNode.getInt())
+      of JString: yearNode.getStr()
+      else: ""
+    
+    if numberStr == "" or yearStr == "":
+        return $(%*{"error": "Invalid number or year parameter"})
+    
+    # Pad number to 4 digits with leading zeros
+    var paddedNumber = numberStr
+    while paddedNumber.len < 4:
+      paddedNumber = "0" & paddedNumber
+    
+    # Compose filename: delibera_0001_2026.txt
+    let filename = "delibera_" & paddedNumber & "_" & yearStr & ".txt"
+    
+    # Construct full path
+    let fullPath = path_for_summary / filename
+    
+    # Use readTool to read the file
+    let readArgs = %*{"file_path": fullPath}
+    let resultJson = readTool(readArgs)
+    
+    # Parse the result
+    try:
+      let parsed = parseJson(resultJson)
+      if parsed.hasKey("error"):
+        return resultJson
+      
+      var content = parsed["content"].getStr()
+      
+      # Clean the text: remove everything before "Pag 1 di" if present
+      content = cleanDeliberaText(content)
+      
+      # Truncate to max 1KB (1024 bytes)
+      const MaxBytes = 2048
+      if content.len > MaxBytes:
+        content = content[0..<MaxBytes] & "\n[... truncated to 1KB]"
+      
+      # Return JSON format
+      return $(%*{"content": content})
+    except Exception as e:
+      return $(%*{"error": e.msg})
+
 proc executeTool*(name: string, args: JsonNode): string =
   case name
   of "read": return readTool(args)
   of "bash": return bashTool(args)
+  of "readDelibera": return readDelibera(args)
   else: return $(%*{"error": "Unknown tool: " & name})
