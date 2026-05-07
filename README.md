@@ -14,6 +14,7 @@ Full-screen TUI chat client in Nim that connects to a local [llama.cpp](https://
 - **Server monitoring** — status bar shows a green/red indicator; banner appears when the server is unreachable
 - **Unicode-aware** — correct UTF-8 input, backspace, and word-wrapping
 - **Scrollable output** — navigate history with ↑ / ↓
+- **Web Interface** — Modern web UI available at http://localhost:8000 with theme support, file uploads, and model selection
 
 ## Slash Commands
 
@@ -72,6 +73,9 @@ The bottom bar shows: server status, processing indicator, selected model, histo
 
 # 2. Run the chat client
 nim c -r main.nim
+
+# 3. Access the Web UI (optional)
+# Open http://localhost:8000 in your browser
 ```
 
 ## Keybindings
@@ -84,3 +88,14 @@ nim c -r main.nim
 | `←` / `→` | Switch categories in model menu |
 | `Tab` | Auto-complete current slash command |
 | `Backspace` | Delete last character |
+
+## Web Interface Features
+
+The chatbot includes a modern web interface accessible at http://localhost:8000:
+
+- **Responsive design** - works on desktop and mobile browsers
+- **Dark/Light theme toggle** - with persistent preference storage
+- **Model selector dropdown** - search and select from available models
+- **Real-time streaming** - see AI responses as they generate
+- **Tool call visualization** - view tool executions and results in chat
+- **Conversation management** - clear chat history with new chat button
