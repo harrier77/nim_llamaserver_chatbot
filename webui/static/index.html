@@ -7,15 +7,17 @@
   <button id="new-chat-btn" class="new-chat-btn" title="New chat" type="button">
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg>
   </button>
-  <div role="main" style="position: relative;">
-    <div>
-      <div class="mb-8 text-center">
-        <h1>Hello there</h1>
-        <p class="text-muted-foreground">Type a message to get started</p>
+  <div role="main" style="position: relative; display: flex; flex-direction: column; min-height: 100%;">
+    <div class="chat-messages-wrapper" style="flex: 1; overflow-y: auto;">
+      <div>
+        <div class="mb-8 text-center">
+          <h1>Hello there</h1>
+          <p class="text-muted-foreground">Type a message to get started</p>
+        </div>
       </div>
     </div>
 
-    <div class="conversation-chat-form">
+    <div class="conversation-chat-form" style="flex-shrink: 0;">
       <div class="relative">
         <input type="file" multiple class="hidden">
         <form>
@@ -246,19 +248,20 @@
     // ============ ADD CHAT MESSAGE ============
     function addChatMessage(role, content) {
       const mainDiv = document.querySelector('[role="main"]');
+      const wrapper = mainDiv?.querySelector('.chat-messages-wrapper');
 
       // Hide welcome message
-      const textArea = mainDiv?.querySelector('h1');
-      if (textArea) textArea.style.display = 'none';
+      const h1 = mainDiv?.querySelector('h1');
+      if (h1) h1.style.display = 'none';
       const p = mainDiv?.querySelector('p');
       if (p) p.style.display = 'none';
 
-      let chatDiv = document.querySelector('.chat-messages');
+      let chatDiv = wrapper?.querySelector('.chat-messages');
       if (!chatDiv) {
         chatDiv = document.createElement('div');
         chatDiv.className = 'chat-messages';
-        if (mainDiv) {
-          mainDiv.insertBefore(chatDiv, mainDiv.firstChild);
+        if (wrapper) {
+          wrapper.insertBefore(chatDiv, wrapper.firstChild);
         }
       }
 
@@ -274,7 +277,11 @@
 
       msgDiv.appendChild(bubble);
       chatDiv.appendChild(msgDiv);
-      mainDiv.scrollTo({ top: mainDiv.scrollHeight, behavior: 'smooth' });
+      
+      // Scroll the wrapper, not the main container
+      if (wrapper) {
+        wrapper.scrollTo({ top: wrapper.scrollHeight, behavior: 'smooth' });
+      }
 
       // Restituisci il bubble per aggiornarlo dopo in streaming
       return bubble;
@@ -354,7 +361,14 @@
                   // Handle content tokens
                   if (delta.content) {
                     aiBuffer += delta.content;
-                    if (aiBubble) aiBubble.textContent = aiBuffer;
+                    if (aiBubble) {
+                      aiBubble.textContent = aiBuffer;
+                      // Auto-scroll during streaming
+                      const wrapper = document.querySelector('.chat-messages-wrapper');
+                      if (wrapper) {
+                        wrapper.scrollTo({ top: wrapper.scrollHeight, behavior: 'instant' });
+                      }
+                    }
                   }
 
                   // Handle tool calls

@@ -24,10 +24,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
   height: 100%;
   display: flex;
   flex-direction: column;
-  overflow-y: auto;
   padding: 1rem 1.5rem;
 }
 .pointer-events-auto { pointer-events: auto; }
+
+/* Chat messages wrapper - scrolls independently */
+.chat-messages-wrapper {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
 
 /* Welcome message */
 .mb-8 { margin-bottom: 2rem; }
@@ -39,10 +45,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 
 /* Chat form area */
 .conversation-chat-form {
-  position: absolute;
-  bottom: 10%;
-  left: 0;
-  right: 0;
+  padding: 0.5rem 1rem;
   pointer-events: auto;
 }
 .conversation-chat-form form {
