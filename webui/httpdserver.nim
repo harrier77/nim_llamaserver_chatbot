@@ -4,7 +4,7 @@
 ## Runs in a separate thread to avoid blocking the TUI
 ##
 
-import std/[asynchttpserver, asyncdispatch, os, strutils, httpcore, json, osproc, httpclient]
+import std/[asyncdispatch, asynchttpserver, httpclient, httpcore, json, os, osproc, strutils]
 
 # Thread synchronization
 var serverRunning*: bool = false
@@ -95,9 +95,138 @@ proc getChatEndpoint*(providerUrl: string): string =
   else:
     return providerUrl & "/v1/chat/completions"
 
-# Get models list from models.json for a provider
-proc getModelsFromConfig(providerUrl: string): string =
+# Get API key from auth.json for a provider
+proc getApiKey*(provider: string): string =
+  # provider can be "ollama", "opencode", "nvidia", or "zaya"
+  let authFile = getHomeDir() / ".nim_chatbot" / "auth.json"
+  if not fileExists(authFile):
+    return ""
+  try:
+    let content = readFile(authFile)
+    let j = parseJson(content)
+    if j.hasKey(provider):
+      if j[provider].hasKey("key"):
+        return j[provider]["key"].getStr()
+  except:
+    discard
+  return ""
+
+# Fallback: read models from models.json config file
+proc getModelsFromJsonFallback*(providerUrl: string, providerType: string): Future[string] {.async.} =
   let modelsJsonPath = getModelsJsonPath()
+  if not fileExists(modelsJsonPath):
+    return "{\"data\": []}"
+  
+  try:
+    let content = readFile(modelsJsonPath)
+    let json = parseJson(content)
+    if not json.hasKey("providers"):
+      return "{\"data\": []}"
+    
+    let provs = json["providers"]
+    var foundModels: seq[string] = @[]
+    
+    if providerType.len > 0 and provs.hasKey(providerType):
+      let providerData = provs[providerType]
+      if providerData.hasKey("models"):
+        for m in providerData["models"]:
+          foundModels.add(m.getStr())
+    
+    # For OpenCode: apply same filter as server.nim
+    if providerType == "opencode":
+      var filteredModels: seq[string] = @[]
+      for mName in foundModels:
+        let lowerName = mName.toLowerAscii()
+        if lowerName.contains("pickle") or lowerName.contains("free"):
+          filteredModels.add(mName)
+      foundModels = filteredModels
+    
+    var convertedData = newSeq[JsonNode]()
+    for mName in foundModels:
+      var modelItem = newJObject()
+      modelItem["id"] = %*mName
+      modelItem["object"] = %*"model"
+      modelItem["owned_by"] = %*providerType
+      convertedData.add(modelItem)
+    let converted = %*{ "data": convertedData }
+    return $converted
+  except:
+    return "{\"data\": []}"
+
+# Get models list from models.json for a provider
+proc getModelsFromConfig*(providerUrl: string): Future[string] {.async.} =
+  # First try to fetch models directly from the provider's API
+  if providerUrl.contains("opencode.ai"):
+    var client = newAsyncHttpClient()
+    try:
+      # Get API key from auth.json (sync call)
+      let apiKey = getApiKey("opencode")
+      if apiKey.len == 0:
+        # Fallback to reading from models.json config
+        return await getModelsFromJsonFallback(providerUrl, "opencode")
+      
+      # OpenCode uses /zen/v1/models endpoint with Bearer auth
+      client.headers = newHttpHeaders({
+        "Authorization": "Bearer " & apiKey
+      })
+      let modelsUrl = "https://opencode.ai/zen/v1/models"
+      let response = await client.getContent(modelsUrl)
+      
+      # Parse and filter models (same logic as server.nim)
+      let jsonNode = parseJson(response)
+      if jsonNode.hasKey("data"):
+        var filteredModels: seq[JsonNode] = @[]
+        for model in jsonNode["data"]:
+          let mName = model["id"].getStr()
+          let lowerName = mName.toLowerAscii()
+          # Filter: only "pickle" or models with "free" in name
+          if lowerName.contains("pickle") or lowerName.contains("free"):
+            filteredModels.add(model)
+        let filtered = %*{ "data": filteredModels }
+        return $filtered
+      return response
+    except:
+      # Fallback to reading from models.json config
+      return await getModelsFromJsonFallback(providerUrl, "opencode")
+    finally:
+      client.close()
+  elif providerUrl.contains("ollama.com"):
+    var client = newAsyncHttpClient()
+    try:
+      let modelsUrl = "https://ollama.com/api/tags"
+      let response = await client.getContent(modelsUrl)
+      # Parse Ollama response format and convert to standard format
+      try:
+        let j = parseJson(response)
+        var models: seq[JsonNode] = @[]
+        if j.hasKey("models"):
+          for m in j["models"]:
+            var modelItem = newJObject()
+            modelItem["id"] = m["name"]
+            modelItem["object"] = %*"model"
+            modelItem["owned_by"] = %*"ollama"
+            models.add(modelItem)
+        return $ %*{ "data": models }
+      except:
+        return response
+    except:
+      discard
+    finally:
+      client.close()
+  elif providerUrl.contains("nvidia"):
+    var client = newAsyncHttpClient()
+    try:
+      let modelsUrl = "https://catalog.ngc.ngm.com/v1/models"
+      let response = await client.getContent(modelsUrl)
+      return response
+    except:
+      discard
+    finally:
+      client.close()
+  
+  # Fallback to reading from models.json config
+  let modelsJsonPath = getModelsJsonPath()
+  let statusFile = getCurrentDir() / "my_include" / "status.json"
   if not fileExists(modelsJsonPath):
     return "{\"data\": []}"
   
@@ -119,12 +248,26 @@ proc getModelsFromConfig(providerUrl: string): string =
       providerType = "nvidia"
     elif providerUrl.contains("opencode"):
       providerType = "opencode"
+    elif providerUrl.contains("localhost:8080"):
+      providerType = "llamacpp"
     
     if providerType.len > 0 and provs.hasKey(providerType):
       let providerData = provs[providerType]
       if providerData.hasKey("models"):
         for m in providerData["models"]:
           foundModels.add(m.getStr())
+    
+    # Special case for llama.cpp: if no models configured, try to get from status.json
+    if providerType == "llamacpp" and foundModels.len == 0:
+      if fileExists(statusFile):
+        try:
+          let statusContent = readFile(statusFile)
+          let statusJson = parseJson(statusContent)
+          if statusJson.hasKey("selected_model"):
+            let selectedModel = statusJson["selected_model"].getStr()
+            foundModels.add(selectedModel)
+        except:
+          discard
     
     var convertedData = newSeq[JsonNode]()
     for mName in foundModels:
@@ -212,11 +355,11 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
         try:
           modelsResponse = await client.getContent(providerUrl & "/v1/models")
         except:
-          modelsResponse = getModelsFromConfig(providerUrl)
+          modelsResponse = "{\"data\": []}"
       finally:
         client.close()
     else:
-      modelsResponse = getModelsFromConfig(providerUrl)
+      modelsResponse = await getModelsFromConfig(providerUrl)
 
     let modelHeaders = newHttpHeaders([("Content-Type", "application/json")])
     await req.respond(Http200, modelsResponse, modelHeaders)
@@ -241,6 +384,7 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
   if path == "/v1/chat/completions":
     let bodyStr = req.body
     var targetUrl = "http://localhost:8080/v1/chat/completions"
+    var authHeader = ""
     
     if req.url.query.len > 0:
       let queryParams = req.url.query.split("&")
@@ -249,11 +393,27 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
         if parts.len == 2 and parts[0] == "provider":
           let providerUrl = decodeUrlParam(parts[1])
           targetUrl = getChatEndpoint(providerUrl)
+          # Determine which API key to use based on the provider
+          # NOTE: We need to access config variables from config.nim
+          if providerUrl.contains("ollama.com"):
+            authHeader = "ollama"
+          elif providerUrl.contains("opencode.ai"):
+            authHeader = "opencode"
+          elif providerUrl.contains("nvidia"):
+            authHeader = "nvidia"
+          elif providerUrl.contains("zyphra") or providerUrl.contains("zaya"):
+            authHeader = "zaya"
     
     var client = newHttpClient()
     var chatResponse = ""
     try:
-      client.headers = newHttpHeaders([("Content-Type", "application/json")])
+      var headers = newHttpHeaders([("Content-Type", "application/json")])
+      # Add auth header for external providers
+      if authHeader.len > 0:
+        let apiKey = getApiKey(authHeader)
+        if apiKey.len > 0:
+          headers["Authorization"] = "Bearer " & apiKey
+      client.headers = headers
       chatResponse = client.postContent(targetUrl, bodyStr)
     except:
       chatResponse = "{\"error\": \"Failed to connect to provider: " & targetUrl & "\"}"

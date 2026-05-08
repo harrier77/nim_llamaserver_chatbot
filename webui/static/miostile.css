@@ -78,8 +78,8 @@ textarea {
   padding: 0.25rem 0.5rem;
   outline: none;
   font-family: inherit;
-  font-size: 0.875rem;
-  line-height: 1.5rem;
+  font-size: 1.1rem;
+  line-height: 1.1rem;
 }
 textarea::placeholder { color: #9ca3af; }
 
@@ -266,6 +266,7 @@ html.dark .new-chat-btn:hover { background-color: #374151; }
 }
 .chat-messages > div { display: flex;}
 .chat-messages .message-bubble {
+  font-size:1.1rem;
   padding: 0.5rem 1rem;
   border-radius: 0.5rem;
   max-width: 100%;
@@ -414,7 +415,7 @@ html.dark .new-chat-button:hover { background-color: #1a1a1a; }
   background-color: #f3f4f6;
   color: #1f2937;
   cursor: pointer;
-  font-size: 0.75rem;
+  font-size: 1rem;
   transition: background-color 150ms;
 }
 .theme-toggle:hover { background-color: #e5e7eb; }

@@ -31,11 +31,11 @@
   <button id="new-chat-btn" class="new-chat-btn" title="New chat" type="button">
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg>
   </button>
-  <button id="provider-btn" type="button">
+  <button id="provider-btn" type="button" style="width:15rem;text-align:left;font-size:1em">
     <span id="provider-label">Loading...</span>
-    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <span style="margin-left:3em"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="m6 9 6 6 6-6"></path>
-    </svg>
+    </svg></span>
   </button>
   <button id="theme-toggle-btn" class="theme-toggle" type="button">Light</button>
 </div>
@@ -647,19 +647,37 @@
           // Pass provider WITHOUT encoding (server will handle it)
           const res = await fetch(`http://localhost:8000/api/models?provider=${currentProvider}`);
           const data = await res.json();
+          
+          // Save selection BEFORE updating models array
+          const prevSelected = currentModel || selectedModel;
+          
           models = data.data || [];
           modelsLoaded = true;
 
-          // Find and set the currently loaded model
+          // Now find the currently loaded model from server response
+          let foundLoadedModel = null;
           for (const m of models) {
             if (m.status?.value === 'loaded') {
-              currentModel = m.id;
-              label.textContent = m.id;
-              selectedModel = m.id;
+              foundLoadedModel = m.id;
               break;
             }
           }
-          if (!currentModel) {
+
+          // Determine what to show as selected:
+          // 1. If server says a model is loaded, use that
+          // 2. Otherwise keep our previous selection
+          // 3. Otherwise show nothing
+          if (foundLoadedModel) {
+            currentModel = foundLoadedModel;
+            selectedModel = foundLoadedModel;
+            label.textContent = foundLoadedModel;
+          } else if (prevSelected) {
+            currentModel = prevSelected;
+            selectedModel = prevSelected;
+            label.textContent = prevSelected;
+          } else {
+            currentModel = null;
+            selectedModel = null;
             label.textContent = 'Select model';
           }
         } catch (e) {
@@ -773,17 +791,20 @@
         selectedModel = modelId;
         currentModel = modelId;
         label.textContent = modelId;
-        closeDropdown();
 
         const foundModel = models.find(m => m.id === modelId);
         const isLoaded = foundModel?.status?.value === 'loaded';
 
         if (isLoaded) {
           addChatMessage('system', 'OK Model already loaded: ' + modelId);
+          closeDropdown();
           return;
         }
 
         addChatMessage('system', 'Loading model: ' + modelId + '...');
+
+        // Close dropdown immediately
+        closeDropdown();
 
         try {
           // Use proxy endpoint to avoid CORS
