@@ -97,7 +97,6 @@ proc getChatEndpoint*(providerUrl: string): string =
 
 # Get API key from auth.json for a provider
 proc getApiKey*(provider: string): string =
-  # provider can be "ollama", "opencode", "nvidia", or "zaya"
   let authFile = getHomeDir() / ".nim_chatbot" / "auth.json"
   if not fileExists(authFile):
     return ""
@@ -132,7 +131,6 @@ proc getModelsFromJsonFallback*(providerUrl: string, providerType: string): Futu
         for m in providerData["models"]:
           foundModels.add(m.getStr())
     
-    # For OpenCode: apply same filter as server.nim
     if providerType == "opencode":
       var filteredModels: seq[string] = @[]
       for mName in foundModels:
@@ -155,38 +153,31 @@ proc getModelsFromJsonFallback*(providerUrl: string, providerType: string): Futu
 
 # Get models list from models.json for a provider
 proc getModelsFromConfig*(providerUrl: string): Future[string] {.async.} =
-  # First try to fetch models directly from the provider's API
   if providerUrl.contains("opencode.ai"):
     var client = newAsyncHttpClient()
     try:
-      # Get API key from auth.json (sync call)
       let apiKey = getApiKey("opencode")
       if apiKey.len == 0:
-        # Fallback to reading from models.json config
         return await getModelsFromJsonFallback(providerUrl, "opencode")
       
-      # OpenCode uses /zen/v1/models endpoint with Bearer auth
       client.headers = newHttpHeaders({
         "Authorization": "Bearer " & apiKey
       })
       let modelsUrl = "https://opencode.ai/zen/v1/models"
       let response = await client.getContent(modelsUrl)
       
-      # Parse and filter models (same logic as server.nim)
       let jsonNode = parseJson(response)
       if jsonNode.hasKey("data"):
         var filteredModels: seq[JsonNode] = @[]
         for model in jsonNode["data"]:
           let mName = model["id"].getStr()
           let lowerName = mName.toLowerAscii()
-          # Filter: only "pickle" or models with "free" in name
           if lowerName.contains("pickle") or lowerName.contains("free"):
             filteredModels.add(model)
         let filtered = %*{ "data": filteredModels }
         return $filtered
       return response
     except:
-      # Fallback to reading from models.json config
       return await getModelsFromJsonFallback(providerUrl, "opencode")
     finally:
       client.close()
@@ -195,7 +186,6 @@ proc getModelsFromConfig*(providerUrl: string): Future[string] {.async.} =
     try:
       let modelsUrl = "https://ollama.com/api/tags"
       let response = await client.getContent(modelsUrl)
-      # Parse Ollama response format and convert to standard format
       try:
         let j = parseJson(response)
         var models: seq[JsonNode] = @[]
@@ -224,7 +214,6 @@ proc getModelsFromConfig*(providerUrl: string): Future[string] {.async.} =
     finally:
       client.close()
   
-  # Fallback to reading from models.json config
   let modelsJsonPath = getModelsJsonPath()
   let statusFile = getCurrentDir() / "my_include" / "status.json"
   if not fileExists(modelsJsonPath):
@@ -257,7 +246,6 @@ proc getModelsFromConfig*(providerUrl: string): Future[string] {.async.} =
         for m in providerData["models"]:
           foundModels.add(m.getStr())
     
-    # Special case for llama.cpp: if no models configured, try to get from status.json
     if providerType == "llamacpp" and foundModels.len == 0:
       if fileExists(statusFile):
         try:
@@ -393,8 +381,6 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
         if parts.len == 2 and parts[0] == "provider":
           let providerUrl = decodeUrlParam(parts[1])
           targetUrl = getChatEndpoint(providerUrl)
-          # Determine which API key to use based on the provider
-          # NOTE: We need to access config variables from config.nim
           if providerUrl.contains("ollama.com"):
             authHeader = "ollama"
           elif providerUrl.contains("opencode.ai"):
@@ -408,7 +394,6 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
     var chatResponse = ""
     try:
       var headers = newHttpHeaders([("Content-Type", "application/json")])
-      # Add auth header for external providers
       if authHeader.len > 0:
         let apiKey = getApiKey(authHeader)
         if apiKey.len > 0:
