@@ -1,8 +1,17 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <link rel="stylesheet" href="miostile.css">
+  <link rel="stylesheet" href="miostile.css?v=20260513">
   <style>
+    #upper_toolbar {
+      margin: 2rem;
+      border:1px solid grey;
+      padding: 0.5rem 0.75rem;
+      border-radius: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
     .message-tool {
       background-color: #f0f0f0;
       border-left: 3px solid #4a9eff;
@@ -18,9 +27,18 @@
   </style>
 </head>
 <body>
+<div id="upper_toolbar">
   <button id="new-chat-btn" class="new-chat-btn" title="New chat" type="button">
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg>
   </button>
+  <button id="provider-btn" type="button">
+    <span id="provider-label">Loading...</span>
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="m6 9 6 6 6-6"></path>
+    </svg>
+  </button>
+  <button id="theme-toggle-btn" class="theme-toggle" type="button">Light</button>
+</div>
   <div role="main" style="position: relative; display: flex; flex-direction: column; min-height: 100%;">
     <div class="chat-messages-wrapper" style="flex: 1; overflow-y: auto;">
       <div>
@@ -114,6 +132,123 @@
       }
     }
 
+    // ============ PROVIDER DROPDOWN ============
+    const PROVIDER_DEFAULT = 'http://localhost:8080';
+    var currentProvider = localStorage.getItem('provider') || PROVIDER_DEFAULT;
+    var availableProviders = [];
+
+    function initProvider() {
+      document.getElementById('provider-label').textContent = currentProvider;
+      fetchProviders();
+    }
+
+    async function fetchProviders() {
+      try {
+        const res = await fetch('http://localhost:8000/api/providers');
+        const data = await res.json();
+        availableProviders = data.providers || [PROVIDER_DEFAULT];
+      } catch (e) {
+        console.error('Failed to fetch providers:', e);
+        availableProviders = [PROVIDER_DEFAULT];
+      }
+    }
+
+    function getProviderUrl(path = '') {
+      return currentProvider + (path.startsWith('/') ? path : '/' + path);
+    }
+
+    (function() {
+      const btn = document.getElementById('provider-btn');
+      const label = document.getElementById('provider-label');
+      let isOpen = false;
+      let dropdownEl = null;
+
+      function createDropdown() {
+        const dropdown = document.createElement('div');
+        dropdown.className = 'provider-dropdown';
+        
+        const btnRect = btn.getBoundingClientRect();
+        dropdown.style.position = 'fixed';
+        dropdown.style.top = (btnRect.bottom + 4) + 'px';
+        dropdown.style.left = btnRect.left + 'px';
+
+        const listDiv = document.createElement('div');
+        listDiv.style.padding = '0.25rem';
+        
+        availableProviders.forEach(provider => {
+          const item = document.createElement('button');
+          item.className = 'dropdown-item';
+          item.style.display = 'flex';
+          item.style.width = '100%';
+          item.style.padding = '0.5rem';
+          item.style.border = 'none';
+          item.style.background = 'none';
+          item.style.cursor = 'pointer';
+          item.style.color = isDark ? '#f9fafb' : '#1f2937';
+          item.style.fontSize = '0.75rem';
+          item.style.borderRadius = '0.25rem';
+          item.textContent = provider;
+          if (provider === currentProvider) {
+            item.style.backgroundColor = isDark ? '#333333' : '#e5e7eb';
+          }
+          item.addEventListener('mouseenter', () => {
+            item.style.backgroundColor = isDark ? '#1a1a1a' : '#f3f4f6';
+          });
+          item.addEventListener('mouseleave', () => {
+            item.style.backgroundColor = provider === currentProvider 
+              ? (isDark ? '#333333' : '#e5e7eb') 
+              : 'transparent';
+          });
+          item.addEventListener('click', () => selectProvider(provider));
+          listDiv.appendChild(item);
+        });
+        
+        dropdown.appendChild(listDiv);
+        return dropdown;
+      }
+
+      function openDropdown() {
+        dropdownEl = createDropdown();
+        document.body.appendChild(dropdownEl);
+        isOpen = true;
+        btn.setAttribute('aria-expanded', 'true');
+      }
+
+      function closeDropdown() {
+        if (dropdownEl) {
+          dropdownEl.remove();
+          dropdownEl = null;
+        }
+        isOpen = false;
+        btn.setAttribute('aria-expanded', 'false');
+      }
+
+      function selectProvider(provider) {
+        currentProvider = provider;
+        localStorage.setItem('provider', provider);
+        label.textContent = provider;
+        closeDropdown();
+        addChatMessage('system', 'Provider changed to: ' + provider);
+        // Fetch models for new provider
+        window.dispatchEvent(new CustomEvent('provider-changed', { detail: provider }));
+      }
+
+      function handleClick(e) {
+        if (!dropdownEl?.contains(e.target) && !btn.contains(e.target)) {
+          closeDropdown();
+        }
+      }
+
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (isOpen) closeDropdown();
+        else openDropdown();
+      });
+
+      document.addEventListener('click', handleClick);
+      initProvider();
+    })();
+
     // Fetch tools on page load
     fetchTools();
 
@@ -149,6 +284,7 @@
       }
     }
 
+    // Theme toggle
     function toggleTheme() {
       isDark = !isDark;
       if (isDark) {
@@ -167,23 +303,14 @@
         items.forEach(item => item.style.color = color);
         names.forEach(name => name.style.color = color);
       }
-    }
-
-    // Create theme toggle button
-    function createThemeButton() {
-      const btn = document.createElement('button');
-      btn.className = 'theme-toggle';
-      btn.textContent = isDark ? 'Light' : 'Dark';
-      btn.addEventListener('click', () => {
-        toggleTheme();
-        btn.textContent = isDark ? 'Light' : 'Dark';
-      });
-      document.body.appendChild(btn);
+      // Update button text
+      const themeBtn = document.getElementById('theme-toggle-btn');
+      if (themeBtn) themeBtn.textContent = isDark ? 'Light' : 'Dark';
     }
 
     // Initialize
     initTheme();
-    createThemeButton();
+    document.getElementById('theme-toggle-btn')?.addEventListener('click', toggleTheme);
 
     // ============ FILE UPLOAD HANDLING ============
     (function() {
@@ -348,7 +475,7 @@
         let toolCallsCollected = [];
 
         try {
-          const response = await fetch('http://localhost:8080/v1/chat/completions', {
+          const response = await fetch('http://localhost:8000/v1/chat/completions?provider=' + currentProvider, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -517,7 +644,8 @@
       async function fetchModels() {
         try {
           label.textContent = 'Loading...';
-          const res = await fetch('http://localhost:8080/models');
+          // Pass provider WITHOUT encoding (server will handle it)
+          const res = await fetch(`http://localhost:8000/api/models?provider=${currentProvider}`);
           const data = await res.json();
           models = data.data || [];
           modelsLoaded = true;
@@ -658,8 +786,8 @@
         addChatMessage('system', 'Loading model: ' + modelId + '...');
 
         try {
-          // Use test content instead of empty string to avoid 501
-          const response = await fetch('http://localhost:8080/embedding', {
+          // Use proxy endpoint to avoid CORS
+          const response = await fetch('http://localhost:8000/v1/embeddings', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ content: 'test', model: modelId })
@@ -696,6 +824,15 @@
           if (!modelsLoaded) fetchModels().then(openDropdown);
           else openDropdown();
         }
+      });
+
+      // Listen for provider changes
+      window.addEventListener('provider-changed', async () => {
+        modelsLoaded = false;
+        selectedModel = null;
+        currentModel = null;
+        models = [];
+        await fetchModels();
       });
     })();
   </script>

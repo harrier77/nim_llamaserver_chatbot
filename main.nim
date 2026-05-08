@@ -14,6 +14,7 @@ import os, asyncdispatch, times
 import illwill
 import config   # constants, global variables, types
 import server   # server and model management
+import providers  # external provider config loaders
 import input    # keyboard input handling
 import ui       # TUI rendering
 import webui/httpdserver  # WebUI HTTP server
@@ -86,16 +87,16 @@ proc main() =
   lastServerCheck = epochTime()
 
   # Load OpenCode config from ~/.nim_chatbot/
-  server.loadOpenCodeConfig()
+  providers.loadOpenCodeConfig()
 
   # Load Ollama config from ~/.nim_chatbot/
-  server.loadOllamaConfig()
+  providers.loadOllamaConfig()
 
   # Load Nvidia config from ~/.nim_chatbot/
-  server.loadNvidiaConfig()
+  providers.loadNvidiaConfig()
 
   # Load Zaya config from ~/.nim_chatbot/
-  server.loadZayaConfig()
+  providers.loadZayaConfig()
 
   # --- Load previous state ---
   server.loadModelStatus()
