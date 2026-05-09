@@ -13,6 +13,8 @@
 
 import os, strutils, json, unicode
 import system_prompt
+import editor
+export editor
 
 # ============================================================
 # 1. Layout and UI constants
@@ -140,7 +142,7 @@ var
   outputLines*: seq[string] = @[]
 
   # --- Input ---
-  currentInput*: string = ""
+  inputEditor*: Editor = initEditor()
   inputBuffer*: string = ""            ## Temporary buffer for incoming characters (paste support)
   lastInputCharTime*: float = 0.0       ## Timestamp of last character received
   scrollOffset*: int = 0
@@ -183,6 +185,7 @@ proc resetConversation*() =
   aiResponseBuffer = ""
   scrollOffset = 0
   isProcessing = false
+  inputEditor.setText("")
 
 proc countRunes*(s: string): int =
   ## Returns the number of Unicode codepoints in s.

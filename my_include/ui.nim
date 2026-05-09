@@ -305,7 +305,8 @@ proc drawChatScreen*(tb: var TerminalBuffer, w, h: int) =
   # Space needed for the slash menu if visible
   let slashMenuSpace = block:
     if showingSlashMenu and state == Chatting:
-      let filtered = filterSlashCommands(currentInput[1 .. ^1])
+      let text = inputEditor.getText()
+      let filtered = filterSlashCommands(if text.len > 0: text[1 .. ^1] else: "")
       min(filtered.len, SlashMenuHeight) + 2  # +2 for border lines
     else:
       0
@@ -391,41 +392,20 @@ proc drawChatScreen*(tb: var TerminalBuffer, w, h: int) =
   tb.setForegroundColor(fgWhite, bright = true)
   tb.write(0, inputY + 2, PromptChar)
 
-  # Current input text (with wrap for long lines)
+  # Current input text using inputEditor
   if isProcessing:
     tb.setForegroundColor(fgWhite)
     tb.write(PromptChar.len, inputY + 2, "(processing...)")
   else:
-    tb.setForegroundColor(fgWhite)
-    # Wrap input text to fit terminal width (including inputBuffer)
-    let inputMaxWidth = w - PromptChar.len - 1
-    let fullInput = currentInput & inputBuffer
-    let wrappedLines = config.wrapText(fullInput, inputMaxWidth)
-    for i, line in wrappedLines:
-      if i < InputBarHeight - 2:
-        tb.write(PromptChar.len, inputY + 2 + i, line)
-
-  # Block cursor (on last line of wrapped input + buffer)
-  if not isProcessing:
-    let inputMaxWidth = w - PromptChar.len - 1
-    let fullInput = currentInput & inputBuffer
-    let wrappedLines = config.wrapText(fullInput, inputMaxWidth)
-    var cursorY = inputY + 2
-    var cursorX = PromptChar.len
-    if wrappedLines.len > 0:
-      cursorX = PromptChar.len + countRunes(wrappedLines[^1])
-      cursorY = inputY + 2 + (wrappedLines.len - 1)
-      if cursorY >= inputY + InputBarHeight - 1:
-        cursorY = inputY + InputBarHeight - 2
-    if cursorX < w:
-      tb.setBackgroundColor(bgYellow)
-      tb.setForegroundColor(fgBlack)
-      tb.write(cursorX, cursorY, " ")
-      tb.setBackgroundColor(bgNone)
+    # Use the new drawEditorArea from editor.nim
+    # Width is w - PromptChar.len, height is InputBarHeight - 2
+    inputEditor.drawEditorArea(tb, PromptChar.len, inputY + 2,
+                               w - PromptChar.len - 1, InputBarHeight - 2,
+                               focused = not isProcessing, drawBorder = false)
 
   # Bottom delimiter line
   tb.setForegroundColor(fgBlue, bright = true)
-  tb.write(0, inputY + 3, strutils.repeat("_", w))
+  tb.write(0, inputY + InputBarHeight - 1, strutils.repeat("_", w))
 
   # --- Slash command menu (if active) ---
   if showingSlashMenu and state == Chatting:
@@ -446,7 +426,8 @@ proc drawSlashMenu*(tb: var TerminalBuffer, w, h, inputY: int) =
   ## Shows filtered commands with navigation arrows.
   ##
   ## EDIT: to change the slash menu layout, modify here.
-  let filtered = filterSlashCommands(currentInput[1 .. ^1])
+  let text = inputEditor.getText()
+  let filtered = filterSlashCommands(if text.len > 0: text[1 .. ^1] else: "")
   if filtered.len == 0: return
 
   let menuY = inputY + 4  # One row below the bottom delimiter
