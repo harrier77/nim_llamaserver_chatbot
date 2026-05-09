@@ -16,10 +16,22 @@
 import illwill, strutils, unicode, strformat
 
 # ============================================================
-# Editor state
+# Types
 # ============================================================
 
 type
+  TextChunk* = object
+    ## A chunk of a logical line after word-wrapping.
+    text*: string        # The visible text of this chunk
+    startIndex*: int     # Byte offset in original logical line
+    endIndex*: int       # Byte offset past the end
+
+  VisualLine* = object
+    ## Maps a visual (display) line to a logical line.
+    logicalLine*: int    # Index into Editor.lines
+    startCol*: int       # Byte offset start in logical line
+    length*: int         # Byte length of this visual segment
+
   Editor* = ref object
     ## Core text editor state.
     ##
@@ -28,11 +40,17 @@ type
     ## cursorCol:  Byte offset in the logical line (0-based).
     ## preferredCol: Sticky column for vertical navigation
     ##               (nil = no sticky column).
-    ## scrollOffset: How many visual lines are scrolled off the top.
     lines*: seq[string]
     cursorLine*: int
     cursorCol*: int
     preferredCol*: int
+    # Differential update state
+    previousLayoutLines*: seq[string]
+    previousCursorX*: int
+    previousCursorY*: int
+    # Cache for visual lines
+    cachedVisualLines*: seq[VisualLine]
+    cachedWidth*: int
 
 # ============================================================
 # Initialisation
@@ -45,6 +63,10 @@ proc initEditor*(): Editor =
   result.cursorLine = 0
   result.cursorCol = 0
   result.preferredCol = -1  # -1 = not set
+  result.previousLayoutLines = @[]
+  result.previousCursorX = -1
+  result.previousCursorY = -1
+  result.cachedWidth = -1
 
 # ============================================================
 # Line management
@@ -56,6 +78,9 @@ proc currentLine*(ed: Editor): string =
     ed.lines[ed.cursorLine]
   else:
     ""
+
+proc invalidateCache(ed: Editor) =
+  ed.cachedWidth = -1
 
 # ============================================================
 # Text insertion
@@ -71,6 +96,7 @@ proc insertChar*(ed: Editor, ch: string) =
   ed.lines[ed.cursorLine] = before & ch & after
   ed.cursorCol += ch.len
   ed.preferredCol = -1  # Reset sticky column
+  ed.invalidateCache()
 
 # ============================================================
 # Backspace
@@ -103,6 +129,7 @@ proc handleBackspace*(ed: Editor) =
     ed.cursorLine -= 1
     ed.cursorCol = prev.len
   ed.preferredCol = -1
+  ed.invalidateCache()
 
 # ============================================================
 # Delete forward
@@ -128,6 +155,7 @@ proc handleDelete*(ed: Editor) =
     ed.lines[ed.cursorLine] = line & next
     ed.lines.delete(ed.cursorLine + 1)
   ed.preferredCol = -1
+  ed.invalidateCache()
 
 # ============================================================
 # New line (Enter)
@@ -143,17 +171,13 @@ proc addNewLine*(ed: Editor) =
   ed.cursorLine += 1
   ed.cursorCol = 0
   ed.preferredCol = -1
+  ed.invalidateCache()
 
 # ============================================================
 # Word-wrapping utilities
 # ============================================================
 
-type
-  TextChunk* = object
-    ## A chunk of a logical line after word-wrapping.
-    text*: string        # The visible text of this chunk
-    startIndex*: int     # Byte offset in original logical line
-    endIndex*: int       # Byte offset past the end
+# TextChunk already defined at top
 
 proc wrapLine*(line: string, width: int): seq[TextChunk] =
   ## Word-wraps a single logical line into visual chunks.
@@ -215,12 +239,7 @@ proc wrapLine*(line: string, width: int): seq[TextChunk] =
 # Visual line map (pi TUI-inspired)
 # ============================================================
 
-type
-  VisualLine* = object
-    ## Maps a visual (display) line to a logical line.
-    logicalLine*: int    # Index into Editor.lines
-    startCol*: int       # Byte offset start in logical line
-    length*: int         # Byte length of this visual segment
+# VisualLine already defined at top
 
 proc buildVisualLineMap*(ed: Editor, width: int): seq[VisualLine] =
   ## Builds a map from visual lines to logical lines.
@@ -241,6 +260,12 @@ proc buildVisualLineMap*(ed: Editor, width: int): seq[VisualLine] =
           startCol: chunk.startIndex,
           length: chunk.endIndex - chunk.startIndex
         ))
+
+proc getVisualLines*(ed: Editor, width: int): seq[VisualLine] =
+  if ed.cachedWidth != width:
+    ed.cachedVisualLines = ed.buildVisualLineMap(width)
+    ed.cachedWidth = width
+  return ed.cachedVisualLines
 
 # ============================================================
 # Find visual line at cursor position
@@ -263,6 +288,52 @@ proc findCurrentVisualLine*(ed: Editor,
                             visualLines: seq[VisualLine]): int =
   ## Returns the visual line index at the current cursor position.
   findVisualLineAt(visualLines, ed.cursorLine, ed.cursorCol)
+
+# ============================================================
+# Layout Calculation
+# ============================================================
+
+proc layoutText*(ed: Editor, width, height: int): (seq[string], int, int) =
+  ## Returns the visual lines for the current viewport and the relative cursor position.
+  let visualLines = ed.getVisualLines(width)
+  
+  if visualLines.len == 0:
+    var emptyLines = newSeq[string](height)
+    for i in 0 ..< height: emptyLines[i] = repeat(" ", width)
+    return (emptyLines, 0, 0)
+    
+  # Compute scroll offset
+  let cursorVL = ed.findCurrentVisualLine(visualLines)
+  var scrollOffset = 0
+  if cursorVL >= height:
+    scrollOffset = cursorVL - height + 1
+  
+  var viewLines: seq[string] = @[]
+  var relCursorX = 0
+  var relCursorY = 0
+  
+  for i in 0 ..< height:
+    let vi = scrollOffset + i
+    if vi < visualLines.len:
+      let vl = visualLines[vi]
+      let logicalLine = ed.lines[vl.logicalLine]
+      let segment = if vl.length > 0:
+        logicalLine[vl.startCol ..< vl.startCol + vl.length]
+      else:
+        ""
+      
+      let runes = toRunes(segment)
+      let displayLine = segment & repeat(" ", max(0, width - runes.len))
+      viewLines.add(displayLine)
+      
+      if vi == cursorVL:
+        relCursorY = i
+        let segmentBeforeCursor = logicalLine[vl.startCol ..< ed.cursorCol]
+        relCursorX = toRunes(segmentBeforeCursor).len
+    else:
+      viewLines.add(repeat(" ", width))
+      
+  return (viewLines, relCursorX, relCursorY)
 
 # ============================================================
 # Vertical cursor movement (pi TUI-inspired sticky column)
@@ -324,7 +395,7 @@ proc moveCursor*(ed: Editor, deltaLine: int, deltaCol: int, width: int) =
   ## deltaLine: vertical movement (+1 = down, -1 = up)
   ## deltaCol:  horizontal movement (+1 = right, -1 = left)
   ## width:     terminal content width (for visual line calculation)
-  let visualLines = ed.buildVisualLineMap(width)
+  let visualLines = ed.getVisualLines(width)
   let currentVL = ed.findCurrentVisualLine(visualLines)
 
   if deltaLine != 0:
@@ -389,79 +460,43 @@ proc drawEditorArea*(ed: Editor, tb: var TerminalBuffer, x, y, w, h: int,
   let contentWidth = if drawBorder: max(1, w - 2) else: w
   let contentHeight = if drawBorder: max(1, h - 2) else: h
 
-  # --- Build visual lines ---
-  let visualLines = ed.buildVisualLineMap(contentWidth)
-
-  if visualLines.len == 0:
-    # Just draw empty space/border
-    if drawBorder:
-      tb.setForegroundColor(fgCyan)
-      tb.drawRect(x, y, x + w - 1, y + h - 1)
-    return
-
-  # --- Compute scroll offset to keep cursor visible ---
-  # We use the editor's internal logic but adapted for this area's height
-  var localScrollOffset = 0
-  let cursorVL = ed.findCurrentVisualLine(visualLines)
-  
-  if cursorVL >= contentHeight:
-    localScrollOffset = cursorVL - contentHeight + 1
+  # Get current layout
+  let (currentLines, curX, curY) = ed.layoutText(contentWidth, contentHeight)
 
   # --- Draw border ---
   if drawBorder:
     tb.setForegroundColor(if focused: fgCyan else: fgBlue)
     tb.drawRect(x, y, x + w - 1, y + h - 1)
 
-  # --- Draw content lines ---
-  for i in 0 ..< contentHeight:
-    let curY = contentY + i
-    let vi = localScrollOffset + i
+  # --- Draw content lines with differential update ---
+  for i in 0 ..< currentLines.len:
+    let curLineText = currentLines[i]
+    let prevLineText = if i < ed.previousLayoutLines.len: ed.previousLayoutLines[i] else: ""
+    
+    let isCursorLine = focused and i == curY
+    let wasCursorLine = focused and i == ed.previousCursorY
 
-    if vi < visualLines.len:
-      let vl = visualLines[vi]
-      let logicalLine = ed.lines[vl.logicalLine]
-      let segment = if vl.length > 0:
-        logicalLine[vl.startCol ..< vl.startCol + vl.length]
-      else:
-        ""
-
-      let hasCursor = focused and
-                       vl.logicalLine == ed.cursorLine and
-                       ed.cursorCol >= vl.startCol and
-                       ed.cursorCol <= vl.startCol + vl.length
-
+    # Force redraw if line text changed, or it is/was the cursor line
+    if curLineText != prevLineText or isCursorLine or wasCursorLine:
+      let curYPos = contentY + i
       tb.setForegroundColor(fgWhite)
-
-      if hasCursor:
-        # Calculate cursor position within this visual line (character-based)
-        let segmentBeforeCursor = logicalLine[vl.startCol ..< ed.cursorCol]
-        let localCol = toRunes(segmentBeforeCursor).len
-
-        # Full line content: segment padded to contentWidth
-        let segmentLen = toRunes(segment).len
-        let displayLine = segment & repeat(" ", max(0, contentWidth - segmentLen))
-
-        tb.write(contentX, curY, displayLine)
-
-        # Overlay cursor character in reverse video
-        if ed.cursorCol < vl.startCol + vl.length:
-          let after = logicalLine[ed.cursorCol .. ^1]
-          let runesAfter = toRunes(after)
-          let cursorChar = if runesAfter.len > 0: $runesAfter[0] else: " "
-          tb.setStyle({styleReverse})
-          tb.write(contentX + localCol, curY, cursorChar)
-          tb.setStyle({})
-        else:
-          tb.setStyle({styleReverse})
-          tb.write(contentX + localCol, curY, " ")
-          tb.setStyle({})
+      
+      if isCursorLine:
+        # Draw line and overlay cursor
+        tb.write(contentX, curYPos, curLineText)
+        
+        let runes = toRunes(curLineText)
+        tb.setStyle({styleReverse})
+        let cursorChar = if curX < runes.len: $runes[curX] else: " "
+        tb.write(contentX + curX, curYPos, cursorChar)
+        tb.setStyle({})
       else:
-        let segmentLen = toRunes(segment).len
-        let display = segment & repeat(" ", max(0, contentWidth - segmentLen))
-        tb.write(contentX, curY, display)
-    else:
-      # Clear remaining lines in the area
-      tb.write(contentX, curY, repeat(" ", contentWidth))
+        tb.write(contentX, curYPos, curLineText)
+
+  # Update previous state for next call
+  ed.previousLayoutLines = currentLines
+  ed.previousCursorX = curX
+  ed.previousCursorY = curY
 
 proc drawEditor*(ed: Editor, tb: var TerminalBuffer) =
   ## Renders the editor content into the illwill terminal buffer (legacy full-screen).
@@ -495,3 +530,4 @@ proc setText*(ed: Editor, text: string) =
   let lineLen = ed.currentLine().len
   ed.cursorCol = min(ed.cursorCol, lineLen)
   ed.preferredCol = -1
+  ed.invalidateCache()
