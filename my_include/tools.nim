@@ -45,27 +45,39 @@ let ToolsSchema* = %*[
       }
     }
   },
-  {
-    "type": "function",
-    "function": {
-      "name": "readDelibera",
-      "description": "Read a delibera file from the summary directory. Automatically composes filename as delibera_XXXX_YYYY.txt where XXXX is 4-digit zero-padded number and YYYY is the year.",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "number": {
-            "type": "string",
-            "description": "The delibera number (e.g., '1' becomes '0001')"
-          },
-          "year": {
-            "type": "string",
-            "description": "The year of the delibera (e.g., '2026')"
-          }
-        },
-        "required": ["number", "year"]
-      }
-    }
-  }
+   {
+     "type": "function",
+     "function": {
+       "name": "readDelibera",
+       "description": "Read a delibera file from the summary directory. Automatically composes filename as delibera_XXXX_YYYY.txt where XXXX is 4-digit zero-padded number and YYYY is the year.",
+       "parameters": {
+         "type": "object",
+         "properties": {
+           "number": {
+             "type": "string",
+             "description": "The delibera number (e.g., '1' becomes '0001')"
+           },
+           "year": {
+             "type": "string",
+             "description": "The year of the delibera (e.g., '2026')"
+           }
+         },
+         "required": ["number", "year"]
+       }
+     }
+   },
+   {
+     "type": "function",
+     "function": {
+       "name": "listDelibs",
+       "description": "List all delibera files in the delibere directory.",
+       "parameters": {
+         "type": "object",
+         "properties": {},
+         "required": []
+       }
+     }
+   }
 ]
 
 proc readTool*(args: JsonNode): string =
@@ -146,6 +158,11 @@ proc cleanDeliberaText*(text: string): string =
     return text[pos..<text.len]
   return text
 
+proc listDelibs*(args: JsonNode): string =
+  const delibsPath = "C:/Users/pr30565/Desktop/python/flask_root/principale/pareri/delibere/testi"
+  let bashArgs = %*{"command": "ls '" & delibsPath & "'"}
+  return bashTool(bashArgs)
+
 proc readDelibera*(args: JsonNode): string =
     var path_for_summary="C:/Users/pr30565/Desktop/python/flask_root/principale/pareri/delibere/testi"
     
@@ -208,8 +225,9 @@ proc readDelibera*(args: JsonNode): string =
       return $(%*{"error": e.msg})
 
 proc executeTool*(name: string, args: JsonNode): string =
-  case name
-  of "read": return readTool(args)
-  of "bash": return bashTool(args)
-  of "readDelibera": return readDelibera(args)
-  else: return $(%*{"error": "Unknown tool: " & name})
+ case name
+ of "read": return readTool(args)
+ of "bash": return bashTool(args)
+ of "readDelibera": return readDelibera(args)
+ of "listDelibs": return listDelibs(args)
+ else: return $(%*{"error": "Unknown tool: " & name})
