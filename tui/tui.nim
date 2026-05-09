@@ -60,6 +60,7 @@ proc exitProc() {.noconv.} =
 when isMainModule:
   # --- Initialise illwill ---
   illwillInit(fullScreen = true, mouse = false)
+  hideCursor()
   setControlCHook(exitProc)
 
   # --- Create editor ---

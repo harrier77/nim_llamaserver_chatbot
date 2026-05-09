@@ -438,19 +438,21 @@ proc drawEditor*(ed: Editor, tb: var TerminalBuffer) =
       tb.setForegroundColor(fgWhite)
 
       if hasCursor:
-        # Calculate cursor position within this visual line
-        let localCol = ed.cursorCol - vl.startCol
+        # Calculate cursor position within this visual line (character-based)
+        let segmentBeforeCursor = logicalLine[vl.startCol ..< ed.cursorCol]
+        let localCol = toRunes(segmentBeforeCursor).len
 
-        # Full line content: segment padded to contentWidth
-        let fullLine = segment & repeat(" ", max(0, contentWidth - segment.len))
+        # Full line content: segment padded to contentWidth (character-based padding)
+        let segmentLen = toRunes(segment).len
+        let fullLine = segment & repeat(" ", max(0, contentWidth - segmentLen))
 
         tb.write(0, y, "│")
         tb.write(1, y, fullLine)
 
         # Overlay cursor character in reverse video at the correct position
-        if localCol < segment.len:
+        if ed.cursorCol < vl.startCol + vl.length:
           # Cursor is on a character
-          let after = segment[localCol .. ^1]
+          let after = logicalLine[ed.cursorCol .. ^1]
           let runesAfter = toRunes(after)
           let cursorChar = if runesAfter.len > 0: $runesAfter[0] else: " "
           tb.setStyle({styleReverse})
@@ -465,7 +467,8 @@ proc drawEditor*(ed: Editor, tb: var TerminalBuffer) =
         tb.write(w - 1, y, "│")
       else:
         # Normal line (no cursor)
-        let display = segment & repeat(" ", contentWidth - segment.len)
+        let segmentLen = toRunes(segment).len
+        let display = segment & repeat(" ", max(0, contentWidth - segmentLen))
         tb.write(0, y, "│")
         tb.write(1, y, display)
         tb.write(w - 1, y, "│")
