@@ -32,6 +32,12 @@ type
     startCol*: int       # Byte offset start in logical line
     length*: int         # Byte length of this visual segment
 
+  LayoutLine* = object
+    ## Represents a visual line with cursor information (pi TUI-inspired).
+    text*: string        # The visible text of this line
+    hasCursor*: bool      # Whether the cursor is on this line
+    cursorPos*: int       # Cursor position within the line (if hasCursor is true)
+
   Editor* = ref object
     ## Core text editor state.
     ##
@@ -39,16 +45,16 @@ type
     ## cursorLine: Index into `lines` (0-based).
     ## cursorCol:  Byte offset in the logical line (0-based).
     ## preferredCol: Sticky column for vertical navigation
-    ##               (nil = no sticky column).
+    ##               (nil = -1).
     lines*: seq[string]
     cursorLine*: int
     cursorCol*: int
     preferredCol*: int
     # Differential update state
-    previousLayoutLines*: seq[string]
+    previousLayoutLines*: seq[LayoutLine]
     previousCursorX*: int
     previousCursorY*: int
-    # Cache for visual lines
+  # Cache for visual lines
     cachedVisualLines*: seq[VisualLine]
     cachedWidth*: int
 
@@ -66,6 +72,7 @@ proc initEditor*(): Editor =
   result.previousLayoutLines = @[]
   result.previousCursorX = -1
   result.previousCursorY = -1
+  result.cachedVisualLines = @[]  # Inizializzato come sequenza vuota
   result.cachedWidth = -1
 
 # ============================================================
@@ -80,6 +87,7 @@ proc currentLine*(ed: Editor): string =
     ""
 
 proc invalidateCache(ed: Editor) =
+  ed.cachedVisualLines = @[]  # Reset to empty sequence
   ed.cachedWidth = -1
 
 # ============================================================
@@ -293,25 +301,26 @@ proc findCurrentVisualLine*(ed: Editor,
 # Layout Calculation
 # ============================================================
 
-proc layoutText*(ed: Editor, width, height: int): (seq[string], int, int) =
+proc layoutText*(ed: Editor, width, height: int): (seq[LayoutLine], int, int) =
   ## Returns the visual lines for the current viewport and the relative cursor position.
+  ## This is the core layout calculation, inspired by pi's editor.ts → layoutText().
   let visualLines = ed.getVisualLines(width)
-  
+
   if visualLines.len == 0:
-    var emptyLines = newSeq[string](height)
-    for i in 0 ..< height: emptyLines[i] = repeat(" ", width)
+    var emptyLines = newSeq[LayoutLine](height)
+    for i in 0 ..< height: emptyLines[i] = LayoutLine(text: repeat(" ", width), hasCursor: false, cursorPos: -1)
     return (emptyLines, 0, 0)
-    
-  # Compute scroll offset
+
+  # Compute scroll offset to keep cursor visible
   let cursorVL = ed.findCurrentVisualLine(visualLines)
   var scrollOffset = 0
   if cursorVL >= height:
     scrollOffset = cursorVL - height + 1
-  
-  var viewLines: seq[string] = @[]
+
+  var viewLines: seq[LayoutLine] = @[]
   var relCursorX = 0
   var relCursorY = 0
-  
+
   for i in 0 ..< height:
     let vi = scrollOffset + i
     if vi < visualLines.len:
@@ -321,18 +330,24 @@ proc layoutText*(ed: Editor, width, height: int): (seq[string], int, int) =
         logicalLine[vl.startCol ..< vl.startCol + vl.length]
       else:
         ""
-      
+
       let runes = toRunes(segment)
       let displayLine = segment & repeat(" ", max(0, width - runes.len))
-      viewLines.add(displayLine)
-      
+
+      # Check if cursor is on this visual line
+      var hasCursor = false
+      var cursorPos = -1
       if vi == cursorVL:
-        relCursorY = i
+        hasCursor = true
         let segmentBeforeCursor = logicalLine[vl.startCol ..< ed.cursorCol]
-        relCursorX = toRunes(segmentBeforeCursor).len
+        cursorPos = toRunes(segmentBeforeCursor).len
+        # Clamp cursor position to avoid overflow
+        cursorPos = min(cursorPos, displayLine.len)
+
+      viewLines.add(LayoutLine(text: displayLine, hasCursor: hasCursor, cursorPos: cursorPos))
     else:
-      viewLines.add(repeat(" ", width))
-      
+      viewLines.add(LayoutLine(text: repeat(" ", width), hasCursor: false, cursorPos: -1))
+
   return (viewLines, relCursorX, relCursorY)
 
 # ============================================================
@@ -460,48 +475,58 @@ proc drawEditorArea*(ed: Editor, tb: var TerminalBuffer, x, y, w, h: int,
   let contentWidth = if drawBorder: max(1, w - 2) else: w
   let contentHeight = if drawBorder: max(1, h - 2) else: h
 
-  # Get current layout
+  # --- Calcola il layout attuale ---
   let (currentLines, curX, curY) = ed.layoutText(contentWidth, contentHeight)
 
-  # --- Draw border ---
+  # --- Disegna il bordo ---
   if drawBorder:
     tb.setForegroundColor(if focused: fgCyan else: fgBlue)
     tb.drawRect(x, y, x + w - 1, y + h - 1)
 
-  # --- Draw content lines with differential update ---
-  for i in 0 ..< currentLines.len:
-    let curLineText = currentLines[i]
-    let prevLineText = if i < ed.previousLayoutLines.len: ed.previousLayoutLines[i] else: ""
+  # --- Confronto con lo stato precedente per il differential update ---
+  var needsRedraw = false
+  for i in 0 ..< contentHeight:
+    let currentLine = if i < currentLines.len: currentLines[i] else: LayoutLine(text: repeat(" ", contentWidth), hasCursor: false, cursorPos: -1)
+    let previousLine = if i < ed.previousLayoutLines.len: ed.previousLayoutLines[i] else: LayoutLine(text: repeat(" ", contentWidth), hasCursor: false, cursorPos: -1)
     
-    let isCursorLine = focused and i == curY
-    let wasCursorLine = focused and i == ed.previousCursorY
+    # Determina se la riga deve essere ridisegnata
+    let shouldRedraw =
+      currentLine.text != previousLine.text or
+      (currentLine.hasCursor and (currentLine.cursorPos != previousLine.cursorPos)) or
+      (previousLine.hasCursor and (curX != previousLine.cursorPos)) or
+      (currentLine.hasCursor and i != curY) or
+      (previousLine.hasCursor and i != ed.previousCursorY)
 
-    # Force redraw if line text changed, or it is/was the cursor line
-    if curLineText != prevLineText or isCursorLine or wasCursorLine:
+    if shouldRedraw:
+      needsRedraw = true
       let curYPos = contentY + i
       tb.setForegroundColor(fgWhite)
-      
-      if isCursorLine:
-        # Draw line and overlay cursor
-        tb.write(contentX, curYPos, curLineText)
-        
-        let runes = toRunes(curLineText)
-        tb.setStyle({styleReverse})
-        let cursorChar = if curX < runes.len: $runes[curX] else: " "
-        tb.write(contentX + curX, curYPos, cursorChar)
-        tb.setStyle({})
-      else:
-        tb.write(contentX, curYPos, curLineText)
 
-  # Update previous state for next call
-  ed.previousLayoutLines = currentLines
-  ed.previousCursorX = curX
-  ed.previousCursorY = curY
+      if currentLine.hasCursor:
+        # Disegna il testo e il cursore
+        tb.write(contentX, curYPos, currentLine.text)
+        if currentLine.cursorPos >= 0 and currentLine.cursorPos < currentLine.text.len:
+          tb.setStyle({styleReverse})
+          let cursorChar = currentLine.text[currentLine.cursorPos .. currentLine.cursorPos]
+          tb.write(contentX + currentLine.cursorPos, curYPos, cursorChar)
+          tb.setStyle({})
+        else:
+          tb.setStyle({styleReverse})
+          tb.write(contentX + min(currentLine.cursorPos, currentLine.text.len), curYPos, " ")
+          tb.setStyle({})
+      else:
+        tb.write(contentX, curYPos, currentLine.text)
+
+  # Aggiorna lo stato precedente solo se almeno una riga è stata ridisegnata
+  if needsRedraw:
+    ed.previousLayoutLines = currentLines
+    ed.previousCursorX = curX
+    ed.previousCursorY = curY
 
 proc drawEditor*(ed: Editor, tb: var TerminalBuffer) =
   ## Renders the editor content into the illwill terminal buffer (legacy full-screen).
   ed.drawEditorArea(tb, 0, 0, tb.width, tb.height - 1, focused = true, drawBorder = true)
-  
+
   # Draw legacy status bar
   let statusY = tb.height - 1
   if statusY >= 0:
