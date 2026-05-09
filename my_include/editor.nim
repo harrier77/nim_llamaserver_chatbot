@@ -5,15 +5,65 @@
 # - Editor state management (lines, cursor, scroll)
 # - Text manipulation (insert, delete, newline)
 # - Arrow key navigation with word-wrap awareness
-# - Rendering to an illwill TerminalBuffer
+# - Rendering (returns seq[string] with ANSI escapes)
 #
 # Inspired by pi-coding-agent's editor-component.ts / editor.ts
 #   https://github.com/earendil-works/pi
 #
-# Dependencies: illwill, strutils, unicode
+# Dependencies: strutils, unicode, strformat
+#   illwill still used by drawEditorArea (legacy)
 # ============================================================
 
-import illwill, strutils, unicode, strformat
+import strutils, unicode
+import illwill  # only for drawEditorArea (legacy TerminalBuffer)
+
+# ============================================================
+# Constants (pi TUI-inspired)
+# ============================================================
+
+const CURSOR_MARKER = "\x1b_pi:c\x07"
+  ## Zero-width marker emitted at cursor position.
+  ## The TUI framework finds and strips this, then positions
+  ## the hardware cursor there (IME support).
+  ## Equivalent to pi's CURSOR_MARKER in tui.ts.
+
+# ============================================================
+# Helpers
+# ============================================================
+
+proc visibleWidth(s: string): int =
+  ## Returns the visible width of a string, ignoring ANSI escape codes.
+  ## Like pi's visibleWidth() in utils.ts.
+  result = 0
+  var i = 0
+  while i < s.len:
+    if s[i] == '\x1b':
+      # Skip ANSI escape sequence: ESC [ ... m
+      if i + 1 < s.len and s[i+1] == '[':
+        i += 2
+        while i < s.len and s[i] != 'm':
+          i += 1
+        if i < s.len: i += 1  # skip 'm'
+        continue
+      else:
+        # Skip other ESC sequences (like CURSOR_MARKER "\x1b_pi:c\x07")
+        i += 1
+        while i < s.len and s[i] != '\x07':
+          i += 1
+        if i < s.len: i += 1
+        continue
+    elif s[i] == '\r' or s[i] == '\n':
+      i += 1
+      continue
+    else:
+      # Count one column per rune
+      let runes = toRunes($s[i])
+      if runes.len > 0:
+        let r = runes[0]
+        if r.int > 0x1F:
+          result += 1
+        # Could add wide char detection (CJK) here
+      i += 1
 
 # ============================================================
 # Types
@@ -50,10 +100,7 @@ type
     cursorLine*: int
     cursorCol*: int
     preferredCol*: int
-    # Differential update state
-    previousLayoutLines*: seq[LayoutLine]
-    previousCursorX*: int
-    previousCursorY*: int
+    scrollOffset*: int
   # Cache for visual lines
     cachedVisualLines*: seq[VisualLine]
     cachedWidth*: int
@@ -69,9 +116,7 @@ proc initEditor*(): Editor =
   result.cursorLine = 0
   result.cursorCol = 0
   result.preferredCol = -1  # -1 = not set
-  result.previousLayoutLines = @[]
-  result.previousCursorX = -1
-  result.previousCursorY = -1
+  result.scrollOffset = 0
   result.cachedVisualLines = @[]  # Inizializzato come sequenza vuota
   result.cachedWidth = -1
 
@@ -460,74 +505,138 @@ proc moveToLineEnd*(ed: Editor) =
   ed.preferredCol = -1
 
 # ============================================================
-# Rendering (to illwill TerminalBuffer)
+# Rendering (returns seq[string] with ANSI escapes — pi TUI-style)
+# ============================================================
+
+proc render*(ed: Editor, width, height: int, focused: bool = true,
+             drawBorder: bool = true): seq[string] =
+  ## Renders the editor to a sequence of ANSI-formatted lines.
+  ## Like the TS Editor.render() method.
+  ##
+  ## Returns strings with:
+  ## - ANSI reverse video for cursor highlighting
+  ## - CURSOR_MARKER for hardware cursor positioning
+  ## - Border lines (top/bottom) with scroll indicators
+  ##
+  ## Uses and updates ed.scrollOffset to keep cursor visible.
+  if width <= 0 or height <= 0: return @[]
+
+  let contentWidth = if drawBorder: max(1, width - 2) else: width
+  let contentHeight = if drawBorder: max(1, height - 2) else: height
+
+  let horiz = "\u2500"  # BOX DRAWINGS LIGHT HORIZONTAL (─)
+
+  # --- Layout the text ---
+  let (layoutLines, _, _) = ed.layoutText(contentWidth, contentHeight)
+
+  # Find cursor visual line index
+  var cursorLineIndex = -1
+  for i, ll in layoutLines:
+    if ll.hasCursor:
+      cursorLineIndex = i
+      break
+  if cursorLineIndex == -1:
+    cursorLineIndex = 0
+
+  # --- Adjust scrollOffset to keep cursor visible (like TS) ---
+  if cursorLineIndex < ed.scrollOffset:
+    ed.scrollOffset = cursorLineIndex
+  elif ed.scrollOffset + contentHeight <= cursorLineIndex:
+    ed.scrollOffset = cursorLineIndex - contentHeight + 1
+  let maxScroll = max(0, layoutLines.len - contentHeight)
+  ed.scrollOffset = clamp(ed.scrollOffset, 0, maxScroll)
+
+  # --- Get visible lines ---
+  let visibleLines = layoutLines[ed.scrollOffset ..<
+                      min(ed.scrollOffset + contentHeight, layoutLines.len)]
+
+  result = @[]
+
+  # --- Top border (with scroll indicator) like TS ---
+  if drawBorder:
+    if ed.scrollOffset > 0:
+      let indicator = "\u2500\u2500\u2500 \u2191 " & $ed.scrollOffset & " more "
+      let remaining = max(0, width - visibleWidth(indicator))
+      result.add(indicator & repeat(horiz, remaining))
+    else:
+      result.add(repeat(horiz, width))
+
+  # --- Each visible layout line ---
+  let emitCursorMarker = focused
+
+  for ll in visibleLines:
+    var displayText = ll.text
+    var lineVisibleWidth = visibleWidth(ll.text)
+
+    # Add cursor if this line has it
+    if ll.hasCursor and ll.cursorPos >= 0:
+      let before = ll.text[0 ..< ll.cursorPos]
+      let after = ll.text[ll.cursorPos .. ^1]
+
+      # Hardware cursor marker (zero-width, emitted before cursor)
+      let marker = if emitCursorMarker: CURSOR_MARKER else: ""
+
+      if after.len > 0:
+        # Cursor is on a character — replace it with reverse video
+        let firstRune = $toRunes(after)[0]
+        let restAfter = after[firstRune.len .. ^1]
+        let cursor = "\x1b[7m" & firstRune & "\x1b[0m"
+        displayText = before & marker & cursor & restAfter
+      else:
+        # Cursor at end — add highlighted space
+        let cursor = "\x1b[7m \x1b[0m"
+        displayText = before & marker & cursor
+        lineVisibleWidth += 1
+
+    # Pad to contentWidth
+    let padding = repeat(" ", max(0, contentWidth - lineVisibleWidth))
+    result.add(displayText & padding)
+
+  # Pad remaining lines to fill the content area
+  let targetContentEnd = if drawBorder: 1 + contentHeight else: height
+  while result.len < targetContentEnd:
+    result.add(repeat(" ", contentWidth))
+
+  # --- Bottom border (with scroll indicator) like TS ---
+  if drawBorder:
+    let linesBelow = layoutLines.len - (ed.scrollOffset + visibleLines.len)
+    if linesBelow > 0:
+      let indicator = "\u2500\u2500\u2500 \u2193 " & $linesBelow & " more "
+      let remaining = max(0, width - visibleWidth(indicator))
+      result.add(indicator & repeat(horiz, remaining))
+    else:
+      result.add(repeat(horiz, width))
+
+# ============================================================
+# Legacy illwill TerminalBuffer rendering (backward compat)
+# Differential update is now at the TUI framework level (tui.nim).
 # ============================================================
 
 proc drawEditorArea*(ed: Editor, tb: var TerminalBuffer, x, y, w, h: int,
                      focused: bool = true, drawBorder: bool = true) =
-  ## Renders the editor content into a specific area of the terminal buffer.
-  ## x, y: top-left corner
-  ## w, h: width and height of the area
+  ## Legacy: renders the editor into an illwill TerminalBuffer.
+  ## Calls render() and writes strings to the buffer.
   if w <= 0 or h <= 0: return
 
-  let contentX = if drawBorder: x + 1 else: x
-  let contentY = if drawBorder: y + 1 else: y
   let contentWidth = if drawBorder: max(1, w - 2) else: w
   let contentHeight = if drawBorder: max(1, h - 2) else: h
 
-  # --- Calcola il layout attuale ---
-  let (currentLines, curX, curY) = ed.layoutText(contentWidth, contentHeight)
+  let lines = ed.render(contentWidth, contentHeight, focused, drawBorder)
 
-  # --- Disegna il bordo ---
   if drawBorder:
     tb.setForegroundColor(if focused: fgCyan else: fgBlue)
     tb.drawRect(x, y, x + w - 1, y + h - 1)
 
-  # --- Confronto con lo stato precedente per il differential update ---
-  var needsRedraw = false
-  for i in 0 ..< contentHeight:
-    let currentLine = if i < currentLines.len: currentLines[i] else: LayoutLine(text: repeat(" ", contentWidth), hasCursor: false, cursorPos: -1)
-    let previousLine = if i < ed.previousLayoutLines.len: ed.previousLayoutLines[i] else: LayoutLine(text: repeat(" ", contentWidth), hasCursor: false, cursorPos: -1)
-    
-    # Determina se la riga deve essere ridisegnata
-    let shouldRedraw =
-      currentLine.text != previousLine.text or
-      (currentLine.hasCursor and (currentLine.cursorPos != previousLine.cursorPos)) or
-      (previousLine.hasCursor and (curX != previousLine.cursorPos)) or
-      (currentLine.hasCursor and i != curY) or
-      (previousLine.hasCursor and i != ed.previousCursorY)
-
-    if shouldRedraw:
-      needsRedraw = true
-      let curYPos = contentY + i
+  for i, line in lines:
+    if y + i < tb.height:
       tb.setForegroundColor(fgWhite)
-
-      if currentLine.hasCursor:
-        # Disegna il testo e il cursore
-        tb.write(contentX, curYPos, currentLine.text)
-        if currentLine.cursorPos >= 0 and currentLine.cursorPos < currentLine.text.len:
-          tb.setStyle({styleReverse})
-          let cursorChar = currentLine.text[currentLine.cursorPos .. currentLine.cursorPos]
-          tb.write(contentX + currentLine.cursorPos, curYPos, cursorChar)
-          tb.setStyle({})
-        else:
-          tb.setStyle({styleReverse})
-          tb.write(contentX + min(currentLine.cursorPos, currentLine.text.len), curYPos, " ")
-          tb.setStyle({})
-      else:
-        tb.write(contentX, curYPos, currentLine.text)
-
-  # Aggiorna lo stato precedente solo se almeno una riga è stata ridisegnata
-  if needsRedraw:
-    ed.previousLayoutLines = currentLines
-    ed.previousCursorX = curX
-    ed.previousCursorY = curY
+      tb.write(x, y + i, line)
 
 proc drawEditor*(ed: Editor, tb: var TerminalBuffer) =
-  ## Renders the editor content into the illwill terminal buffer (legacy full-screen).
+  ## Legacy: renders editor full-screen into illwill TerminalBuffer.
   ed.drawEditorArea(tb, 0, 0, tb.width, tb.height - 1, focused = true, drawBorder = true)
 
-  # Draw legacy status bar
+  # Legacy status bar
   let statusY = tb.height - 1
   if statusY >= 0:
     tb.setForegroundColor(fgBlack)

@@ -17,6 +17,68 @@ Full-screen TUI chat client in Nim that connects to a local [llama.cpp](https://
 - **Scrollable output** — navigate history with ↑ / ↓
 - **Web Interface** — Modern web UI available at http://localhost:8000 with theme support, file uploads, and model selection
 
+## Architecture — TUI Rendering
+
+The terminal UI is a **translation from TypeScript to Nim** of [pi-coding-agent](https://github.com/earendil-works/pi)'s TUI framework (`packages/tui/src/tui.ts` and `packages/tui/src/components/editor.ts`).
+
+Core files and their TypeScript origins:
+
+| Nim file | TypeScript source |
+|---|---|
+| `my_include/tui.nim` | `packages/tui/src/tui.ts` (class `TUI`) |
+| `my_include/editor.nim` | `packages/tui/src/components/editor.ts` (class `Editor`) |
+
+The rendering uses a **dual approach**:
+
+### 1. String-based rendering (`editor.nim` — new)
+
+The `Editor.render(width, height)` method produces a `seq[string]` where each string is a fully-rendered line with ANSI escape codes embedded:
+
+- **Cursor** is rendered with ANSI reverse video (`\x1b[7m`) instead of illwill's `styleReverse`
+- **`CURSOR_MARKER`** (`\x1b_pi:c\x07`) — a zero-width marker emitted at the cursor position for hardware cursor positioning (IME support)
+- **Borders** include scroll indicators (`─── ↑ N more` / `─── ↓ N more`) when content overflows
+- **Scroll offset** (`scrollOffset*`) is persisted in the Editor state, keeping the cursor visible across renders
+
+### 2. Differential rendering framework (`tui.nim` — new)
+
+The `Tui` object handles framework-level differential updates by comparing **raw strings** (not structured fields):
+
+```
+ Tui.differentialRender(newLines, termWidth, termHeight)
+   │
+   ├─ First render or resize? → Full redraw (clear screen + write all lines)
+   │
+   ├─ Compare strings: for i in 0..max(new, old):
+   │     if oldLine != newLine → firstChanged / lastChanged
+   │
+   ├─ No changes? → Return (skip redraw)
+   │
+   └─ Changed range found? → Write only [firstChanged .. lastChanged]:
+        • Move cursor to first changed line
+        • Write changed lines with \x1b[2K (clear line) prefix
+        • Clear any extra lines if content shrank
+        • Wrap in \x1b[?2026h / \x1b[?2026l (synchronized output)
+```
+
+Key aspects:
+- **Simple comparison**: `oldLine != newLine` — no knowledge of LayoutLine, cursor positions, or internal structure
+- **Full terminal viewport**: not limited to a single component's area
+- **Width/height changes**: trigger a full redraw (like `tui.ts`)
+- **Cursor extraction**: `extractCursorPosition()` finds `CURSOR_MARKER` in the rendered lines, strips it, and returns the visual (row, col) for hardware cursor positioning
+
+### 3. Legacy illwill path (`drawEditorArea` — backward compat)
+
+The existing `drawEditorArea(tb, x, y, w, h)` still works with illwill's `TerminalBuffer`. It now calls `render()` internally and writes the resulting strings to the buffer — no differential logic remains in the component.
+
+### Benefits of the new approach
+
+| Aspect | Old (component-level diff) | New (framework-level diff) |
+|---|---|---|
+| Comparison target | `LayoutLine` fields (3+ fields) | Flat `string` (opaque) |
+| Scope | Editor area only | Full terminal viewport |
+| Complexity | 5 conditions + cursor awareness | 1 condition: `oldLine != newLine` |
+| Output target | illwill TerminalBuffer | Raw stdout via ANSI escapes |
+
 ## Keybindings
 
 | Key | Action |
