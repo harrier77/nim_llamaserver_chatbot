@@ -2,29 +2,6 @@
 <html>
 <head>
   <link rel="stylesheet" href="miostile.css?v=20260513">
-  <style>
-    #upper_toolbar {
-      margin: 2rem;
-      border:1px solid grey;
-      padding: 0.5rem 0.75rem;
-      border-radius: 1.5rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    .message-tool {
-      background-color: #f0f0f0;
-      border-left: 3px solid #4a9eff;
-      padding: 10px;
-      margin: 5px 0;
-      font-family: monospace;
-      white-space: pre-wrap;
-    }
-    .dark .message-tool {
-      background-color: #2d2d2d;
-      border-left-color: #4a9eff;
-    }
-  </style>
 </head>
 <body>
 <div id="upper_toolbar">
@@ -39,17 +16,15 @@
   </button>
   <button id="theme-toggle-btn" class="theme-toggle" type="button">Light</button>
 </div>
-<div role="main" style="position: relative; display: flex; flex-direction: column; min-height: 100%;">
+<div role="main" style="position: relative; display: flex; flex-direction: column">
     <div class="chat-messages-wrapper" style="flex: 1; overflow-y: auto;">
       <div>
         <div class="mb-8 text-center">
           <h1>Hello there</h1>
-          <p class="text-muted-foreground">Type a message to get started</p>
+          <p class="text-muted-foreground">Type message...</p>
         </div>
-      </div>
-    </div>
-
-    <div class="conversation-chat-form" style="flex-shrink: 0;">
+      </div> 
+      <div class="conversation-chat-form" style="flex-shrink: 0; position: sticky; bottom: 5px; backdrop-filter: blur(5px); z-index: 10; padding: 0.5rem 1rem;">
       <div class="relative">
         <input type="file" multiple class="hidden">
         <form>
@@ -100,9 +75,12 @@
             </div>
           </div>
         </form>
+       
       </div>
     </div>
-</div>
+    </div><!--end of chat message wrapper -->
+
+</div ><!-- 0 --> 
   <script>
     var isDark = false;
     var currentModel = null;

@@ -3,7 +3,7 @@
 
 /* ============ CORE LAYOUT ============ */
 * { box-sizing: border-box; }
-html, body {height:95%; margin: 0; padding: 0; }
+html, body { margin: 0; padding: 0; height: 94vh; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
 
 .flex { display: flex; }
@@ -19,9 +19,37 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .absolute { position: absolute; }
 .fixed { position: fixed; }
 
+#upper_toolbar {
+  margin: 0.3rem;
+  border: 1px solid #e5e7eb;
+  background-color: rgba(243, 244, 246, 0.6);
+  padding: 0.5rem 0.75rem;
+  border-radius: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+html.dark #upper_toolbar {
+  background-color: #000000;
+  border-color: #333333;
+}
+
+.message-tool {
+  background-color: #f0f0f0;
+  border-left: 3px solid #4a9eff;
+  padding: 10px;
+  margin: 5px 0;
+  font-family: monospace;
+  white-space: pre-wrap;
+}
+.dark .message-tool {
+  background-color: #2d2d2d;
+  border-left-color: #4a9eff;
+}
+
 /* Main chat area */
 [role="main"] {
-  height: 100%;
+  height: 94vh;
   display: flex;
   flex-direction: column;
   padding: 1rem 1.5rem;
@@ -47,10 +75,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .conversation-chat-form {
   padding: 0.5rem 1rem;
   pointer-events: auto;
-  background-color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(5px);
 }
 html.dark .conversation-chat-form {
-  background-color: #000000;
+  background-color: rgba(0, 0, 0, 0.8);
 }
 .conversation-chat-form form {
   position: relative;
@@ -71,7 +100,6 @@ html.dark .conversation-chat-form {
   margin-right: auto;
   padding-left: 1rem;
   padding-right: 1rem;
-  
 }
 textarea {
   flex: 1;
