@@ -4,7 +4,7 @@
 ## Runs in a separate thread to avoid blocking the TUI
 ##
 
-import std/[asyncdispatch, asynchttpserver, httpclient, httpcore, json, os, osproc, strutils]
+import std/[asyncdispatch, asynchttpserver, asyncnet, httpclient, httpcore, json, os, osproc, strutils, strformat]
 import tools
 import system_prompt
 
@@ -311,15 +311,15 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
 
   if path == "/v1/embeddings":
     let bodyStr = req.body
-    var client = newHttpClient()
+    var client = newAsyncHttpClient()
     var embedResponse = ""
     try:
       client.headers = newHttpHeaders([("Content-Type", "application/json")])
-      embedResponse = client.postContent("http://localhost:8080/v1/embeddings", bodyStr)
+      embedResponse = await client.postContent("http://localhost:8080/v1/embeddings", bodyStr)
     except:
       embedResponse = "{\"error\": \"Failed to connect to provider\"}"
     finally:
-      discard
+      client.close()
     
     let embedHeaders = newHttpHeaders([("Content-Type", "application/json")])
     await req.respond(Http200, embedResponse, embedHeaders)
@@ -330,6 +330,15 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
     var targetUrl = "http://localhost:8080/v1/chat/completions"
     var authHeader = ""
     
+    # Parse stream flag from body
+    var isStreaming = false
+    try:
+      let bodyJson = parseJson(bodyStr)
+      if bodyJson.hasKey("stream"):
+        isStreaming = bodyJson["stream"].getBool()
+    except:
+      discard
+
     if req.url.query.len > 0:
       let queryParams = req.url.query.split("&")
       for param in queryParams:
@@ -346,24 +355,83 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
           elif providerUrl.contains("zyphra") or providerUrl.contains("zaya"):
             authHeader = "zaya"
     
-    var client = newHttpClient()
-    var chatResponse = ""
-    try:
-      var headers = newHttpHeaders([("Content-Type", "application/json")])
-      if authHeader.len > 0:
-        let apiKey = getApiKey(authHeader)
-        if apiKey.len > 0:
-          headers["Authorization"] = "Bearer " & apiKey
-      client.headers = headers
-      chatResponse = client.postContent(targetUrl, bodyStr)
-    except:
-      chatResponse = "{\"error\": \"Failed to connect to provider: " & targetUrl & "\"}"
-    finally:
-      discard
-    
-    let chatHeaders = newHttpHeaders([("Content-Type", "application/json")])
-    await req.respond(Http200, chatResponse, chatHeaders)
-    return
+    if isStreaming:
+      var client = newAsyncHttpClient()
+      var headersSent = false
+      try:
+        # FIX: Disable compression (gzip) to ensure we receive and forward plain text SSE events.
+        # Remote providers like NVIDIA might otherwise send compressed chunks that break the browser's parser.
+        client.headers = newHttpHeaders({
+          "Content-Type": "application/json",
+          "Accept-Encoding": "identity"
+        })
+        if authHeader.len > 0:
+          let apiKey = getApiKey(authHeader)
+          if apiKey.len > 0:
+            client.headers["Authorization"] = "Bearer " & apiKey
+        
+        let response = await client.request(targetUrl, httpMethod = HttpPost, body = bodyStr)
+        
+        # If provider returns an error (e.g., 401, 429), catch it before starting the stream
+        # to return a clean JSON error response to the frontend.
+        if response.code != Http200:
+          let errorBody = await response.body
+          let errorHeaders = newHttpHeaders([
+            ("Content-Type", "application/json"),
+            ("Access-Control-Allow-Origin", "*")
+          ])
+          await req.respond(response.code, errorBody, errorHeaders)
+          return
+
+        # FIX: Use raw streaming mode with 'Connection: close' instead of 'Transfer-Encoding: chunked'.
+        # Some browsers and remote endpoints struggle with manual chunked encoding over SSE.
+        # Closing the connection is the most reliable way to signal the end of a proxied stream.
+        var respHeaders = &"HTTP/1.1 200 OK\r\n"
+        respHeaders.add("Content-Type: text/event-stream\r\n")
+        respHeaders.add("Cache-Control: no-cache\r\n")
+        respHeaders.add("Connection: close\r\n")
+        respHeaders.add("Access-Control-Allow-Origin: *\r\n")
+        respHeaders.add("\r\n")
+        await req.client.send(respHeaders)
+        headersSent = true
+        
+        # Stream the body raw to avoid protocol overhead or formatting errors.
+        while true:
+          let (hasData, chunk) = await response.bodyStream.read()
+          if not hasData: break
+          if chunk.len > 0:
+            await req.client.send(chunk)
+        
+      except:
+        if not headersSent:
+          let errorMsg = "{\"error\": \"Failed to connect to provider: " & targetUrl & "\"}"
+          let errorHeaders = newHttpHeaders([("Content-Type", "application/json"), ("Access-Control-Allow-Origin", "*")])
+          await req.respond(Http500, errorMsg, errorHeaders)
+        else:
+          # If headers were already sent, just close the connection.
+          discard
+      finally:
+        client.close()
+      return
+    else:
+      var client = newAsyncHttpClient()
+      var chatResponse = ""
+      try:
+        var headers = newHttpHeaders([("Content-Type", "application/json")])
+        if authHeader.len > 0:
+          let apiKey = getApiKey(authHeader)
+          if apiKey.len > 0:
+            headers["Authorization"] = "Bearer " & apiKey
+        client.headers = headers
+        chatResponse = await client.postContent(targetUrl, bodyStr)
+      except:
+        chatResponse = "{\"error\": \"Failed to connect to provider: " & targetUrl & "\"}"
+      finally:
+        client.close()
+      
+      let chatHeaders = newHttpHeaders([("Content-Type", "application/json")])
+      await req.respond(Http200, chatResponse, chatHeaders)
+      return
 
   if path == "/api/tools":
     let headers = newHttpHeaders([("Content-Type", "application/json")])

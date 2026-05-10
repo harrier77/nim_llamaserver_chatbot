@@ -112,7 +112,8 @@
 
     // ============ DIRECT PROVIDER DETECTION ============
     function isDirectProvider() {
-      return currentProvider === 'http://localhost:8080';
+      // Force all requests through the proxy for better CORS handling and consistency
+      return false;
     }
 
     // ============ PATH NORMALIZATION ============

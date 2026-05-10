@@ -15,7 +15,21 @@ Full-screen TUI chat client in Nim that connects to a local [llama.cpp](https://
 - **Server monitoring** — status bar shows a green/red indicator; banner appears when the server is unreachable
 - **Unicode-aware** — correct UTF-8 input, backspace, and word-wrapping
 - **Scrollable output** — navigate history with ↑ / ↓
-- **Web Interface** — Modern web UI available at http://localhost:8000 with theme support, file uploads, and model selection
+- **Web Interface** — Modern web UI available at http://localhost:8000 with theme support, file uploads, and model selection. Real-time streaming is handled via a specialized proxy.
+
+## WebUI & Streaming Proxy Architecture
+
+The WebUI (found in `/webui`) is served by a custom Nim HTTP server (`httpdserver.nim`). It includes a **Streaming Proxy** designed to handle cross-origin (CORS) issues and provide a smooth, real-time experience even for remote providers that don't natively support CORS.
+
+### Key Proxy Features:
+- **CORS Handling**: Automatically wraps requests and injects necessary headers, allowing the browser-based UI to communicate with any backend.
+- **Asynchronous & Non-blocking**: Built with `AsyncHttpClient`, the proxy forwards chunks from the provider to the browser without blocking the server thread.
+- **Real-time Streaming (SSE)**: Implements a raw `text/event-stream` forwarder. It detects the `"stream": true` flag and transitions into a raw socket mode.
+- **Protocol Fixes**:
+    - **Raw Streaming**: Uses a simple `Connection: close` approach instead of complex manual chunked encoding, ensuring maximum compatibility with browser parsers.
+    - **Compression Control**: Explicitly requests `Accept-Encoding: identity` from providers to prevent compressed (gzip) payloads from corrupting the Server-Sent Events (SSE) stream.
+    - **Proactive Error Catching**: Inspects provider response codes (e.g., 401 Unauthorized, 429 Rate Limit) *before* starting the stream, returning clean JSON errors to the frontend.
+- **Security**: Securely injects API keys from the local `auth.json` file into proxied requests, so keys are never exposed to the frontend or over the network in plain text.
 
 ## Architecture — TUI Rendering
 
