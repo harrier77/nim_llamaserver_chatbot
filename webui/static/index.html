@@ -112,8 +112,8 @@
 
     // ============ DIRECT PROVIDER DETECTION ============
     function isDirectProvider() {
-      // Force all requests through the proxy for better CORS handling and consistency
-      return false;
+      // For localhost:8080 (llama.cpp) call directly, bypassing the proxy
+      return currentProvider.includes('localhost:8080');
     }
 
     // ============ PATH NORMALIZATION ============

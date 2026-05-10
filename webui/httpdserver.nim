@@ -402,14 +402,21 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
           if chunk.len > 0:
             await req.client.send(chunk)
         
-      except:
+        # FIX: Explicitly close the browser connection to signal the end of the stream.
+        # Without this, since we use 'Connection: close' without 'Transfer-Encoding: chunked',
+        # the browser's fetch reader remains in a pending state indefinitely, 
+        # preventing the WebUI from resetting its 'isProcessing' state for the next query.
+        req.client.close()
+        
+      except CatchableError as e:
         if not headersSent:
-          let errorMsg = "{\"error\": \"Failed to connect to provider: " & targetUrl & "\"}"
+          let errorMsg = "{\"error\": \"Failed to connect to provider: " & targetUrl & " - " & e.msg & "\"}"
           let errorHeaders = newHttpHeaders([("Content-Type", "application/json"), ("Access-Control-Allow-Origin", "*")])
           await req.respond(Http500, errorMsg, errorHeaders)
         else:
-          # If headers were already sent, just close the connection.
-          discard
+          # If headers were already sent, ensure the connection is closed even on error
+          # to prevent the browser from hanging on a broken stream.
+          req.client.close()
       finally:
         client.close()
       return
