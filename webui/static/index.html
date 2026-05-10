@@ -117,7 +117,19 @@
     }
 
     // System prompt that instructs the model how to use tools
-    const SYSTEM_PROMPT = "You are an expert coding assistant. You have access to these tools:\n\nTool: read\nDescription: Read the content of a file. Supports offset/limit for pagination.\nParameters: file_path (required), offset (optional), limit (optional)\n\nTool: bash\nDescription: Execute a command in the current working directory. Returns stdout and stderr.\nParameters: command (required)\n\nIMPORTANT: When you need to read a file or run a command, you MUST call the tool and wait for the result. Do NOT try to read files or execute commands directly.";
+    var SYSTEM_PROMPT = "";
+
+    // ============ FETCH SYSTEM PROMPT FROM SERVER ============
+    async function fetchSystemPrompt() {
+      try {
+        const res = await fetch('http://localhost:8000/api/system-prompt');
+        const data = await res.json();
+        SYSTEM_PROMPT = data.content || '';
+      } catch (e) {
+        console.error('Failed to fetch system prompt:', e);
+        SYSTEM_PROMPT = '';
+      }
+    }
 
     // ============ FETCH TOOLS FROM SERVER ============
     async function fetchTools() {
@@ -247,8 +259,9 @@
       initProvider();
     })();
 
-    // Fetch tools on page load
+    // Fetch tools and system prompt on page load
     fetchTools();
+    fetchSystemPrompt();
 
     // New chat button handler
     document.getElementById('new-chat-btn').addEventListener('click', () => {
@@ -436,10 +449,10 @@
     // ============ TOOL EXECUTION ============
     async function executeTool(name, args) {
       try {
-        const res = await fetch('http://localhost:8000/api/' + name, {
+        const res = await fetch('http://localhost:8000/api/execute-tool', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(args)
+          body: JSON.stringify({ name: name, arguments: args })
         });
         const text = await res.text();
         try {

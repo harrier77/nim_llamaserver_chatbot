@@ -1,8 +1,13 @@
 import json, os, osproc, strutils
 
-# FIX: Matches parameter names from demo.ts (e.g., file_path instead of path)
-# Export ToolsSchema for use by other modules (e.g., webui server)
-let ToolsSchema* = %*[
+# ============================================================
+# Tools schema (single source of truth)
+# ============================================================
+# ToolsSchemaJson is a const string (safe for thread access via gcsafe procs).
+# ToolsSchema is the JsonNode for use by the TUI (chat.nim).
+# ============================================================
+
+const ToolsSchemaJson* = """[
   {
     "type": "function",
     "function": {
@@ -55,7 +60,7 @@ let ToolsSchema* = %*[
          "properties": {
            "number": {
              "type": "string",
-             "description": "The delibera number (e.g., '1' becomes '0001')"
+             "description": "The delibera number (e.g., '1' becomes '0001', '1979' becomes '1979')"
            },
            "year": {
              "type": "string",
@@ -78,7 +83,10 @@ let ToolsSchema* = %*[
        }
      }
    }
-]
+]"""
+
+# Export ToolsSchema for use by other modules (e.g., chat.nim)
+let ToolsSchema* = parseJson(ToolsSchemaJson)
 
 proc readTool*(args: JsonNode): string =
   const MaxReadLines = 1000

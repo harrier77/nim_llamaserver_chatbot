@@ -5,57 +5,13 @@
 ##
 
 import std/[asyncdispatch, asynchttpserver, httpclient, httpcore, json, os, osproc, strutils]
+import tools
+import system_prompt
 
 # Thread synchronization
 var serverRunning*: bool = false
 var serverThread*: Thread[void]
 var serverPort*: Port
-
-# Tool schema (embedded as JSON string to avoid GC-managed globals in async context)
-const ToolsSchemaJson = """[
-  {
-    "type": "function",
-    "function": {
-      "name": "read",
-      "description": "Read a file from the filesystem. Use this to read file contents.",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "file_path": {
-            "type": "string",
-            "description": "Path to the file to read"
-          },
-          "offset": {
-            "type": "number",
-            "description": "Line number to start reading from (1-indexed)"
-          },
-          "limit": {
-            "type": "number",
-            "description": "Maximum number of lines to read"
-          }
-        },
-        "required": ["file_path"]
-      }
-    }
-  },
-  {
-    "type": "function",
-    "function": {
-      "name": "bash",
-      "description": "Execute a bash command on the system. Use this for running shell commands.",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "command": {
-            "type": "string",
-            "description": "The bash command to execute"
-          }
-        },
-        "required": ["command"]
-      }
-    }
-  }
-]"""
 
 const MaxReadLines = 1000
 
@@ -411,73 +367,29 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
 
   if path == "/api/tools":
     let headers = newHttpHeaders([("Content-Type", "application/json")])
-    await req.respond(Http200, ToolsSchemaJson, headers)
+    await req.respond(Http200, tools.ToolsSchemaJson, headers)
     return
 
-  if path == "/api/read":
-    let bodyStr = req.body
-    let args = parseJson(bodyStr)
-    let filePath = if args.hasKey("file_path"): args["file_path"].getStr() else: ""
-    let offset = if args.hasKey("offset"): args["offset"].getInt() else: 1
-    let limit = if args.hasKey("limit"): args["limit"].getInt() else: -1
+  if path == "/api/system-prompt":
     let headers = newHttpHeaders([("Content-Type", "application/json")])
-
-    if filePath == "":
-      let response = %*{"error": "Missing file_path parameter"}
-      await req.respond(Http200, $response, headers)
-      return
-
-    var resolvedPath = filePath.replace("\\", "/")
-    if not resolvedPath.startsWith("/") and not (resolvedPath.len >= 2 and resolvedPath[1] == ':'):
-      resolvedPath = getCurrentDir() / resolvedPath
-
-    if not fileExists(resolvedPath):
-      let response = %*{"error": "File not found: " & resolvedPath}
-      await req.respond(Http200, $response, headers)
-      return
-
-    try:
-      let lines = readFile(resolvedPath).splitLines()
-      let startIdx = max(0, offset - 1)
-      let effectiveLimit = if limit == -1: MaxReadLines else: min(limit, MaxReadLines)
-      let endIdx = min(lines.len - 1, startIdx + effectiveLimit - 1)
-      let slice = lines[startIdx .. endIdx]
-      var content = slice.join("\n")
-      if endIdx + 1 < lines.len:
-        content &= "\n[... truncated at " & $MaxReadLines & " lines]"
-      let response = %*{"content": content}
-      await req.respond(Http200, $response, headers)
-    except Exception as e:
-      let response = %*{"error": e.msg}
-      await req.respond(Http200, $response, headers)
+    let response = %*{"content": SYSTEM_PROMPT}
+    await req.respond(Http200, $response, headers)
     return
 
-  if path == "/api/bash":
+  if path == "/api/execute-tool":
     let bodyStr = req.body
     let args = parseJson(bodyStr)
-    let command = if args.hasKey("command"): args["command"].getStr() else: ""
+    let toolName = if args.hasKey("name"): args["name"].getStr() else: ""
+    let toolArgs = if args.hasKey("arguments"): args["arguments"] else: %*{}
     let headers = newHttpHeaders([("Content-Type", "application/json")])
 
-    if command == "":
-      let response = %*{"error": "Missing command parameter"}
+    if toolName == "":
+      let response = %*{"error": "Missing name parameter"}
       await req.respond(Http200, $response, headers)
       return
 
-    try:
-      var res = ""
-      var exitCode = 0
-      when defined(windows):
-        const gitBashPath = "C:\\Program Files\\git\\bin\\bash.exe"
-        var cwd = getCurrentDir().replace("\\", "/")
-        let fullCommand = "cd '" & cwd & "' && " & command
-        (res, exitCode) = execCmdEx(quoteShell(gitBashPath) & " -c " & quoteShell(fullCommand))
-      else:
-        (res, exitCode) = execCmdEx(command)
-      let response = %*{"content": res.strip(), "exit_code": $exitCode}
-      await req.respond(Http200, $response, headers)
-    except Exception as e:
-      let response = %*{"error": e.msg}
-      await req.respond(Http200, $response, headers)
+    let toolResult = tools.executeTool(toolName, toolArgs)
+    await req.respond(Http200, toolResult, headers)
     return
 
   if path == "/":
