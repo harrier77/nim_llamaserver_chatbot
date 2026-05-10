@@ -110,6 +110,11 @@
     var isProcessing = false;
     var availableTools = [];
 
+    // ============ DIRECT PROVIDER DETECTION ============
+    function isDirectProvider() {
+      return currentProvider === 'http://localhost:8080';
+    }
+
     // ============ PATH NORMALIZATION ============
     function normalizePath(str) {
       // Sostituisce tutti i backslash con forward slash
@@ -486,7 +491,10 @@
         let toolCallsCollected = [];
 
         try {
-          const response = await fetch('http://localhost:8000/v1/chat/completions?provider=' + currentProvider, {
+          const chatUrl = isDirectProvider()
+            ? 'http://localhost:8080/v1/chat/completions'
+            : 'http://localhost:8000/v1/chat/completions?provider=' + currentProvider;
+          const response = await fetch(chatUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -656,7 +664,10 @@
         try {
           label.textContent = 'Loading...';
           // Pass provider WITHOUT encoding (server will handle it)
-          const res = await fetch(`http://localhost:8000/api/models?provider=${currentProvider}`);
+          const modelsUrl = isDirectProvider()
+            ? 'http://localhost:8080/v1/models'
+            : `http://localhost:8000/api/models?provider=${currentProvider}`;
+          const res = await fetch(modelsUrl);
           const data = await res.json();
           
           // Save selection BEFORE updating models array
@@ -818,8 +829,10 @@
         closeDropdown();
 
         try {
-          // Use proxy endpoint to avoid CORS
-          const response = await fetch('http://localhost:8000/v1/embeddings', {
+          const embUrl = isDirectProvider()
+            ? 'http://localhost:8080/v1/embeddings'
+            : 'http://localhost:8000/v1/embeddings';
+          const response = await fetch(embUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ content: 'test', model: modelId })
