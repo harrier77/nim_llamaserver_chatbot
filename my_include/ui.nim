@@ -121,8 +121,9 @@ proc drawStatusBar*(tb: var TerminalBuffer, y, w: int) =
 # ============================================================
 
 proc drawModelSelectionMenu*(tb: var TerminalBuffer, w, h: int) =
-  ## Draws the model selection menu (SelectingModel state).
-  ## Shows a flat numbered list grouped by provider.
+  ## Draws the model selection menu (SelectingModel state) with scroll support.
+  ## Builds a flat list of items (headers + models) and renders only the
+  ## visible portion based on modelSelectionScroll.
   tb.setForegroundColor(fgCyan, bright = true)
   let menuTitle = " SELEZIONE MODELLO "
   tb.write((w - menuTitle.len) div 2, 2, menuTitle)
@@ -131,64 +132,85 @@ proc drawModelSelectionMenu*(tb: var TerminalBuffer, w, h: int) =
   if availableModels.len == 0:
     tb.setForegroundColor(fgYellow)
     tb.write((w - 30) div 2, startY, "Loading models... (wait) or /model again")
+    return
+
+  # Build flat list of all display lines
+  var allLines: seq[string] = @[]
+  var lineTypes: seq[string] = @[]  # "header" or "model"
+  var lineNums: seq[int] = @[]      # model number (1-based, 0 for headers)
+  var lineModels: seq[string] = @[] # model id string ("" for headers)
+  var counter = 0
+
+  for p in providerList:
+    if not p.enabled or p.modelIds.len == 0: continue
+    let icon = if p.name == "llamacpp": "🖥" elif p.name == "opencode": "☁" elif p.name == "ollama": "🐳" elif p.name == "nvidia": "🔷" elif p.name == "zaya": "🔮" else: "📋"
+    allLines.add("  " & icon & " " & p.name.toUpperAscii())
+    lineTypes.add("header")
+    lineNums.add(0)
+    lineModels.add("")
+
+    for mId in p.modelIds:
+      counter.inc
+      let check = if mId == ModelName: " ⬅" else: ""
+      allLines.add("    " & $counter & ". " & mId & check)
+      lineTypes.add("model")
+      lineNums.add(counter)
+      lineModels.add(mId)
+
+  # Calculate visible area
+  let bottomReserved = 4  # input line + help + status bar + padding
+  let maxVisible = max(1, h - startY - bottomReserved)
+
+  # Auto-scroll to show the model matching the typed number
+  if modelSelectionBuffer.len > 0:
+    try:
+      let targetNum = parseInt(modelSelectionBuffer)
+      for i, n in lineNums:
+        if n == targetNum:
+          modelSelectionScroll = max(0, i - maxVisible div 2)
+          break
+    except: discard
+
+  # Clamp scroll offset
+  if allLines.len > maxVisible:
+    modelSelectionScroll = min(modelSelectionScroll, allLines.len - maxVisible)
   else:
-    var y = startY
-    var counter = 0
+    modelSelectionScroll = 0
 
-    # Pre-calculate offset if needed
-    var displayOffset = 0
-    let maxVisible = h - startY - 5
-
-    if availableModels.len + 3 > maxVisible:
-      # Need to scroll: calculate offset from selection buffer
-      let numEntered = if modelSelectionBuffer.len > 0:
-        parseInt(modelSelectionBuffer).int
-      else: 0
-      if numEntered > 0:
-        let desiredMid = numEntered - 1
-        displayOffset = max(0, desiredMid - maxVisible div 2)
-      else:
-        displayOffset = 0
-
-    for p in providerList:
-      if not p.enabled or p.modelIds.len == 0: continue
-
-      # Category header
+  # Draw visible lines
+  var y = startY
+  for i in modelSelectionScroll ..< min(modelSelectionScroll + maxVisible, allLines.len):
+    if y >= h - StatusBarHeight - 2: break
+    if lineTypes[i] == "header":
       tb.setForegroundColor(fgCyan, bright = true)
-      let icon = if p.name == "llamacpp": "🖥" elif p.name == "opencode": "☁" elif p.name == "ollama": "🐳" elif p.name == "nvidia": "🔷" elif p.name == "zaya": "🔮" else: "📋"
-      let catLine = "  " & icon & " " & p.name.toUpperAscii()
-      if y >= startY and y < h - 3:
-        tb.write((w - catLine.len) div 2, y, catLine)
-      inc(y)
-
-      for mId in p.modelIds:
-        counter.inc
-        if y < startY or y >= h - 3:
-          inc(y)
-          continue
-        if y - startY + displayOffset < 0:
-          inc(y)
-          continue
-        let numStr = $counter
-        let line = "    " & numStr & ". " & mId
-        let check = if mId == ModelName: " ⬅" else: ""
+    else:
+      if lineNums[i] > 0 and lineModels[i] == ModelName:
+        tb.setForegroundColor(fgYellow)
+      else:
         tb.setForegroundColor(fgWhite)
-        tb.write((w - line.len) div 2, y, line & check)
-        if mId == ModelName:
-          tb.setForegroundColor(fgYellow)
-          tb.write((w - line.len) div 2 + line.len, y, check)
-        inc(y)
+    # Visualizzazione allineata a sinistra con un margine fisso per evitare troncamenti
+    tb.write(max(2, (w - 40) div 2), y, allLines[i])
+    inc(y)
 
-    # Input line
-    if y + 1 < h - StatusBarHeight:
-      tb.setForegroundColor(fgYellow, bright = true)
-      let promptLine = "  Numero: " & modelSelectionBuffer & "_"
-      tb.write((w - promptLine.len) div 2, y + 1, promptLine)
-
-    # Help
+  # Scroll indicators
+  if modelSelectionScroll > 0:
     tb.setForegroundColor(fgWhite)
-    let help = "Numero + Enter: conferma | Esc: annulla"
-    tb.write((w - help.len) div 2, h - StatusBarHeight - 1, help)
+    tb.write(2, startY, "▲")
+  if modelSelectionScroll + maxVisible < allLines.len:
+    tb.setForegroundColor(fgWhite)
+    tb.write(2, h - StatusBarHeight - 2, "▼")
+
+  # Input line
+  let inputY = min(h - StatusBarHeight - 2, y + 1)
+  if inputY < h - StatusBarHeight:
+    tb.setForegroundColor(fgYellow, bright = true)
+    let promptLine = "  Numero: " & modelSelectionBuffer & "_"
+    tb.write((w - promptLine.len) div 2, inputY, promptLine)
+
+  # Help
+  tb.setForegroundColor(fgWhite)
+  let help = "Numero + Enter: conferma | ↑↓: scroll | Esc: annulla"
+  tb.write((w - help.len) div 2, h - StatusBarHeight - 1, help)
 
 # ============================================================
 # Full chat screen rendering

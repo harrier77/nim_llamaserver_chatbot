@@ -117,6 +117,7 @@ var
 
   # --- Model selection ---
   modelSelectionBuffer*: string = ""
+  modelSelectionScroll*: int = 0
 
   # --- TUI output ---
   outputLines*: seq[string] = @[]

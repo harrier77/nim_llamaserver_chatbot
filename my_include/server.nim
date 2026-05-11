@@ -92,7 +92,7 @@ proc fetchModels*() {.async.} =
   for i, p in providerList:
     if not p.enabled: continue
 
-    if p.name == "llamacpp":
+    if p.name == "llamacpp" and p.modelIds.len == 0:
       providerList[i].modelIds = @[]
       var clientLlama = newAsyncHttpClient()
       try:
@@ -107,7 +107,7 @@ proc fetchModels*() {.async.} =
       finally:
         clientLlama.close()
 
-    elif p.name == "opencode" and p.apiKey.len > 0:
+    elif p.name == "opencode" and p.apiKey.len > 0 and p.modelIds.len == 0:
       providerList[i].modelIds = @[]
       var clientOc = newAsyncHttpClient()
       try:

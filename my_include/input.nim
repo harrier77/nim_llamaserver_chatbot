@@ -158,7 +158,7 @@ proc handleInput*(key: illwill.Key): bool =
     else:
       showingSlashMenu = false
 
-  # --- Model selection (number-based) ---
+  # --- Model selection (number-based + scroll) ---
   if state == SelectingModel:
     case key
     of illwill.Key.Zero, illwill.Key.One, illwill.Key.Two, illwill.Key.Three,
@@ -176,6 +176,7 @@ proc handleInput*(key: illwill.Key): bool =
             outputLines.add("System: Model changed to " & ModelName)
         except: discard
       modelSelectionBuffer = ""
+      modelSelectionScroll = 0
       state = Chatting
       return false
     of illwill.Key.Backspace, illwill.Key.CtrlH:
@@ -184,7 +185,15 @@ proc handleInput*(key: illwill.Key): bool =
       return false
     of illwill.Key.Escape:
       modelSelectionBuffer = ""
+      modelSelectionScroll = 0
       state = Chatting
+      return false
+    of illwill.Key.Up:
+      if modelSelectionScroll > 0:
+        dec(modelSelectionScroll)
+      return false
+    of illwill.Key.Down:
+      inc(modelSelectionScroll)
       return false
     else: discard
     return false
@@ -202,6 +211,7 @@ proc handleInput*(key: illwill.Key): bool =
       let cmd = strutils.strip(prompt).toLowerAscii()
       if cmd == "/quit" or cmd == "/q": return true
       if cmd == "/model":
+        modelSelectionScroll = 0
         asyncCheck server.fetchModels()
         state = SelectingModel
         inputEditor.setText("")
