@@ -85,85 +85,50 @@ proc saveModelStatus*() =
 # ============================================================
 
 proc fetchModels*() {.async.} =
-  ## Fetches the list of available models from the server (/v1/models).
-  ## Updates the global variables: availableModels, selectedMenuIndex,
-  ## and the categorized lists (llamaCppModels, openCodeModels, ollamaModels, nvidiaModels).
-  ## If the server does not respond, uses the current model as fallback.
-  ##
-  ## EDIT: if you need to change how models are filtered/sorted,
-  ## modify the logic after JSON parsing.
+  ## Fetches the list of available models from all providers.
+  ## Populates availableModels and each provider's modelIds.
   availableModels = @[]
-  llamaCppModels = @[]
-  openCodeModels = @[]
-  ollamaModels = @[]
-  nvidiaModels = @[]
-  zayaModels = @[]
-  
-  # 1. Try to fetch local models (don't block if it fails)
-  var client = newAsyncHttpClient()
-  try:
-    let response = await client.get(ServerBaseUrl & "/v1/models")
-    let jsonNode = parseJson(await response.body())
-    if jsonNode.hasKey("data"):
-      for model in jsonNode["data"]:
-        let mName = model["id"].getStr()
-        availableModels.add(mName)
-        llamaCppModels.add(mName)
-  except:
-    discard # Ignore local server error for now
-  finally:
-    client.close()
 
-  # 2. Try to fetch OpenCode models (if enabled)
-  if OpenCodeEnabled:
-    var ocClient = newAsyncHttpClient()
-    try:
-      ocClient.headers = newHttpHeaders({
-        "Authorization": "Bearer " & OpenCodeApiKey
-      })
-      let modelsUrl = OpenCodeModelsUrl & "/models"
-      let response = await ocClient.get(modelsUrl)
-      if response.code == Http200:
+  for i, p in providerList:
+    if not p.enabled: continue
+
+    if p.name == "llamacpp":
+      providerList[i].modelIds = @[]
+      var clientLlama = newAsyncHttpClient()
+      try:
+        let response = await clientLlama.get(p.modelsUrl & "/v1/models")
         let jsonNode = parseJson(await response.body())
         if jsonNode.hasKey("data"):
           for model in jsonNode["data"]:
             let mName = model["id"].getStr()
-            let lowerName = mName.toLowerAscii()
-            # Filtra: solo "big pickle" (cerca "pickle") o modelli con "free" nel nome
-            if lowerName.contains("pickle") or lowerName.contains("free"):
-              availableModels.add(mName)
-              openCodeModels.add(mName)
-              OpenCodeModelIds.add(mName)
-    except:
-      discard # Ignore OpenCode error
-    finally:
-      ocClient.close()
+            providerList[i].modelIds.add(mName)
+            availableModels.add(mName)
+      except: discard
+      finally:
+        clientLlama.close()
 
-  # 3. Add Ollama models (if enabled)
-  if OllamaEnabled:
-    for mName in OllamaModelIds:
-      availableModels.add(mName)
-      ollamaModels.add(mName)
+    elif p.name == "opencode" and p.apiKey.len > 0:
+      providerList[i].modelIds = @[]
+      var clientOc = newAsyncHttpClient()
+      try:
+        clientOc.headers = newHttpHeaders({"Authorization": "Bearer " & p.apiKey})
+        let response = await clientOc.get(p.modelsUrl & "/models")
+        if response.code == Http200:
+          let jsonNode = parseJson(await response.body())
+          if jsonNode.hasKey("data"):
+            for model in jsonNode["data"]:
+              let mName = model["id"].getStr()
+              let lowerName = mName.toLowerAscii()
+              if lowerName.contains("pickle") or lowerName.contains("free"):
+                providerList[i].modelIds.add(mName)
+                availableModels.add(mName)
+      except: discard
+      finally:
+        clientOc.close()
 
-  # 4. Add Nvidia models (if enabled)
-  if NvidiaEnabled:
-    for mName in NvidiaModelIds:
-      availableModels.add(mName)
-      nvidiaModels.add(mName)
+    else:
+      for mName in p.modelIds:
+        availableModels.add(mName)
 
-  # 5. Add Zaya models (if enabled)
-  if ZayaEnabled:
-    for mName in ZayaModelIds:
-      availableModels.add(mName)
-      zayaModels.add(mName)
-
-  # Fallback if nothing was found
   if availableModels.len == 0:
     availableModels.add(ModelName)
-  
-  # Find the current model in the list to set the default selection
-  selectedMenuIndex = 0
-  for i, m in availableModels:
-    if m == ModelName:
-      selectedMenuIndex = i
-      break

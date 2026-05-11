@@ -61,9 +61,20 @@ var LlamaServerArgs* = @[
 # 4. Types
 # ============================================================
 
-type AppState* = enum
-  Chatting,       ## Normal conversation mode
-  SelectingModel  ## Model selection menu active
+type
+  AppState* = enum
+    Chatting,       ## Normal conversation mode
+    SelectingModel  ## Model selection menu active
+
+  Provider* = object
+    name*: string
+    baseUrl*: string
+    modelsUrl*: string
+    apiKey*: string
+    enabled*: bool
+    modelIds*: seq[string]
+    linesPerChunk*: int
+    isRemote*: bool
 
 ## Available slash commands
 ## EDIT: add here for new commands, then handle in input.nim
@@ -91,33 +102,7 @@ var
   ServerBaseUrl*: string = "http://localhost:8080"
   APIUrl*: string = "http://localhost:8080/v1/chat/completions"
 
-  # --- OpenCode remote server ---
-  OpenCodeBaseUrl*: string = ""     # full URL from models.json (…/chat/completions)
-  OpenCodeModelsUrl*: string = ""  # base URL for model listing (…/v1)
-  OpenCodeApiKey*: string = ""
-  OpenCodeEnabled*: bool = false
-  OpenCodeModelIds*: seq[string] = @[]  # lista dei modelli OpenCode fetchati
-
-  # --- Ollama remote server ---
-  OllamaBaseUrl*: string = ""      # full URL from models.json (…/chat/completions)
-  OllamaModelsUrl*: string = ""   # base URL for model listing (…/v1)
-  OllamaApiKey*: string = ""
-  OllamaEnabled*: bool = false
-  OllamaModelIds*: seq[string] = @[]  # lista dei modelli Ollama
-
-  # --- Nvidia remote server ---
-  NvidiaBaseUrl*: string = ""      # full URL from models.json (…/chat/completions)
-  NvidiaModelsUrl*: string = ""  # base URL for model listing (…/v1)
-  NvidiaApiKey*: string = ""
-  NvidiaEnabled*: bool = false
-  NvidiaModelIds*: seq[string] = @[]  # lista dei modelli Nvidia
-
-  # --- Zaya remote server ---
-  ZayaBaseUrl*: string = ""      # full URL from models.json (…/chat/completions)
-  ZayaModelsUrl*: string = ""    # base URL for model listing (…/v1)
-  ZayaApiKey*: string = ""
-  ZayaEnabled*: bool = false
-  ZayaModelIds*: seq[string] = @[]  # lista dei modelli Zaya
+  # --- Remote provider configs (loaded from ~/.nim_chatbot/) ---
 
   # --- Model and history ---
   ModelName*: string = "Qwen3.5_0.8b-text"
@@ -127,16 +112,11 @@ var
   state*: AppState = Chatting
   availableModels*: seq[string] = @[]
 
-  # --- Categorized models for tree view ---
-  llamaCppModels*: seq[string] = @[]     ## Models from local llama.cpp server
-  openCodeModels*: seq[string] = @[]   ## Models from OpenCode remote
-  ollamaModels*: seq[string] = @[]       ## Models from Ollama remote
-  nvidiaModels*: seq[string] = @[]       ## Models from Nvidia remote
-  zayaModels*: seq[string] = @[]         ## Models from Zaya remote
+  # --- Unified providers ---
+  providerList*: seq[Provider] = @[]
 
-  # --- Model selection navigation ---
-  selectedMenuIndex*: int = 0
-  selectedCategoryIndex*: int = 0        ## Index of selected category (0=llamacpp, 1=opencode, 2=ollama, 3=nvidia, 4=zaya)
+  # --- Model selection ---
+  modelSelectionBuffer*: string = ""
 
   # --- TUI output ---
   outputLines*: seq[string] = @[]
@@ -227,3 +207,22 @@ proc wrapText*(text: string, maxWidth: int): seq[string] =
     currentLine.add($rune)
   if currentLine.len > 0:
     result.add(currentLine)
+
+proc findProviderForModel*(modelName: string): Provider =
+  ## Returns the provider that owns the given model name.
+  if providerList.len == 0:
+    return Provider(name: "llamacpp", baseUrl: APIUrl, modelsUrl: ServerBaseUrl, isRemote: false, enabled: true, linesPerChunk: 0)
+  for p in providerList:
+    if p.enabled:
+      for mId in p.modelIds:
+        if mId == modelName:
+          return p
+  for p in providerList:
+    if p.enabled:
+      return p
+  return providerList[0]
+
+proc hasRemoteProvider*(): bool =
+  for p in providerList:
+    if p.enabled and p.isRemote:
+      return true

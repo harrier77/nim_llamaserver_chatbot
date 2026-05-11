@@ -103,7 +103,7 @@ proc handleInput*(key: illwill.Key): bool =
   let w = terminalWidth()
 
   # Ignore input while processing (except scrolling and SelectingModel state)
-  if (isProcessing or (not serverAvailable and not OpenCodeEnabled)) and state == Chatting:
+  if (isProcessing or (not serverAvailable and not hasRemoteProvider())) and state == Chatting:
     case key
     of illwill.Key.Up:
       scrollOffset += 1
@@ -158,65 +158,32 @@ proc handleInput*(key: illwill.Key): bool =
     else:
       showingSlashMenu = false
 
-  # --- Model selection ---
+  # --- Model selection (number-based) ---
   if state == SelectingModel:
-    # Build categories list
-    var categories: seq[tuple[name, icon: string, models: seq[string]]] = @[]
-    if llamaCppModels.len > 0: categories.add((name: "llamacpp", icon: "🖥", models: llamaCppModels))
-    if openCodeModels.len > 0: categories.add((name: "opencode", icon: "☁", models: openCodeModels))
-    if ollamaModels.len > 0: categories.add((name: "ollama", icon: "🐳", models: ollamaModels))
-    if nvidiaModels.len > 0: categories.add((name: "nvidia", icon: "🔷", models: nvidiaModels))
-    if zayaModels.len > 0: categories.add((name: "zaya", icon: "🔮", models: zayaModels))
-    if categories.len == 0: categories.add((name: "all", icon: "📋", models: availableModels))
-
-    if selectedCategoryIndex >= categories.len: selectedCategoryIndex = max(0, categories.len - 1)
-
     case key
-    of illwill.Key.Escape:
-      state = Chatting
-      return false
-    of illwill.Key.Left:
-      if selectedCategoryIndex > 0:
-        dec(selectedCategoryIndex)
-        selectedMenuIndex = 0
-      return false
-    of illwill.Key.Right:
-      if selectedCategoryIndex < categories.len - 1:
-        inc(selectedCategoryIndex)
-        selectedMenuIndex = 0
-      return false
-    of illwill.Key.Up:
-      var catStart = 0
-      for i in 0 ..< selectedCategoryIndex: catStart += categories[i].models.len
-      if selectedMenuIndex > catStart:
-        dec(selectedMenuIndex)
-      else:
-        if selectedCategoryIndex > 0:
-          dec(selectedCategoryIndex)
-          var prevCatStart = 0
-          for i in 0 ..< selectedCategoryIndex: prevCatStart += categories[i].models.len
-          selectedMenuIndex = prevCatStart + categories[selectedCategoryIndex].models.len - 1
-      return false
-    of illwill.Key.Down:
-      var catStartDown = 0
-      for i in 0 ..< selectedCategoryIndex: catStartDown += categories[i].models.len
-      let catEnd = catStartDown + categories[selectedCategoryIndex].models.len - 1
-      if selectedMenuIndex < catEnd:
-        inc(selectedMenuIndex)
-      else:
-        if selectedCategoryIndex < categories.len - 1:
-          inc(selectedCategoryIndex)
-          selectedMenuIndex = catEnd + 1
+    of illwill.Key.Zero, illwill.Key.One, illwill.Key.Two, illwill.Key.Three,
+       illwill.Key.Four, illwill.Key.Five, illwill.Key.Six, illwill.Key.Seven,
+       illwill.Key.Eight, illwill.Key.Nine:
+      modelSelectionBuffer &= $chr(ord(key))
       return false
     of illwill.Key.Enter:
-      if availableModels.len > 0 and selectedMenuIndex < availableModels.len:
-        ModelName = availableModels[selectedMenuIndex]
-        server.saveModelStatus()
-        outputLines.add("System: Model changed to " & ModelName)
-        var isOpenCode = false
-        for m in OpenCodeModelIds:
-          if m == ModelName: isOpenCode = true; break
-        if isOpenCode: serverAvailable = true
+      if modelSelectionBuffer.len > 0:
+        try:
+          let idx = parseInt(modelSelectionBuffer) - 1
+          if idx >= 0 and idx < availableModels.len:
+            ModelName = availableModels[idx]
+            server.saveModelStatus()
+            outputLines.add("System: Model changed to " & ModelName)
+        except: discard
+      modelSelectionBuffer = ""
+      state = Chatting
+      return false
+    of illwill.Key.Backspace, illwill.Key.CtrlH:
+      if modelSelectionBuffer.len > 0:
+        modelSelectionBuffer.setLen(modelSelectionBuffer.len - 1)
+      return false
+    of illwill.Key.Escape:
+      modelSelectionBuffer = ""
       state = Chatting
       return false
     else: discard

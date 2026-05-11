@@ -70,35 +70,9 @@ proc sendToLLM*(prompt: string = "") {.async.} =
 
 
 
-  # --- Determina se il modello è OpenCode, Ollama, Nvidia o Zaya ---
-  var isOcModel = false
-  var isOllamaModel = false
-  var isNvidiaModel = false
-  var isZayaModel = false
-  if OpenCodeEnabled and OpenCodeModelIds.len > 0:
-    for m in OpenCodeModelIds:
-      if m == ModelName:
-        isOcModel = true
-        break
-  if OllamaEnabled and OllamaModelIds.len > 0:
-    for m in OllamaModelIds:
-      if m == ModelName:
-        isOllamaModel = true
-        break
-  if NvidiaEnabled and NvidiaModelIds.len > 0:
-    for m in NvidiaModelIds:
-      if m == ModelName:
-        isNvidiaModel = true
-        break
-  if ZayaEnabled and ZayaModelIds.len > 0:
-    for m in ZayaModelIds:
-      if m == ModelName:
-        isZayaModel = true
-        break
-
-
-  # Costruisci URL e headers in base al tipo di modello
-  let requestUrl = if isOcModel: OpenCodeBaseUrl elif isOllamaModel: OllamaBaseUrl elif isNvidiaModel: NvidiaBaseUrl elif isZayaModel: ZayaBaseUrl else: APIUrl
+  # --- Risolvi il provider per il modello corrente ---
+  let currentProvider = findProviderForModel(ModelName)
+  let requestUrl = currentProvider.baseUrl
 
   isProcessing = true
 
@@ -127,25 +101,10 @@ proc sendToLLM*(prompt: string = "") {.async.} =
 
 
     var client = newAsyncHttpClient()
-    if isOcModel:
+    if currentProvider.apiKey.len > 0:
       client.headers = newHttpHeaders({
         "Content-Type": "application/json",
-        "Authorization": "Bearer " & OpenCodeApiKey
-      })
-    elif isOllamaModel:
-      client.headers = newHttpHeaders({
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " & OllamaApiKey
-      })
-    elif isNvidiaModel:
-      client.headers = newHttpHeaders({
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " & NvidiaApiKey
-      })
-    elif isZayaModel:
-      client.headers = newHttpHeaders({
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " & ZayaApiKey
+        "Authorization": "Bearer " & currentProvider.apiKey
       })
     else:
       client.headers = newHttpHeaders({"Content-Type": "application/json"})
@@ -159,15 +118,10 @@ proc sendToLLM*(prompt: string = "") {.async.} =
     var tokenCount = 0
 
     # --- Chunk smoothing for remote models ---
-    # Accumulates content text and flushes at most MaxOcLinesPerChunk lines
+    # Accumulates content text and flushes at most currentProvider.linesPerChunk lines
     # per network chunk, preventing bursty UI updates.
-    # OpenCode and Ollama may have different chunk sizes.
     var ocPendingBuffer = ""
     var ocResponseStarted = false
-    const MaxOcLinesPerChunk = 3   # Max lines per flush for OpenCode
-    const MaxOllamaLinesPerChunk = 1  # Max lines per flush for Ollama (has larger chunks)
-    const MaxNvidiaLinesPerChunk = 1  # Max lines per flush for Nvidia
-    const MaxZayaLinesPerChunk = 1    # Max lines per flush for Zaya
 
     try:
       # Send POST request with streaming
@@ -207,7 +161,7 @@ proc sendToLLM*(prompt: string = "") {.async.} =
                   if content.len > 0:
                     aiResponseBuffer &= content
 
-                    if not isOcModel and not isOllamaModel and not isNvidiaModel and not isZayaModel:
+                    if not currentProvider.isRemote:
                       # --- Local server: immediate output (existing behavior) ---
                       let isFirstChunkOfResponse =
                         aiResponseBuffer.len == content.len and toolCallsCollected.len == 0
@@ -243,7 +197,7 @@ proc sendToLLM*(prompt: string = "") {.async.} =
                         ocPendingBuffer = ""
 
                       # Process at most MaxOcLinesPerChunk lines this round
-                      let maxLines = if isOllamaModel: MaxOllamaLinesPerChunk elif isNvidiaModel: MaxNvidiaLinesPerChunk elif isZayaModel: MaxZayaLinesPerChunk else: MaxOcLinesPerChunk
+                      let maxLines = currentProvider.linesPerChunk
                       let toProcess = min(allParts.len, maxLines)
                       for i in 0 ..< toProcess:
                         let part = allParts[i]
@@ -300,7 +254,7 @@ proc sendToLLM*(prompt: string = "") {.async.} =
 
 
     # Flush remaining smoothed buffer (remote models only)
-    if (isOcModel or isOllamaModel or isNvidiaModel or isZayaModel) and ocPendingBuffer.len > 0:
+    if currentProvider.isRemote and ocPendingBuffer.len > 0:
       let remainingParts = ocPendingBuffer.splitLines()
       for part in remainingParts:
         if not ocResponseStarted:

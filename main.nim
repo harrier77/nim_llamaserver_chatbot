@@ -86,17 +86,8 @@ proc main() =
   # after the synchronous startup check
   lastServerCheck = epochTime()
 
-  # Load OpenCode config from ~/.nim_chatbot/
-  providers.loadOpenCodeConfig()
-
-  # Load Ollama config from ~/.nim_chatbot/
-  providers.loadOllamaConfig()
-
-  # Load Nvidia config from ~/.nim_chatbot/
-  providers.loadNvidiaConfig()
-
-  # Load Zaya config from ~/.nim_chatbot/
-  providers.loadZayaConfig()
+  # Load all providers from ~/.nim_chatbot/
+  providers.loadProvidersConfig()
 
   # --- Load previous state ---
   server.loadModelStatus()
@@ -200,13 +191,7 @@ proc main() =
         let mi = illwill.getMouse()
 
         if mi.scroll:
-          if state == SelectingModel:
-            # Scroll the model selection menu
-            if mi.scrollDir == sdUp:
-              if selectedMenuIndex > 0: dec(selectedMenuIndex)
-            elif mi.scrollDir == sdDown:
-              if selectedMenuIndex < availableModels.len - 1: inc(selectedMenuIndex)
-          else:
+          if state == Chatting:
             # Scroll the chat history
             # Standard mouse wheel behavior:
             # sdUp (Away) -> Scroll UP (see older) -> Increase offset
