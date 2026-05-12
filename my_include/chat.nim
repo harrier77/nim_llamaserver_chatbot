@@ -182,21 +182,25 @@ proc sendToLLM*(prompt: string = "") {.async.} =
                       # --- Remote model: chunk smoothing ---
                       ocPendingBuffer &= content
 
-                      # Split accumulated buffer into lines
-                      var allParts = ocPendingBuffer.splitLines()
+                      # Find lines manually to avoid empty strings from splitLines
+                      var allParts: seq[string] = @[]
+                      var start = 0
+                      var p = ocPendingBuffer.find('\n', start)
+                      while p != -1:
+                        allParts.add(ocPendingBuffer.substr(start, p - 1))
+                        start = p + 1
+                        p = ocPendingBuffer.find('\n', start)
+                      
+                      # Remaining part
+                      let remaining = ocPendingBuffer.substr(start)
 
-                      # If stream still active and buffer doesn't end with newline,
-                      # the last part is incomplete — save it for next chunk
-                      if allParts.len > 0 and not ocPendingBuffer.endsWith('\n'):
-                        ocPendingBuffer = allParts[^1]
-                        if allParts.len > 1:
-                          allParts = allParts[0 .. ^2]
-                        else:
-                          allParts = @[]
+                      # If the buffer does not end with newline, keep it for next time
+                      if not ocPendingBuffer.endsWith('\n'):
+                        ocPendingBuffer = remaining
                       else:
                         ocPendingBuffer = ""
 
-                      # Process at most MaxOcLinesPerChunk lines this round
+                      # Process completed lines
                       let maxLines = currentProvider.linesPerChunk
                       let toProcess = min(allParts.len, maxLines)
                       for i in 0 ..< toProcess:
@@ -205,18 +209,15 @@ proc sendToLLM*(prompt: string = "") {.async.} =
                           outputLines.add("AI: " & part)
                           ocResponseStarted = true
                         else:
-                          if part.len == 0:
-                            if outputLines.len > 0 and outputLines[^1].len > 0:
-                              outputLines.add("")
-                          else:
-                            outputLines.add(part)
-
-                      # Save remaining unprocessed lines back to buffer
-                      for i in toProcess ..< allParts.len:
-                        if ocPendingBuffer.len > 0:
-                          ocPendingBuffer &= "\n" & allParts[i]
-                        else:
-                          ocPendingBuffer = allParts[i]
+                          outputLines.add(part)
+                      
+                      # If we had more lines than allowed per chunk, put them back
+                      # in the buffer to be processed in next iteration
+                      if allParts.len > maxLines:
+                        for i in maxLines ..< allParts.len:
+                          ocPendingBuffer = (if ocPendingBuffer.len > 0: ocPendingBuffer & "\n" else: "") & allParts[i]
+                        if remaining.len > 0:
+                          ocPendingBuffer &= "\n" & remaining
 
                 # --- 2. Handle tool call chunks ---
                 if delta.hasKey("tool_calls"):

@@ -69,20 +69,8 @@ const ToolsSchemaJson* = """[
          },
          "required": ["number", "year"]
        }
-     }
-   },
-   {
-     "type": "function",
-     "function": {
-       "name": "listDelibs",
-       "description": "List all delibera files in the delibere directory.",
-       "parameters": {
-         "type": "object",
-         "properties": {},
-         "required": []
-       }
-     }
-   }
+      }
+    }
 ]"""
 
 # Export ToolsSchema for use by other modules (e.g., chat.nim)
@@ -167,6 +155,7 @@ proc cleanDeliberaText*(text: string): string =
   return text
 
 proc listDelibs*(args: JsonNode): string =
+  # temporarily disabled
   const delibsPath = "C:/Users/pr30565/Desktop/python/flask_root/principale/pareri/delibere/testi"
   let bashArgs = %*{"command": "ls '" & delibsPath & "'"}
   return bashTool(bashArgs)
@@ -237,5 +226,5 @@ proc executeTool*(name: string, args: JsonNode): string =
  of "read": return readTool(args)
  of "bash": return bashTool(args)
  of "readDelibera": return readDelibera(args)
- of "listDelibs": return listDelibs(args)
+
  else: return $(%*{"error": "Unknown tool: " & name})
