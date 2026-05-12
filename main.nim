@@ -212,6 +212,14 @@ proc main() =
                 modelSelectionScroll = 0
                 state = Chatting
                 break
+          elif state == Chatting and mi.y == 0:
+            # Check if click is on "Esc/Q=quit" in the title bar
+            let title = " CHAT 🤖 " & ModelName & " "
+            let titleX = max(1, (w - title.len) div 2)
+            let quitText = "Esc/Q=quit"
+            let quitX = titleX + title.len + 2
+            if mi.x >= quitX and mi.x < quitX + quitText.len:
+              exitProc()
       elif input.handleInput(key):
         exitProc()
 

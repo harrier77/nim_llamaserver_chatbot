@@ -8,6 +8,17 @@
 #
 # Dependencies: config.nim, illwill, unicode, strutils, strformat, osproc
 # IMPORTANT: do not import input.nim, chat.nim, server.nim, main.nim
+#
+# ⚠ ILLWILL PATCHES REQUIRED ⚠
+# If illwill is updated (e.g. via nimble update), the following patches
+# MUST be reapplied to the installed illwill.nim file:
+#   1. Patches 1-3: Mouse wheel fix (see main.nim for details)
+#   2. Patch 4: MOUSE_MOVED check in fillGlobalMouseInfo() — prevents
+#      mouse move events from being misinterpreted as clicks on some
+#      Windows terminal configurations. Without this, the model selection
+#      menu exits on any mouse movement.
+# Search for "FIX:" in the patched functions to locate all patches.
+# See: https://github.com/earendil/wind/mouse-illwill
 # ============================================================
 
 import illwill, unicode, strutils, strformat, osproc, os
