@@ -252,18 +252,18 @@ proc drawChatScreen*(tb: var TerminalBuffer, w, h: int) =
   tb.fill(0, 0, w - 1, h - 1, " ")
 
   # --- Title ---
-  let newTag = "[new]"
+  let newTag = "[new] "
   let modelliTag = "[Modelli] "
   let titleModel = fmt"CHAT 🤖 {ModelName} "
-  let title = modelliTag & titleModel
+  let title = newTag & modelliTag & titleModel
   let titleX = max(1, (w - title.len) div 2)
-  tb.write(titleX, 0, modelliTag)
-  tb.write(titleX + modelliTag.len, 0, titleModel)
+  tb.setForegroundColor(fgWhite, bright = true)
+  tb.write(titleX, 0, newTag)
+  tb.write(titleX + newTag.len, 0, modelliTag)
+  tb.write(titleX + newTag.len + modelliTag.len, 0, titleModel)
 
   # Help text next to the title
-  tb.setForegroundColor(fgWhite, bright = true)
   tb.write(titleX + title.len + 2, 0, "[Esc/Q=quit]")
-  tb.setBackgroundColor(bgNone)
 
   # --- Server unavailable banner ---
   let bannerOffset = if not serverAvailable: 1 else: 0

@@ -213,13 +213,20 @@ proc main() =
                 state = Chatting
                 break
           elif state == Chatting and mi.y == 0:
-            let titleModel = "CHAT 🤖 " & ModelName & " "
+            let newTag = "[new] "
             let modelliTag = "[Modelli] "
-            let title = modelliTag & titleModel
+            let titleModel = "CHAT 🤖 " & ModelName & " "
+            let title = newTag & modelliTag & titleModel
             let titleX = max(1, (w - title.len) div 2)
+            # Check if click is on "[new]" (reset conversation)
+            let newStartX = titleX
+            let newEndX = titleX + newTag.len - 1
+            if mi.x >= newStartX and mi.x <= newEndX:
+              config.resetConversation()
+              outputLines.add("System: Conversation reset. New chat started.")
             # Check if click is on "[Modelli]" (open model selection)
-            let modelliStartX = titleX
-            let modelliEndX = titleX + modelliTag.len - 1
+            let modelliStartX = titleX + newTag.len
+            let modelliEndX = titleX + newTag.len + modelliTag.len - 1
             if mi.x >= modelliStartX and mi.x <= modelliEndX:
               state = SelectingModel
             # Check if click is on "Esc/Q=quit"
