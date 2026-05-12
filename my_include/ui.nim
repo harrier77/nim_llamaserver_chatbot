@@ -252,15 +252,17 @@ proc drawChatScreen*(tb: var TerminalBuffer, w, h: int) =
   tb.fill(0, 0, w - 1, h - 1, " ")
 
   # --- Title ---
-  tb.setBackgroundColor(bgBlue)
-  tb.setForegroundColor(fgWhite, bright = true)
-  let title = fmt" CHAT 🤖 {ModelName} "
+  let newTag = "[new]"
+  let modelliTag = "[Modelli] "
+  let titleModel = fmt"CHAT 🤖 {ModelName} "
+  let title = modelliTag & titleModel
   let titleX = max(1, (w - title.len) div 2)
-  tb.write(titleX, 0, title)
+  tb.write(titleX, 0, modelliTag)
+  tb.write(titleX + modelliTag.len, 0, titleModel)
 
   # Help text next to the title
   tb.setForegroundColor(fgWhite, bright = true)
-  tb.write(titleX + title.len + 2, 0, "Esc/Q=quit")
+  tb.write(titleX + title.len + 2, 0, "[Esc/Q=quit]")
   tb.setBackgroundColor(bgNone)
 
   # --- Server unavailable banner ---
@@ -368,13 +370,6 @@ proc drawChatScreen*(tb: var TerminalBuffer, w, h: int) =
       tb.setForegroundColor(fgWhite)
     tb.write(0, y, line)
     inc(y)
-
-  # --- Redraw the title over the output area ---
-  tb.setBackgroundColor(bgBlue)
-  tb.setForegroundColor(fgWhite, bright = true)
-  tb.write(titleX, 0, title)
-  tb.write(titleX + title.len + 2, 0, "Esc/Q")
-  tb.setBackgroundColor(bgNone)
 
   # --- Input bar ---
   tb.setBackgroundColor(bgNone)

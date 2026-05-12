@@ -55,13 +55,29 @@ proc initTui*(): Tui =
 # Utility: visible width of a string (strips ANSI escapes)
 # ============================================================
 
+proc isWideRune(cp: int): bool =
+  ## Returns true for East Asian wide chars and emoji (terminal width = 2).
+  cp >= 0x1100 and cp <= 0x115F or
+  cp >= 0x2E80 and cp <= 0x303E or
+  cp >= 0x3040 and cp <= 0x9FFF or
+  cp >= 0xAC00 and cp <= 0xD7AF or
+  cp >= 0xF900 and cp <= 0xFAFF or
+  cp >= 0xFE10 and cp <= 0xFE19 or
+  cp >= 0xFE30 and cp <= 0xFE6F or
+  cp >= 0xFF01 and cp <= 0xFF60 or
+  cp >= 0xFFE0 and cp <= 0xFFE6 or
+  cp >= 0x1B000 and cp <= 0x1B12F or
+  cp >= 0x1F100 and cp <= 0x1F2FF or
+  cp >= 0x1F300 and cp <= 0x1F9FF or
+  cp >= 0x20000 and cp <= 0x2FFFF
+
 proc visibleWidth*(s: string): int =
   ## Returns the visible width of a string, ignoring ANSI escapes.
+  ## Emoji and CJK characters count as 2 columns.
   result = 0
   var i = 0
   while i < s.len:
     if s[i] == '\x1b':
-      # Skip ANSI escape sequence: ESC [ ... m
       if i + 1 < s.len and s[i+1] == '[':
         i += 2
         while i < s.len and s[i] != 'm':
@@ -69,7 +85,6 @@ proc visibleWidth*(s: string): int =
         if i < s.len: i += 1
         continue
       else:
-        # Skip other ESC sequences (OSC, APC like CURSOR_MARKER)
         i += 1
         while i < s.len and s[i] != '\x07':
           i += 1
@@ -82,6 +97,8 @@ proc visibleWidth*(s: string): int =
       let r = toRunes($s[i])
       if r.len > 0 and r[0].int > 0x1F:
         result += 1
+        if isWideRune(r[0].int):
+          result += 1
       i += 1
 
 # ============================================================

@@ -4,7 +4,7 @@
 ## Runs in a separate thread to avoid blocking the TUI
 ##
 
-import std/[asyncdispatch, asynchttpserver, asyncnet, httpclient, httpcore, json, os, osproc, strutils, strformat]
+import std/[asyncdispatch, asynchttpserver, asyncnet, httpclient, httpcore, json, os, strutils, strformat]
 import tools
 import system_prompt
 
@@ -13,7 +13,7 @@ var serverRunning*: bool = false
 var serverThread*: Thread[void]
 var serverPort*: Port
 
-const MaxReadLines = 1000
+#const MaxReadLines = 1000
 
 # Decode URL-encoded string
 proc decodeUrlParam*(urlStr: string): string =
