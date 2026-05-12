@@ -232,6 +232,7 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
     let modelsJsonPath = getModelsJsonPath()
     var providers: seq[string] = @[]
     providers.add("http://localhost:8080")
+    providers.add("http://172.20.14.47:8080")
     
     if fileExists(modelsJsonPath):
       try:

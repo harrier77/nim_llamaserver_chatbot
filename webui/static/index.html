@@ -24,7 +24,7 @@
           <p class="text-muted-foreground">Type message...</p>
         </div>
       </div> 
-      <div class="conversation-chat-form" style="top:25rem;flex-shrink: 0; position: sticky; bottom: 5px; backdrop-filter: blur(5px); z-index: 10; padding: 0.5rem 1rem;">
+      <div class="conversation-chat-form" style="top:35rem;flex-shrink: 0; position: sticky; bottom: 5px; backdrop-filter: blur(5px); z-index: 10; padding: 0.5rem 1rem;">
       <div class="relative" style="margin:auto">
         <input type="file" multiple class="hidden">
         <form>
@@ -90,8 +90,8 @@
 
     // ============ DIRECT PROVIDER DETECTION ============
     function isDirectProvider() {
-      // For localhost:8080 (llama.cpp) call directly, bypassing the proxy
-      return currentProvider.includes('localhost:8080');
+      // For localhost:8080 (llama.cpp) or 2nd_llama, call directly, bypassing the proxy
+      return currentProvider.includes('localhost:8080') || currentProvider.includes('172.20.14.47:8080');
     }
 
     // ============ PATH NORMALIZATION ============
@@ -416,7 +416,7 @@
           role === 'system' ? 'message-system' :
           role === 'tool' ? 'message-tool' :
           'message-assistant');
-      bubble.textContent = content;
+      bubble.innerHTML = content.replace(/\n/g, '<br/>');
 
       msgDiv.appendChild(bubble);
       chatDiv.appendChild(msgDiv);
@@ -471,7 +471,7 @@
 
         try {
           const chatUrl = isDirectProvider()
-            ? 'http://localhost:8080/v1/chat/completions'
+            ? getProviderUrl('/v1/chat/completions')
             : 'http://localhost:8000/v1/chat/completions?provider=' + currentProvider;
           const response = await fetch(chatUrl, {
             method: 'POST',
@@ -511,7 +511,7 @@
                   if (delta.content) {
                     aiBuffer += delta.content;
                     if (aiBubble) {
-                      aiBubble.textContent = aiBuffer;
+                      aiBubble.innerHTML = aiBuffer.replace(/\n/g, '<br/>');
                       // Auto-scroll during streaming
                       const wrapper = document.querySelector('.chat-messages-wrapper');
                       if (wrapper) {
@@ -644,7 +644,7 @@
           label.textContent = 'Loading...';
           // Pass provider WITHOUT encoding (server will handle it)
           const modelsUrl = isDirectProvider()
-            ? 'http://localhost:8080/v1/models'
+            ? getProviderUrl('/v1/models')
             : `http://localhost:8000/api/models?provider=${currentProvider}`;
           const res = await fetch(modelsUrl);
           const data = await res.json();
@@ -809,7 +809,7 @@
 
         try {
           const embUrl = isDirectProvider()
-            ? 'http://localhost:8080/v1/embeddings'
+            ? getProviderUrl('/v1/embeddings')
             : 'http://localhost:8000/v1/embeddings';
           const response = await fetch(embUrl, {
             method: 'POST',
