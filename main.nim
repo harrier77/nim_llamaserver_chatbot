@@ -201,6 +201,17 @@ proc main() =
             elif mi.scrollDir == sdDown:
               if scrollOffset >= 3: scrollOffset -= 3
               else: scrollOffset = 0
+        elif mi.button == mbLeft and mi.action == mbaPressed:
+          if state == SelectingModel:
+            for area in modelMenuClickAreas:
+              if mi.y == area.y and area.modelName.len > 0:
+                ModelName = area.modelName
+                server.saveModelStatus()
+                outputLines.add("System: Model changed to " & ModelName)
+                modelSelectionBuffer = ""
+                modelSelectionScroll = 0
+                state = Chatting
+                break
       elif input.handleInput(key):
         exitProc()
 

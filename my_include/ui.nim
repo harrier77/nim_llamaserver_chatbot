@@ -178,6 +178,7 @@ proc drawModelSelectionMenu*(tb: var TerminalBuffer, w, h: int) =
     modelSelectionScroll = 0
 
   # Draw visible lines
+  config.modelMenuClickAreas = @[]
   var y = startY
   for i in modelSelectionScroll ..< min(modelSelectionScroll + maxVisible, allLines.len):
     if y >= h - StatusBarHeight - 2: break
@@ -190,6 +191,8 @@ proc drawModelSelectionMenu*(tb: var TerminalBuffer, w, h: int) =
         tb.setForegroundColor(fgWhite)
     # Visualizzazione allineata a sinistra con un margine fisso per evitare troncamenti
     tb.write(max(2, (w - 40) div 2), y, allLines[i])
+    if lineTypes[i] == "model" and lineNums[i] > 0:
+      config.modelMenuClickAreas.add((y: y, modelName: lineModels[i]))
     inc(y)
 
   # Scroll indicators

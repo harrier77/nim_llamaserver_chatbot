@@ -118,6 +118,7 @@ var
   # --- Model selection ---
   modelSelectionBuffer*: string = ""
   modelSelectionScroll*: int = 0
+  modelMenuClickAreas*: seq[tuple[y: int, modelName: string]] = @[]
 
   # --- TUI output ---
   outputLines*: seq[string] = @[]
