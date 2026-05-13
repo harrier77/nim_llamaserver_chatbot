@@ -134,6 +134,7 @@ var
   lastServerCheck*: float = 0.0
   showingSlashMenu*: bool = false
   slashMenuIndex*: int = 0
+  hoveredButton*: string = ""  # "new", "modelli", "quit", or "" for toolbar hover effect
 
   # --- Conversation ---
   conversationHistory*: seq[JsonNode] = @[

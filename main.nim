@@ -10,7 +10,7 @@
 # IMPORTANT: do not import main.nim from other local modules
 # ============================================================
 
-import os, asyncdispatch, times
+import os, asyncdispatch, times, osproc
 import illwill
 import config   # constants, global variables, types
 import server   # server and model management
@@ -190,6 +190,34 @@ proc main() =
         # Handle mouse wheel scrolling
         let mi = illwill.getMouse()
 
+        # --- Hover detection for toolbar buttons ---
+        if state == Chatting:
+          if mi.y == 0:
+            let newTag = "[new] "
+            let modelliTag = "[Modelli] "
+            let titleModel = "CHAT 🤖 " & ModelName & " "
+            let title = newTag & modelliTag & titleModel
+            let titleX = max(1, (w - title.len) div 2)
+            hoveredButton = ""
+            let newStartX = titleX
+            let newEndX = titleX + newTag.len - 1
+            if mi.x >= newStartX and mi.x <= newEndX:
+              hoveredButton = "new"
+            let modelliStartX = titleX + newTag.len
+            let modelliEndX = titleX + newTag.len + modelliTag.len - 1
+            if mi.x >= modelliStartX and mi.x <= modelliEndX:
+              hoveredButton = "modelli"
+            let webuiTag = "[WebUI] "
+            let webuiX = titleX + title.len + 2
+            if mi.x >= webuiX and mi.x < webuiX + webuiTag.len:
+              hoveredButton = "webui"
+            let quitText = "[Esc/Q=quit]"
+            let quitX = webuiX + webuiTag.len
+            if mi.x >= quitX and mi.x < quitX + quitText.len:
+              hoveredButton = "quit"
+          else:
+            hoveredButton = ""
+
         if mi.scroll:
           if state == Chatting:
             # Scroll the chat history
@@ -229,13 +257,27 @@ proc main() =
             let modelliEndX = titleX + newTag.len + modelliTag.len - 1
             if mi.x >= modelliStartX and mi.x <= modelliEndX:
               state = SelectingModel
+            # Check if click is on "[WebUI]" (open browser)
+            let webuiTag = "[WebUI] "
+            let webuiX = titleX + title.len + 2
+            if mi.x >= webuiX and mi.x < webuiX + webuiTag.len:
+              when defined(windows):
+                proc ShellExecuteA(hwnd: int, operation: cstring, file: cstring,
+                                   parameters: cstring, directory: cstring, showCmd: int): int
+                                   {.stdcall, dynlib: "shell32.dll", importc.}
+                discard ShellExecuteA(0, "open", "http://localhost:8000", nil, nil, 1)
+              else:
+                discard execCmd("xdg-open http://localhost:8000")
+              outputLines.add("System: WebUI opened in browser")
             # Check if click is on "Esc/Q=quit"
             let quitText = "Esc/Q=quit"
-            let quitX = titleX + title.len + 2
+            let quitX = webuiX + webuiTag.len
             if mi.x >= quitX and mi.x < quitX + quitText.len:
               exitProc()
-      elif input.handleInput(key):
-        exitProc()
+      else:
+        hoveredButton = ""  # Keyboard input → clear hover
+        if input.handleInput(key):
+          exitProc()
 
     # (g) Poll async events
     try:

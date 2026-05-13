@@ -251,19 +251,59 @@ proc drawChatScreen*(tb: var TerminalBuffer, w, h: int) =
   tb.setForegroundColor(fgWhite)
   tb.fill(0, 0, w - 1, h - 1, " ")
 
-  # --- Title ---
+  # --- Title / Toolbar ---
   let newTag = "[new] "
   let modelliTag = "[Modelli] "
   let titleModel = fmt"CHAT 🤖 {ModelName} "
   let title = newTag & modelliTag & titleModel
   let titleX = max(1, (w - title.len) div 2)
+
+  # [new] button
+  if hoveredButton == "new":
+    tb.setBackgroundColor(bgWhite)
+    tb.setForegroundColor(fgBlack)
+    tb.write(titleX, 0, newTag)
+    tb.setBackgroundColor(bgBlack)
+  else:
+    tb.setForegroundColor(fgWhite, bright = true)
+    tb.write(titleX, 0, newTag)
+
+  # [Modelli] button
+  if hoveredButton == "modelli":
+    tb.setBackgroundColor(bgWhite)
+    tb.setForegroundColor(fgBlack)
+    tb.write(titleX + newTag.len, 0, modelliTag)
+    tb.setBackgroundColor(bgBlack)
+  else:
+    tb.setForegroundColor(fgWhite, bright = true)
+    tb.write(titleX + newTag.len, 0, modelliTag)
+
+  # Model name (static, non-clickable)
   tb.setForegroundColor(fgWhite, bright = true)
-  tb.write(titleX, 0, newTag)
-  tb.write(titleX + newTag.len, 0, modelliTag)
   tb.write(titleX + newTag.len + modelliTag.len, 0, titleModel)
 
-  # Help text next to the title
-  tb.write(titleX + title.len + 2, 0, "[Esc/Q=quit]")
+  # [WebUI] button
+  let webuiTag = "[WebUI] "
+  let webuiX = titleX + title.len + 2
+  if hoveredButton == "webui":
+    tb.setBackgroundColor(bgWhite)
+    tb.setForegroundColor(fgBlack)
+    tb.write(webuiX, 0, webuiTag)
+    tb.setBackgroundColor(bgBlack)
+  else:
+    tb.setForegroundColor(fgWhite, bright = true)
+    tb.write(webuiX, 0, webuiTag)
+
+  # [Esc/Q=quit] button
+  let quitText = "[Esc/Q=quit]"
+  if hoveredButton == "quit":
+    tb.setBackgroundColor(bgWhite)
+    tb.setForegroundColor(fgBlack)
+    tb.write(webuiX + webuiTag.len, 0, quitText)
+    tb.setBackgroundColor(bgBlack)
+  else:
+    tb.setForegroundColor(fgWhite, bright = true)
+    tb.write(webuiX + webuiTag.len, 0, quitText)
 
   # --- Server unavailable banner ---
   let bannerOffset = if not serverAvailable: 1 else: 0
