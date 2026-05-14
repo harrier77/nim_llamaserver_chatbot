@@ -122,6 +122,7 @@ proc sendToLLM*(prompt: string = "") {.async.} =
     # per network chunk, preventing bursty UI updates.
     var ocPendingBuffer = ""
     var ocResponseStarted = false
+    var modelDisplayed = false
 
     try:
       # Send POST request with streaming
@@ -152,6 +153,9 @@ proc sendToLLM*(prompt: string = "") {.async.} =
 
             try:
               let jsonChunk = parseJson(jsonStr)
+              if not modelDisplayed and jsonChunk.hasKey("model"):
+                outputLines.add("System: → " & jsonChunk["model"].getStr())
+                modelDisplayed = true
               if jsonChunk.hasKey("choices") and jsonChunk["choices"].len > 0:
                 let delta = jsonChunk["choices"][0].getOrDefault("delta")
 
