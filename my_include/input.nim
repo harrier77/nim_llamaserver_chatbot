@@ -236,6 +236,10 @@ proc handleInput*(key: illwill.Key): bool =
             outputLines.add("System: Usage: /edit <filename>")
           inputEditor.setText("")
           return false
+        of "/system":
+          ui.openSystemPromptInNewConsole()
+          inputEditor.setText("")
+          return false
         of "/read":
           if cmdParts.len >= 2:
             let filename = cmdParts[1]

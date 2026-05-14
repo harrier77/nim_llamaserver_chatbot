@@ -195,25 +195,26 @@ proc main() =
           if mi.y == 0:
             let newTag = "[new] "
             let modelliTag = "[Modelli] "
-            let titleModel = "CHAT 🤖 " & ModelName & " "
-            let title = newTag & modelliTag & titleModel
-            let titleX = max(1, (w - title.len) div 2)
+            let webuiTag = "[WebUI] "
+            let quitText = "[Esc/Q=quit]"
+            let buttonsStr = newTag & modelliTag & webuiTag & quitText
+            let buttonsX = max(1, (w - buttonsStr.len) div 2)
             hoveredButton = ""
-            let newStartX = titleX
-            let newEndX = titleX + newTag.len - 1
+            let newStartX = buttonsX
+            let newEndX = buttonsX + newTag.len - 1
             if mi.x >= newStartX and mi.x <= newEndX:
               hoveredButton = "new"
-            let modelliStartX = titleX + newTag.len
-            let modelliEndX = titleX + newTag.len + modelliTag.len - 1
+            let modelliStartX = buttonsX + newTag.len
+            let modelliEndX = buttonsX + newTag.len + modelliTag.len - 1
             if mi.x >= modelliStartX and mi.x <= modelliEndX:
               hoveredButton = "modelli"
-            let webuiTag = "[WebUI] "
-            let webuiX = titleX + title.len + 2
-            if mi.x >= webuiX and mi.x < webuiX + webuiTag.len:
+            let webuiStartX = buttonsX + newTag.len + modelliTag.len
+            let webuiEndX = buttonsX + newTag.len + modelliTag.len + webuiTag.len - 1
+            if mi.x >= webuiStartX and mi.x <= webuiEndX:
               hoveredButton = "webui"
-            let quitText = "[Esc/Q=quit]"
-            let quitX = webuiX + webuiTag.len
-            if mi.x >= quitX and mi.x < quitX + quitText.len:
+            let quitStartX = buttonsX + newTag.len + modelliTag.len + webuiTag.len
+            let quitEndX = buttonsX + newTag.len + modelliTag.len + webuiTag.len + quitText.len - 1
+            if mi.x >= quitStartX and mi.x <= quitEndX:
               hoveredButton = "quit"
           else:
             hoveredButton = ""
@@ -243,24 +244,25 @@ proc main() =
           elif state == Chatting and mi.y == 0:
             let newTag = "[new] "
             let modelliTag = "[Modelli] "
-            let titleModel = "CHAT 🤖 " & ModelName & " "
-            let title = newTag & modelliTag & titleModel
-            let titleX = max(1, (w - title.len) div 2)
+            let webuiTag = "[WebUI] "
+            let quitText = "[Esc/Q=quit]"
+            let buttonsStr = newTag & modelliTag & webuiTag & quitText
+            let buttonsX = max(1, (w - buttonsStr.len) div 2)
             # Check if click is on "[new]" (reset conversation)
-            let newStartX = titleX
-            let newEndX = titleX + newTag.len - 1
+            let newStartX = buttonsX
+            let newEndX = buttonsX + newTag.len - 1
             if mi.x >= newStartX and mi.x <= newEndX:
               config.resetConversation()
               outputLines.add("System: Conversation reset. New chat started.")
             # Check if click is on "[Modelli]" (open model selection)
-            let modelliStartX = titleX + newTag.len
-            let modelliEndX = titleX + newTag.len + modelliTag.len - 1
+            let modelliStartX = buttonsX + newTag.len
+            let modelliEndX = buttonsX + newTag.len + modelliTag.len - 1
             if mi.x >= modelliStartX and mi.x <= modelliEndX:
               state = SelectingModel
             # Check if click is on "[WebUI]" (open browser)
-            let webuiTag = "[WebUI] "
-            let webuiX = titleX + title.len + 2
-            if mi.x >= webuiX and mi.x < webuiX + webuiTag.len:
+            let webuiStartX = buttonsX + newTag.len + modelliTag.len
+            let webuiEndX = buttonsX + newTag.len + modelliTag.len + webuiTag.len - 1
+            if mi.x >= webuiStartX and mi.x <= webuiEndX:
               when defined(windows):
                 proc ShellExecuteA(hwnd: int, operation: cstring, file: cstring,
                                    parameters: cstring, directory: cstring, showCmd: int): int
@@ -269,10 +271,10 @@ proc main() =
               else:
                 discard execCmd("xdg-open http://localhost:8000")
               outputLines.add("System: WebUI opened in browser")
-            # Check if click is on "Esc/Q=quit"
-            let quitText = "Esc/Q=quit"
-            let quitX = webuiX + webuiTag.len
-            if mi.x >= quitX and mi.x < quitX + quitText.len:
+            # Check if click is on "[Esc/Q=quit]"
+            let quitStartX = buttonsX + newTag.len + modelliTag.len + webuiTag.len
+            let quitEndX = buttonsX + newTag.len + modelliTag.len + webuiTag.len + quitText.len - 1
+            if mi.x >= quitStartX and mi.x <= quitEndX:
               exitProc()
       else:
         hoveredButton = ""  # Keyboard input → clear hover

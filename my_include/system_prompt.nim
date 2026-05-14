@@ -1,18 +1,43 @@
-## System prompt constant (hardcoded, originally from system_prompt.yml)
-const SYSTEM_PROMPT* = """You are an expert assistant. You have access to these tools:
+## System prompt, loaded at runtime from system_prompt.yaml
+## Uses `var` + a gcsafe helper proc to safely access in async callbacks.
 
-Tool: read
-Description: Read the content of a file. Supports offset/limit for pagination.
-Parameters: file_path (required), offset (optional), limit (optional)
+import strutils, os
 
-Tool: bash
-Description: Execute a bash command in the current working directory. Returns stdout and stderr.
-Parameters: command (required)
+const YAML_PATH* = "my_include/system_prompt.yaml"
 
-Tool: readDelibera
-Description: Read the text of an Italian administrative act ("delibera") given its number and year. The number can be multi-digit (e.g., 1979, 1234, 42). The year is a 4-digit number (e.g., 2025, 2026).
-Parameters: number (required, the full number like 1979 or 42), year (required, like 2025)
+proc loadSystemPrompt(): string =
+  ## Reads the system prompt from the YAML file at startup.
+  ## Falls back to a minimal prompt if the file is missing or malformed.
+  if not fileExists(YAML_PATH):
+    stderr.writeLine("[WARN] system_prompt.yaml not found at " & YAML_PATH & ", using fallback prompt.")
+    return "You are a helpful assistant."
 
+  try:
+    let content = readFile(YAML_PATH)
+    let lines = content.splitLines()
+    var started = false
+    for line in lines:
+      if not started:
+        if line.startsWith("system_prompt:"):
+          started = true
+        continue
+      # Strip 2-space indentation from content lines
+      if line.len >= 2:
+        result.add(line[2 .. ^1])
+      else:
+        result.add(line)
+      result.add("\n")
+    # Remove trailing newline
+    if result.len > 0 and result[^1] == '\n':
+      result.setLen(result.len - 1)
+  except:
+    stderr.writeLine("[WARN] Failed to read " & YAML_PATH & ", using fallback prompt.")
+    return "You are a helpful assistant."
 
-Always use the appropriate tool when asked. When asked to read a delibera, extract the full number and the year from the request.
-"""
+var SYSTEM_PROMPT*: string = loadSystemPrompt()
+
+proc getSystemPrompt*(): string {.gcsafe.} =
+  ## GC-safe accessor for SYSTEM_PROMPT.
+  ## Use this inside async callbacks instead of accessing SYSTEM_PROMPT directly.
+  {.cast(gcsafe).}:
+    return SYSTEM_PROMPT

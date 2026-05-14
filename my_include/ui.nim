@@ -67,6 +67,21 @@ proc openInMicro*(filename: string) =
     if gExitProc != nil:
       setControlCHook(gExitProc)
 
+proc openSystemPromptInNewConsole*() =
+  ## Opens system_prompt.yaml in micro in a SEPARATE console window.
+  ## Unlike openInMicro, this does NOT suspend the TUI — micro runs
+  ## in its own window and the chat continues normally.
+  try:
+    let filepath = "my_include/system_prompt.yaml"
+    when defined(windows):
+      var p = startProcess("cmd.exe", args = @["/c", "start", "micro", filepath])
+      p.close()
+    else:
+      discard execCmd("micro " & quoteShell(filepath))
+    outputLines.add("System: Opened system_prompt.yaml in new console")
+  except CatchableError as e:
+    outputLines.add("System: Error opening system prompt: " & e.msg)
+
 # ============================================================
 # Unicode-aware word wrapping
 # ============================================================
@@ -252,58 +267,64 @@ proc drawChatScreen*(tb: var TerminalBuffer, w, h: int) =
   tb.fill(0, 0, w - 1, h - 1, " ")
 
   # --- Title / Toolbar ---
+  let titleModel = fmt"CHAT 🤖 {ModelName} "
   let newTag = "[new] "
   let modelliTag = "[Modelli] "
-  let titleModel = fmt"CHAT 🤖 {ModelName} "
-  let title = newTag & modelliTag & titleModel
-  let titleX = max(1, (w - title.len) div 2)
+  let webuiTag = "[WebUI] "
+  let quitText = "[Esc/Q=quit]"
+
+  # Model name on the far left
+  let modelNameX = 1
+
+  # Buttons centered as a group
+  let buttonsStr = newTag & modelliTag & webuiTag & quitText
+  let buttonsX = max(1, (w - buttonsStr.len) div 2)
+
+  # Model name (left-aligned) with highlighted background
+  tb.setBackgroundColor(bgGreen)
+  tb.setForegroundColor(fgWhite, bright = true)
+  tb.write(modelNameX, 0, titleModel)
+  tb.setBackgroundColor(bgBlack)
 
   # [new] button
   if hoveredButton == "new":
     tb.setBackgroundColor(bgWhite)
     tb.setForegroundColor(fgBlack)
-    tb.write(titleX, 0, newTag)
+    tb.write(buttonsX, 0, newTag)
     tb.setBackgroundColor(bgBlack)
   else:
     tb.setForegroundColor(fgWhite, bright = true)
-    tb.write(titleX, 0, newTag)
+    tb.write(buttonsX, 0, newTag)
 
   # [Modelli] button
   if hoveredButton == "modelli":
     tb.setBackgroundColor(bgWhite)
     tb.setForegroundColor(fgBlack)
-    tb.write(titleX + newTag.len, 0, modelliTag)
+    tb.write(buttonsX + newTag.len, 0, modelliTag)
     tb.setBackgroundColor(bgBlack)
   else:
     tb.setForegroundColor(fgWhite, bright = true)
-    tb.write(titleX + newTag.len, 0, modelliTag)
-
-  # Model name (static, non-clickable)
-  tb.setForegroundColor(fgWhite, bright = true)
-  tb.write(titleX + newTag.len + modelliTag.len, 0, titleModel)
+    tb.write(buttonsX + newTag.len, 0, modelliTag)
 
   # [WebUI] button
-  let webuiTag = "[WebUI] "
-  let webuiX = titleX + title.len + 2
   if hoveredButton == "webui":
     tb.setBackgroundColor(bgWhite)
     tb.setForegroundColor(fgBlack)
-    tb.write(webuiX, 0, webuiTag)
+    tb.write(buttonsX + newTag.len + modelliTag.len, 0, webuiTag)
     tb.setBackgroundColor(bgBlack)
   else:
     tb.setForegroundColor(fgWhite, bright = true)
-    tb.write(webuiX, 0, webuiTag)
+    tb.write(buttonsX + newTag.len + modelliTag.len, 0, webuiTag)
 
   # [Esc/Q=quit] button
-  let quitText = "[Esc/Q=quit]"
   if hoveredButton == "quit":
     tb.setBackgroundColor(bgWhite)
     tb.setForegroundColor(fgBlack)
-    tb.write(webuiX + webuiTag.len, 0, quitText)
+    tb.write(buttonsX + newTag.len + modelliTag.len + webuiTag.len, 0, quitText)
     tb.setBackgroundColor(bgBlack)
   else:
     tb.setForegroundColor(fgWhite, bright = true)
-    tb.write(webuiX + webuiTag.len, 0, quitText)
+    tb.write(buttonsX + newTag.len + modelliTag.len + webuiTag.len, 0, quitText)
 
   # --- Server unavailable banner ---
   let bannerOffset = if not serverAvailable: 1 else: 0
@@ -311,7 +332,7 @@ proc drawChatScreen*(tb: var TerminalBuffer, w, h: int) =
     let banner = " ⚠ SERVER UNAVAILABLE - Start llama-server.exe ⚠ "
     tb.setBackgroundColor(bgRed)
     tb.setForegroundColor(fgWhite, bright = true)
-    tb.write(max(1, (w - banner.len) div 2), 1, banner)
+    tb.write(max(1, (w - banner.len) div 2), 2, banner)
     tb.setBackgroundColor(bgBlack)
 
   # --- Collect output lines with word wrapping ---
@@ -340,7 +361,7 @@ proc drawChatScreen*(tb: var TerminalBuffer, w, h: int) =
 
   # --- Calculate input bar position ---
   let inputBarActualRows = 4  # delimiter + label + prompt + delimiter
-  let contentStartY = 1 + bannerOffset
+  let contentStartY = 2 + bannerOffset
   let inputBarNeeded = InputGap + inputBarActualRows
 
   # Space needed for the slash menu if visible
@@ -378,7 +399,7 @@ proc drawChatScreen*(tb: var TerminalBuffer, w, h: int) =
     showTo = min(showFrom + visibleRows, allDisplayLines.len)
 
   # --- Draw visible output lines ---
-  var y = 1 + bannerOffset
+  var y = 2 + bannerOffset
 
   # FIX: determine inAIResponse state before showFrom so scrolled-in
   # continuation lines keep the correct green AI color

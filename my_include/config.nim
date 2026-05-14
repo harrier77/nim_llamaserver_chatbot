@@ -82,12 +82,13 @@ type SlashCommand* = object
   name*: string
   description*: string
 
-const SlashCommands*: array[6, SlashCommand] = [
+const SlashCommands*: array[7, SlashCommand] = [
   SlashCommand(name: "/quit",   description: "Exit the application (also /q)"),
   SlashCommand(name: "/model",  description: "Change the current model"),
   SlashCommand(name: "/new",    description: "Reset conversation and start new chat"),
   SlashCommand(name: "/history", description: "Set history length (also /h)"),
   SlashCommand(name: "/edit",   description: "Open file in micro editor"),
+  SlashCommand(name: "/system", description: "Open system prompt in micro editor"),
   SlashCommand(name: "/read",   description: "Read a file into the chat output"),
 ]
 

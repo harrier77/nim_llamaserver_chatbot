@@ -448,7 +448,7 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
 
   if path == "/api/system-prompt":
     let headers = newHttpHeaders([("Content-Type", "application/json")])
-    let response = %*{"content": SYSTEM_PROMPT}
+    let response = %*{"content": getSystemPrompt()}
     await req.respond(Http200, $response, headers)
     return
 
