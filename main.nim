@@ -10,7 +10,7 @@
 # IMPORTANT: do not import main.nim from other local modules
 # ============================================================
 
-import os, asyncdispatch, times, osproc
+import os, asyncdispatch, times, osproc, strutils
 import illwill
 import config   # constants, global variables, types
 import server   # server and model management
@@ -18,6 +18,30 @@ import providers  # external provider config loaders
 import input    # keyboard input handling
 import ui       # TUI rendering
 import webui/httpdserver  # WebUI HTTP server
+
+# ============================================================
+# Detached process launcher (Windows shell32 / POSIX xdg-open)
+# ============================================================
+
+when defined(windows):
+  proc ShellExecuteA(hwnd: int, operation: cstring, file: cstring,
+                     parameters: cstring, directory: cstring, showCmd: int): int
+                     {.stdcall, dynlib: "shell32.dll", importc.}
+
+proc launchDetached*(target: string) =
+  ## Opens a file/URL/batch script in a separate process independent
+  ## of the terminal that launched this application.
+  when defined(windows):
+    if target.endsWith(".bat") or target.endsWith(".cmd"):
+      # Use ShellExecuteA with the working directory set to the bat's folder.
+      # This creates a completely independent process without touching the
+      # parent console, preserving illwill's mouse input mode.
+      let dir = target.parentDir()
+      discard ShellExecuteA(0, "open", target, nil, cstring(dir), 1)
+    else:
+      discard ShellExecuteA(0, "open", target, nil, nil, 1)
+  else:
+    discard execCmd("xdg-open " & target)
 
 # ============================================================
 # Exit proc (terminal cleanup)
@@ -196,8 +220,9 @@ proc main() =
             let newTag = "[new] "
             let modelliTag = "[Modelli] "
             let webuiTag = "[WebUI] "
+            let llamaTag = "[Llama] "
             let quitText = "[Esc/Q=quit]"
-            let buttonsStr = newTag & modelliTag & webuiTag & quitText
+            let buttonsStr = newTag & modelliTag & webuiTag & llamaTag & quitText
             let buttonsX = max(1, (w - buttonsStr.len) div 2)
             hoveredButton = ""
             let newStartX = buttonsX
@@ -212,8 +237,12 @@ proc main() =
             let webuiEndX = buttonsX + newTag.len + modelliTag.len + webuiTag.len - 1
             if mi.x >= webuiStartX and mi.x <= webuiEndX:
               hoveredButton = "webui"
-            let quitStartX = buttonsX + newTag.len + modelliTag.len + webuiTag.len
-            let quitEndX = buttonsX + newTag.len + modelliTag.len + webuiTag.len + quitText.len - 1
+            let llamaStartX = buttonsX + newTag.len + modelliTag.len + webuiTag.len
+            let llamaEndX = buttonsX + newTag.len + modelliTag.len + webuiTag.len + llamaTag.len - 1
+            if mi.x >= llamaStartX and mi.x <= llamaEndX:
+              hoveredButton = "llama"
+            let quitStartX = buttonsX + newTag.len + modelliTag.len + webuiTag.len + llamaTag.len
+            let quitEndX = buttonsX + newTag.len + modelliTag.len + webuiTag.len + llamaTag.len + quitText.len - 1
             if mi.x >= quitStartX and mi.x <= quitEndX:
               hoveredButton = "quit"
           else:
@@ -245,8 +274,9 @@ proc main() =
             let newTag = "[new] "
             let modelliTag = "[Modelli] "
             let webuiTag = "[WebUI] "
+            let llamaTag = "[Llama] "
             let quitText = "[Esc/Q=quit]"
-            let buttonsStr = newTag & modelliTag & webuiTag & quitText
+            let buttonsStr = newTag & modelliTag & webuiTag & llamaTag & quitText
             let buttonsX = max(1, (w - buttonsStr.len) div 2)
             # Check if click is on "[new]" (reset conversation)
             let newStartX = buttonsX
@@ -263,17 +293,17 @@ proc main() =
             let webuiStartX = buttonsX + newTag.len + modelliTag.len
             let webuiEndX = buttonsX + newTag.len + modelliTag.len + webuiTag.len - 1
             if mi.x >= webuiStartX and mi.x <= webuiEndX:
-              when defined(windows):
-                proc ShellExecuteA(hwnd: int, operation: cstring, file: cstring,
-                                   parameters: cstring, directory: cstring, showCmd: int): int
-                                   {.stdcall, dynlib: "shell32.dll", importc.}
-                discard ShellExecuteA(0, "open", "http://localhost:8000", nil, nil, 1)
-              else:
-                discard execCmd("xdg-open http://localhost:8000")
+              launchDetached("http://localhost:8000")
               outputLines.add("System: WebUI opened in browser")
+            # Check if click is on "[Llama]" (launch llama server)
+            let llamaStartX = buttonsX + newTag.len + modelliTag.len + webuiTag.len
+            let llamaEndX = buttonsX + newTag.len + modelliTag.len + webuiTag.len + llamaTag.len - 1
+            if mi.x >= llamaStartX and mi.x <= llamaEndX:
+              launchDetached(r"C:\down\llama-latest\lancia_router.bat")
+              outputLines.add("System: LlamaServerCpp launched")
             # Check if click is on "[Esc/Q=quit]"
-            let quitStartX = buttonsX + newTag.len + modelliTag.len + webuiTag.len
-            let quitEndX = buttonsX + newTag.len + modelliTag.len + webuiTag.len + quitText.len - 1
+            let quitStartX = buttonsX + newTag.len + modelliTag.len + webuiTag.len + llamaTag.len
+            let quitEndX = buttonsX + newTag.len + modelliTag.len + webuiTag.len + llamaTag.len + quitText.len - 1
             if mi.x >= quitStartX and mi.x <= quitEndX:
               exitProc()
       else:

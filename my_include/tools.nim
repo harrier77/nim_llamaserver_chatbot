@@ -54,7 +54,7 @@ const ToolsSchemaJson* = """[
      "type": "function",
      "function": {
        "name": "readDelibera",
-       "description": "Read a delibera file from '%userprofile%/Desktop/python/flask_root/principale/pareri/delibere/testi'; automatically composes filename as delibera_XXXX_YYYY.txt where XXXX is 4-digit zero-padded number and YYYY is the year.",
+       "description": "Read a delibera file from '~/Desktop/python/flask_root/principale/pareri/delibere/testi/'; automatically composes filename as delibera_XXXX_YYYY.txt where XXXX is 4-digit zero-padded number and YYYY is the year.",
        "parameters": {
          "type": "object",
          "properties": {
@@ -68,7 +68,7 @@ const ToolsSchemaJson* = """[
            },
            "limit": {
              "type": "number",
-             "description": "Maximum bytes to return (default: 1024, i.e. 1k)"
+             "description": "Maximum bytes to return (default: 2048, i.e. 2k)"
            },
            "offset": {
              "type": "number",
@@ -83,6 +83,8 @@ const ToolsSchemaJson* = """[
 
 # Export ToolsSchema for use by other modules (e.g., chat.nim)
 let ToolsSchema* = parseJson(ToolsSchemaJson)
+
+proc delibsBaseDir*: string = getHomeDir() / "Desktop/python/flask_root/principale/pareri/delibere/testi"
 
 proc readTool*(args: JsonNode): string =
   const MaxReadLines = 1000
@@ -164,12 +166,11 @@ proc cleanDeliberaText*(text: string): string =
 
 proc listDelibs*(args: JsonNode): string =
   # temporarily disabled
-  const delibsPath = "C:/Users/pr30565/Desktop/python/flask_root/principale/pareri/delibere/testi"
-  let bashArgs = %*{"command": "ls '" & delibsPath & "'"}
+  let bashArgs = %*{"command": "ls '" & delibsBaseDir() & "'"}
   return bashTool(bashArgs)
 
 proc readDelibera*(args: JsonNode): string =
-    var path_for_summary="C:/Users/pr30565/Desktop/python/flask_root/principale/pareri/delibere/testi"
+    var path_for_summary = delibsBaseDir()
     
     # Get number and year parameters
     let numberNode = args{"number"}
@@ -193,8 +194,8 @@ proc readDelibera*(args: JsonNode): string =
     if numberStr == "" or yearStr == "":
         return $(%*{"error": "Invalid number or year parameter"})
     
-    # Get limit parameter (default: 1024 = 1k)
-    let limitBytes = if args.hasKey("limit"): args["limit"].getInt() else: 1024
+    # Get limit parameter (default: 2048 = 2k)
+    let limitBytes = if args.hasKey("limit"): args["limit"].getInt() else: 2048
     # Get offset parameter (default: 0 = beginning of file)
     let offsetBytes = if args.hasKey("offset"): args["offset"].getInt() else: 0
 
@@ -235,8 +236,8 @@ proc readDelibera*(args: JsonNode): string =
       
       # Truncate to limitBytes
       if content.len > limitBytes:
-        content = content[0..<limitBytes] & "\n[... truncated to " & $limitBytes & " bytes]"
-      
+        content = content[0..<limitBytes] & "\n[... truncated to " & $limitBytes & " bytes]  SYSTEM INSTRUCTION: Content above is sufficient for answering. Do not request additional chunks. Do not call readDelibera again. Answer now."
+        #content = content[0..<limitBytes] 
       # Return JSON format
       return $(%*{"content": content})
     except Exception as e:

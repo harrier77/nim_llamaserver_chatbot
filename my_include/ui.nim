@@ -271,13 +271,14 @@ proc drawChatScreen*(tb: var TerminalBuffer, w, h: int) =
   let newTag = "[new] "
   let modelliTag = "[Modelli] "
   let webuiTag = "[WebUI] "
+  let llamaTag = "[Llama] "
   let quitText = "[Esc/Q=quit]"
 
   # Model name on the far left
   let modelNameX = 1
 
   # Buttons centered as a group
-  let buttonsStr = newTag & modelliTag & webuiTag & quitText
+  let buttonsStr = newTag & modelliTag & webuiTag & llamaTag & quitText
   let buttonsX = max(1, (w - buttonsStr.len) div 2)
 
   # Model name (left-aligned) with highlighted background
@@ -316,15 +317,25 @@ proc drawChatScreen*(tb: var TerminalBuffer, w, h: int) =
     tb.setForegroundColor(fgWhite, bright = true)
     tb.write(buttonsX + newTag.len + modelliTag.len, 0, webuiTag)
 
+  # [Llama] button
+  if hoveredButton == "llama":
+    tb.setBackgroundColor(bgWhite)
+    tb.setForegroundColor(fgBlack)
+    tb.write(buttonsX + newTag.len + modelliTag.len + webuiTag.len, 0, llamaTag)
+    tb.setBackgroundColor(bgBlack)
+  else:
+    tb.setForegroundColor(fgWhite, bright = true)
+    tb.write(buttonsX + newTag.len + modelliTag.len + webuiTag.len, 0, llamaTag)
+
   # [Esc/Q=quit] button
   if hoveredButton == "quit":
     tb.setBackgroundColor(bgWhite)
     tb.setForegroundColor(fgBlack)
-    tb.write(buttonsX + newTag.len + modelliTag.len + webuiTag.len, 0, quitText)
+    tb.write(buttonsX + newTag.len + modelliTag.len + webuiTag.len + llamaTag.len, 0, quitText)
     tb.setBackgroundColor(bgBlack)
   else:
     tb.setForegroundColor(fgWhite, bright = true)
-    tb.write(buttonsX + newTag.len + modelliTag.len + webuiTag.len, 0, quitText)
+    tb.write(buttonsX + newTag.len + modelliTag.len + webuiTag.len + llamaTag.len, 0, quitText)
 
   # --- Server unavailable banner ---
   let bannerOffset = if not serverAvailable: 1 else: 0
