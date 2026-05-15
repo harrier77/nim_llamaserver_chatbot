@@ -8,6 +8,7 @@ Full-screen TUI chat client in Nim that connects to a local [llama.cpp](https://
 - **Multi-turn chat** — sliding-window conversation history (configurable with `/history <n>`)
 - **Multi-provider architecture** — Connect to local llama.cpp or remote providers (OpenCode, Ollama, NVIDIA, Zaya)
 - **Tool calling** — LLM can invoke tools (bash, file read, etc.) via the OpenAI-compatible API
+- **Smart tool summarization** — bash tool returns a compact `summary` for the LLM (first lines + "do not repeat") while the full output is displayed in the UI, preventing token waste and hallucinations
 - **Model switching** — `/model` opens an interactive tree menu to pick from categorized models
 - **Slash commands** — type `/` to see an auto-complete popup
 - **Persistent state** — selected model, history limit, and server URL are saved to `~/.nim_chatbot/status.json`
@@ -295,6 +296,30 @@ When the LLM triggers a tool call:
 2. The execution runs server-side
 3. The result is displayed below the tool call
 4. The LLM then generates its final response incorporating the tool result
+
+### Smart Tool Summarization (bash)
+
+To prevent the LLM from wasting tokens by repeating tool output verbatim, the bash tool uses a **dual-response** strategy:
+
+| Field | Audience | Content |
+|---|---|---|
+| `content` | UI (user) | Full command output (complete) |
+| `summary` | LLM (model) | First 5 lines as preview + instruction not to repeat |
+
+When bash executes:
+- The **UI** (both TUI and WebUI) displays the complete output so the user sees everything immediately
+- The **LLM** receives only a compact `summary` containing:
+  - The first 5 lines of actual output (for context)
+  - A `[... N more lines, full output visible above for user]` notice
+  - An explicit instruction: `(respond to the user naturally about this result, but do NOT repeat the full output)`
+
+This approach:
+- **Eliminates tool-output hallucinations** — the model doesn't see the full output to repeat or embellish
+- **Preserves context** — the first lines give the model enough information to discuss the result naturally
+- **Works with small models** — the instruction is embedded in the data itself, not in the system prompt (which could bleed into general conversation)
+- **Keeps the system prompt clean** — no behavioral instructions that might affect non-tool responses
+
+The `read` and `readDelibera` tools are **not** affected — they return their full content to the LLM as before, since the model should summarize or discuss file/delibera contents.
 
 ### File Upload
 

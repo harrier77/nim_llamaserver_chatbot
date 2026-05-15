@@ -576,31 +576,48 @@
               addChatMessage('system', 'Tool Call -> ' + toolName + '(' + tc.function.arguments + ')');
 
               const result = await executeTool(toolName, toolArgs);
-              let content = '';
+              let displayContent = '';
+              let modelContent = '';
 
-              // Extract content from result, ensuring it's a string
-              if (result.content !== undefined) {
-                content = typeof result.content === 'string' ? result.content : JSON.stringify(result.content);
-                if (result.exit_code && result.exit_code !== '0') {
-                  content = '[Exit code: ' + result.exit_code + ']\n' + content;
-                }
-              } else if (result.error) {
-                content = 'Error: ' + result.error;
+              // --- Extract content for display (full output shown to user) ---
+              if (result.error) {
+                displayContent = 'Error: ' + result.error;
+              } else if (result.content !== undefined) {
+                displayContent = typeof result.content === 'string' ? result.content : JSON.stringify(result.content);
               } else {
-                // If no content field, use the stringified result (fallback)
-                content = JSON.stringify(result);
+                displayContent = JSON.stringify(result);
+              }
+
+              // Prepend exit_code prefix for display when non-zero
+              if (result.exit_code !== undefined && result.exit_code !== 0 && !result.error) {
+                displayContent = '[Exit code: ' + result.exit_code + ']\n' + displayContent;
+              }
+
+              // --- Extract content for model (summary when available) ---
+              if (result.summary !== undefined) {
+                // Summary already contains exit code info, use as-is
+                modelContent = typeof result.summary === 'string' ? result.summary : JSON.stringify(result.summary);
+              } else if (result.error) {
+                modelContent = 'Error: ' + result.error;
+              } else if (result.content !== undefined) {
+                modelContent = typeof result.content === 'string' ? result.content : JSON.stringify(result.content);
+                if (result.exit_code !== undefined && result.exit_code !== 0) {
+                  modelContent = '[Exit code: ' + result.exit_code + ']\n' + modelContent;
+                }
+              } else {
+                modelContent = JSON.stringify(result);
               }
 
               // Format and display tool result like TUI (--- and ***Title***)
               const toolTitle = (toolName === 'read' && toolArgs.file_path) ? toolArgs.file_path : toolName;
-              const formattedResult = `--- \n ***${toolTitle}***: \n ${content}`;
+              const formattedResult = `--- \n ***${toolTitle}***: \n ${displayContent}`;
               addChatMessage('tool', formattedResult);
 
               conversationHistory.push({
                 role: 'tool',
                 tool_call_id: toolId,
                 name: toolName,
-                content: content
+                content: modelContent
               });
             }
 

@@ -37,7 +37,7 @@ const ToolsSchemaJson* = """[
     "type": "function",
     "function": {
       "name": "bash",
-      "description": "Execute a bash command on the system. Use for running shell commands, listing files, etc.\n\nOUTPUT LIMIT: Output is capped at 20 lines by default. If the full output exceeds this, a '[... truncated at N lines...]' message is appended.\n\nPAGINATION: To read more output, call bash again with 'offset' and 'limit' (e.g., offset: 21, limit: 20). Use the last line number returned + 1 as the next offset. Multiple calls are fine for pagination; just avoid redundant calls that fetch the same information.",
+"description": "Execute a bash command on the system. Use for running shell commands, listing files, etc.\n\nOUTPUT LIMIT: Output is capped at 20 lines by default. If the full output exceeds this, a '[... truncated at N lines...]' message is appended.\n\nPAGINATION: To read more output, call bash again with 'offset' and 'limit' (e.g., offset: 21, limit: 20). Use the last line number returned + 1 as the next offset. Multiple calls are fine for pagination; just avoid redundant calls that fetch the same information.\n\nNote: The tool result includes a 'summary' field with a brief execution report. The full command output is shown in the UI for the user.",
       "parameters": {
         "type": "object",
         "properties": {
@@ -178,8 +178,31 @@ proc bashTool*(args: JsonNode): string =
     if lastLineReturned < totalLines:
       content &= "\n[... truncated at " & $effectiveLimit & " lines, use offset/limit to read more]"
 
+    # --- Build summary for the model (avoids repeating full output) ---
+    var summary: string
+    let cmdShort = if command.len > 60: command[0..59] & "..." else: command
+    if exitCode == 0:
+      # Include first few lines as preview so model has context,
+      # then instruct not to repeat since user already saw full output
+      const PreviewLines = 5
+      var preview = ""
+      let previewEnd = min(slice.len - 1, PreviewLines - 1)
+      if previewEnd >= 0:
+        preview = slice[0..previewEnd].join("\n")
+      if slice.len > PreviewLines:
+        preview &= "\n[... " & $(slice.len - PreviewLines) & " more lines, full output visible above for user]"
+      else:
+        preview &= "\n[full output visible above for user]"
+      summary = preview & "\n" & "(respond to the user naturally about this result, but do NOT repeat the full output)"
+    else:
+      let firstErrLine = if lines.len > 0: lines[0] else: ""
+      summary = "✗ Tool bash failed, exit " & $exitCode
+      if firstErrLine.len > 0:
+        summary &= ": " & firstErrLine
+
     return $(%*{
       "content": content,
+      "summary": summary,
       "exit_code": exitCode
     })
   except Exception as e:

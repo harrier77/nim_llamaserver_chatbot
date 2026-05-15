@@ -299,30 +299,53 @@ proc sendToLLM*(prompt: string = "") {.async.} =
         outputLines.add("System: Tool Call -> " & toolName & "(" & toolArgs & ")")
         let result = tools.executeTool(toolName, parseJson(toolArgs))
 
-        # Extract content from the tool's JSON result
-        # The tool returns: {"content": "...", "exit_code": X}
-        var content = result
+        # Extract content and summary from the tool's JSON result
+        # The tool returns: {"content": "...", "summary": "...", "exit_code": X}
+        # - content: full output (shown in UI)
+        # - summary: brief execution report (for the model)
+        var displayContent = ""
+        var modelContent = result
         try:
           let parsed = parseJson(result)
-          if parsed.hasKey("content"):
-            content = parsed["content"].getStr()
-            # Include exit_code if non-zero
+
+          # Extract display content (full output shown to user)
+          if parsed.hasKey("error"):
+            displayContent = "Error: " & parsed["error"].getStr()
+          elif parsed.hasKey("content"):
+            displayContent = parsed["content"].getStr()
+            # Prepend exit_code for display when non-zero
             if parsed.hasKey("exit_code"):
-              let exitCode = parsed["exit_code"].getInt()
-              if exitCode != 0:
-                content = "[Exit code: " & $exitCode & "]\n" & content
+              let ec = parsed["exit_code"].getInt()
+              if ec != 0:
+                displayContent = "[Exit code: " & $ec & "]\n" & displayContent
+
+          # Extract model content (summary when available)
+          if parsed.hasKey("summary"):
+            modelContent = parsed["summary"].getStr()
+          elif parsed.hasKey("content"):
+            modelContent = parsed["content"].getStr()
+            if parsed.hasKey("exit_code"):
+              let ec = parsed["exit_code"].getInt()
+              if ec != 0:
+                modelContent = "[Exit code: " & $ec & "]\n" & modelContent
           elif parsed.hasKey("error"):
-            content = "Error: " & parsed["error"].getStr()
+            modelContent = "Error: " & parsed["error"].getStr()
         except:
-          content = "[JSON PARSE ERROR: " & result & "]"
+          displayContent = result
+          modelContent = "[JSON PARSE ERROR: " & result & "]"
 
-
+        # Show tool result in TUI (like WebUI does)
+        if displayContent.len > 0:
+          outputLines.add("---")
+          outputLines.add("***" & toolName & "***:")
+          for line in displayContent.splitLines():
+            outputLines.add("  " & line)
 
         conversationHistory.add(%*{
           "role": "tool",
           "tool_call_id": toolId,
           "name": toolName,
-          "content": content
+          "content": modelContent
         })
 
       # Round complete, go back to the top of the loop to send
