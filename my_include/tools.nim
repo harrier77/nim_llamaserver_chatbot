@@ -37,13 +37,21 @@ const ToolsSchemaJson* = """[
     "type": "function",
     "function": {
       "name": "bash",
-      "description": "Execute a bash command on the system. Use this for running shell commands, listing files, etc. IMPORTANT: Only call this tool ONCE per task. Do not make multiple calls to get the same information (e.g., don't call 'ls -la' then 'ls' then 'find' for the same directory - one call is enough).",
+      "description": "Execute a bash command on the system. Use for running shell commands, listing files, etc.\n\nOUTPUT LIMIT: Output is capped at 20 lines by default. If the full output exceeds this, a '[... truncated at N lines...]' message is appended.\n\nPAGINATION: To read more output, call bash again with 'offset' and 'limit' (e.g., offset: 21, limit: 20). Use the last line number returned + 1 as the next offset. Multiple calls are fine for pagination; just avoid redundant calls that fetch the same information.",
       "parameters": {
         "type": "object",
         "properties": {
           "command": {
             "type": "string",
             "description": "The bash command to execute"
+          },
+          "offset": {
+            "type": "number",
+            "description": "Line number to start output from (1-indexed). Default: 1"
+          },
+          "limit": {
+            "type": "number",
+            "description": "Maximum number of lines of output to return (max 20). Default: 20"
           }
         },
         "required": ["command"]
@@ -131,8 +139,13 @@ proc readTool*(args: JsonNode): string =
     return $(%*{"error": e.msg})
 
 proc bashTool*(args: JsonNode): string =
+  const MaxBashOutputLines = 20
+
   let command = if args.hasKey("command"): args["command"].getStr() else: ""
   if command == "": return $(%*{"error": "Missing command parameter"})
+
+  let offset = if args.hasKey("offset"): args["offset"].getInt() else: 1
+  let limit = if args.hasKey("limit"): args["limit"].getInt() else: -1
 
   try:
     var res = ""
@@ -146,10 +159,27 @@ proc bashTool*(args: JsonNode): string =
     else:
       (res, exitCode) = execCmdEx(command)
 
-    # Return JSON format (like Python _bash_impl)
-    # The frontend will parse this and extract the content
+    var output = res.strip()
+    let lines = output.splitLines()
+
+    if offset > lines.len:
+      return $(%*{"error": "Offset beyond output length", "exit_code": exitCode})
+
+    let startIdx = max(0, offset - 1)
+    let effectiveLimit = if limit == -1: MaxBashOutputLines else: min(limit, MaxBashOutputLines)
+    let endIdx = min(lines.len - 1, startIdx + effectiveLimit - 1)
+
+    let slice = lines[startIdx .. endIdx]
+    var content = slice.join("\n")
+
+    # Add truncation notice if there's more output beyond what was returned
+    let totalLines = lines.len
+    let lastLineReturned = endIdx + 1
+    if lastLineReturned < totalLines:
+      content &= "\n[... truncated at " & $effectiveLimit & " lines, use offset/limit to read more]"
+
     return $(%*{
-      "content": res.strip(),
+      "content": content,
       "exit_code": exitCode
     })
   except Exception as e:
