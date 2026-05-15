@@ -10,6 +10,7 @@
   </button>
   <button id="provider-btn" type="button" style="width:18rem;text-align:left;font-size:1em">
     <span id="provider-label">Loading...</span>
+    <span id="provider-remote-badge" style="display:none;background:#e53e3e;color:#fff;font-size:0.65em;padding:1px 5px;border-radius:3px;margin-left:4px;vertical-align:middle;font-weight:bold">remote</span>
     <span style="text-align:right"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <path d="m6 9 6 6 6-6"></path>
     </svg></span>
@@ -88,12 +89,6 @@
     var isProcessing = false;
     var availableTools = [];
 
-    // ============ DIRECT PROVIDER DETECTION ============
-    function isDirectProvider() {
-      // For localhost:8080 (llama.cpp) or 2nd_llama, call directly, bypassing the proxy
-      return currentProvider.includes('localhost:8080') || currentProvider.includes('172.20.14.47:8080');
-    }
-
     // ============ PATH NORMALIZATION ============
     function normalizePath(str) {
       // Sostituisce tutti i backslash con forward slash
@@ -106,7 +101,7 @@
     // ============ FETCH SYSTEM PROMPT FROM SERVER ============
     async function fetchSystemPrompt() {
       try {
-        const res = await fetch('http://localhost:8000/api/system-prompt');
+        const res = await fetch('/api/system-prompt');
         const data = await res.json();
         SYSTEM_PROMPT = data.content || '';
       } catch (e) {
@@ -118,7 +113,7 @@
     // ============ FETCH TOOLS FROM SERVER ============
     async function fetchTools() {
       try {
-        const res = await fetch('http://localhost:8000/api/tools');
+        const res = await fetch('/api/tools');
         availableTools = await res.json();
       } catch (e) {
         console.error('Failed to fetch tools:', e);
@@ -131,18 +126,30 @@
     var currentProvider = localStorage.getItem('provider') || PROVIDER_DEFAULT;
     var availableProviders = [];
 
+    console.log('[DEBUG] PROVIDER_DEFAULT:', PROVIDER_DEFAULT);
+    console.log('[DEBUG] localStorage provider:', localStorage.getItem('provider'));
+    console.log('[DEBUG] currentProvider init:', currentProvider);
+
     function initProvider() {
+      console.log('[DEBUG] initProvider()', currentProvider);
       document.getElementById('provider-label').textContent = currentProvider;
+      var host = window.location.hostname;
+      if (host !== 'localhost' && host !== '127.0.0.1' && host !== '[::1]') {
+        document.getElementById('provider-remote-badge').style.display = 'inline';
+      }
       fetchProviders();
     }
 
     async function fetchProviders() {
+      console.log('[DEBUG] fetchProviders() - currentProvider:', currentProvider);
       try {
-        const res = await fetch('http://localhost:8000/api/providers');
+        const res = await fetch('/api/providers');
+        console.log('[DEBUG] fetchProviders status:', res.status, res.statusText);
         const data = await res.json();
+        console.log('[DEBUG] fetchProviders response:', JSON.stringify(data));
         availableProviders = data.providers || [PROVIDER_DEFAULT];
       } catch (e) {
-        console.error('Failed to fetch providers:', e);
+        console.error('[DEBUG] fetchProviders FAILED:', e.message);
         availableProviders = [PROVIDER_DEFAULT];
       }
     }
@@ -218,6 +225,7 @@
       }
 
       function selectProvider(provider) {
+        console.log('[DEBUG] selectProvider() ->', provider);
         currentProvider = provider;
         localStorage.setItem('provider', provider);
         label.textContent = provider;
@@ -433,7 +441,7 @@
     // ============ TOOL EXECUTION ============
     async function executeTool(name, args) {
       try {
-        const res = await fetch('http://localhost:8000/api/execute-tool', {
+        const res = await fetch('/api/execute-tool', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: name, arguments: args })
@@ -470,9 +478,7 @@
         let toolCallsCollected = [];
 
         try {
-          const chatUrl = isDirectProvider()
-            ? getProviderUrl('/v1/chat/completions')
-            : 'http://localhost:8000/v1/chat/completions?provider=' + currentProvider;
+          const chatUrl = '/v1/chat/completions?provider=' + encodeURIComponent(currentProvider);
           const response = await fetch(chatUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -640,19 +646,28 @@
       let modelsLoaded = false;
 
       async function fetchModels() {
+        console.log('[DEBUG] fetchModels() - currentProvider:', currentProvider);
         try {
           label.textContent = 'Loading...';
-          // Pass provider WITHOUT encoding (server will handle it)
-          const modelsUrl = isDirectProvider()
-            ? getProviderUrl('/v1/models')
-            : `http://localhost:8000/api/models?provider=${currentProvider}`;
+          const modelsUrl = `/api/models?provider=${encodeURIComponent(currentProvider)}`;
+          console.log('[DEBUG] fetchModels URL:', modelsUrl);
           const res = await fetch(modelsUrl);
-          const data = await res.json();
+          console.log('[DEBUG] fetchModels status:', res.status, res.statusText);
+          const responseText = await res.text();
+          console.log('[DEBUG] fetchModels RAW response:', responseText);
+          let data;
+          try {
+            data = JSON.parse(responseText);
+          } catch(e) {
+            console.error('[DEBUG] fetchModels JSON parse FAILED:', e.message);
+            data = { data: [] };
+          }
           
           // Save selection BEFORE updating models array
           const prevSelected = currentModel || selectedModel;
           
           models = data.data || [];
+          console.log('[DEBUG] fetchModels parsed models:', models.length, models);
           modelsLoaded = true;
 
           // Now find the currently loaded model from server response
@@ -682,13 +697,14 @@
             label.textContent = 'Select model';
           }
         } catch (e) {
-          console.error('Failed to fetch models:', e);
+          console.error('[DEBUG] fetchModels FAILED:', e.message);
           label.textContent = 'Select model';
           models = [];
         }
       }
 
       // Fetch models on page load
+      console.log('[DEBUG] Calling fetchModels() on page load');
       fetchModels();
 
       function createDropdown() {
@@ -789,6 +805,7 @@
       }
 
       async function selectModel(modelId) {
+        console.log('[DEBUG] selectModel() ->', modelId, 'currentProvider:', currentProvider);
         selectedModel = modelId;
         currentModel = modelId;
         label.textContent = modelId;
@@ -808,14 +825,18 @@
         closeDropdown();
 
         try {
-          const embUrl = isDirectProvider()
-            ? getProviderUrl('/v1/embeddings')
-            : 'http://localhost:8000/v1/embeddings';
+          const embUrl = '/v1/embeddings?provider=' + encodeURIComponent(currentProvider);
+          console.log('[DEBUG] selectModel POST URL:', embUrl);
+          const body = JSON.stringify({ content: 'test', model: modelId });
+          console.log('[DEBUG] selectModel POST body:', body);
           const response = await fetch(embUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ content: 'test', model: modelId })
+            body: body
           });
+          console.log('[DEBUG] selectModel response status:', response.status, response.statusText);
+          const respText = await response.text();
+          console.log('[DEBUG] selectModel response body:', respText);
 
           if (response.ok) {
             addChatMessage('system', 'OK Model loaded: ' + modelId);
@@ -824,6 +845,7 @@
           }
           await fetchModels();
         } catch (e) {
+          console.error('[DEBUG] selectModel fetch FAILED:', e.message);
           addChatMessage('system', 'OK Model selected: ' + modelId);
         }
       }
@@ -851,7 +873,9 @@
       });
 
       // Listen for provider changes
-      window.addEventListener('provider-changed', async () => {
+      window.addEventListener('provider-changed', async (e) => {
+        console.log('[DEBUG] provider-changed event:', e.detail);
+        console.log('[DEBUG] currentProvider after change:', currentProvider);
         modelsLoaded = false;
         selectedModel = null;
         currentModel = null;

@@ -4,7 +4,7 @@
 ## Runs in a separate thread to avoid blocking the TUI
 ##
 
-import std/[asyncdispatch, asynchttpserver, asyncnet, httpclient, httpcore, json, os, strutils, strformat]
+import std/[asyncdispatch, asynchttpserver, asyncnet, httpclient, httpcore, json, os, strutils, strformat, times]
 import tools
 import system_prompt
 
@@ -12,6 +12,16 @@ import system_prompt
 var serverRunning*: bool = false
 var serverThread*: Thread[void]
 var serverPort*: Port
+
+proc debugLog*(msg: string) =
+  let logPath = getCurrentDir() / "nimlog.txt"
+  let timestamp = now().format("HH:mm:ss")
+  try:
+    var f = open(logPath, fmAppend)
+    f.writeLine(timestamp & " " & msg)
+    f.close()
+  except:
+    discard
 
 #const MaxReadLines = 1000
 
@@ -22,7 +32,7 @@ proc decodeUrlParam*(urlStr: string): string =
   while i < urlStr.len:
     if urlStr[i] == '%' and i + 2 < urlStr.len:
       try:
-        let hexVal = parseHexInt(urlStr.substr(i + 1, 2))
+        let hexVal = parseHexInt(urlStr[i + 1 .. i + 2])
         result.add(chr(hexVal))
         i += 3
       except:
@@ -269,23 +279,41 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
       for param in queryParams:
         let parts = param.split("=")
         if parts.len == 2 and parts[0] == "provider":
+          debugLog("/api/models raw parts[1]=" & parts[1])
           providerUrl = decodeUrlParam(parts[1])
+          debugLog("/api/models decoded providerUrl=" & providerUrl)
     
+    debugLog("=== /api/models final providerUrl=" & providerUrl)
     var modelsResponse = ""
     
-    if providerUrl.contains("localhost:8080"):
+    let isCloud = providerUrl.contains("ollama.com") or providerUrl.contains("opencode.ai") or
+                   providerUrl.contains("nvidia") or providerUrl.contains("zyphra") or
+                   providerUrl.contains("zaya")
+
+    if isCloud:
+      debugLog("/api/models isCloud=true -> getModelsFromConfig")
+      modelsResponse = await getModelsFromConfig(providerUrl)
+    else:
       var client = newAsyncHttpClient()
       try:
-        modelsResponse = await client.getContent(providerUrl & "/models")
-      except:
+        let fetchUrl = providerUrl & "/v1/models"
+        debugLog("/api/models trying " & fetchUrl)
+        modelsResponse = await client.getContent(fetchUrl)
+        debugLog("/api/models SUCCESS " & $modelsResponse.len & " bytes")
+        debugLog("/api/models response body: " & modelsResponse)
+      except CatchableError as e:
+        debugLog("/api/models /v1/models FAILED: " & e.msg)
         try:
-          modelsResponse = await client.getContent(providerUrl & "/v1/models")
-        except:
+          let fetchUrl2 = providerUrl & "/models"
+          debugLog("/api/models trying fallback " & fetchUrl2)
+          modelsResponse = await client.getContent(fetchUrl2)
+          debugLog("/api/models fallback SUCCESS " & $modelsResponse.len & " bytes")
+          debugLog("/api/models fallback body: " & modelsResponse)
+        except CatchableError as e2:
+          debugLog("/api/models fallback ALSO FAILED: " & e2.msg)
           modelsResponse = "{\"data\": []}"
       finally:
         client.close()
-    else:
-      modelsResponse = await getModelsFromConfig(providerUrl)
 
     let modelHeaders = newHttpHeaders([("Content-Type", "application/json")])
     await req.respond(Http200, modelsResponse, modelHeaders)
@@ -293,13 +321,23 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
 
   if path == "/v1/embeddings":
     let bodyStr = req.body
+    var targetUrl = "http://localhost:8080/v1/embeddings"
+
+    if req.url.query.len > 0:
+      let queryParams = req.url.query.split("&")
+      for param in queryParams:
+        let parts = param.split("=")
+        if parts.len == 2 and parts[0] == "provider":
+          let providerUrl = decodeUrlParam(parts[1])
+          targetUrl = providerUrl & "/v1/embeddings"
+
     var client = newAsyncHttpClient()
     var embedResponse = ""
     try:
       client.headers = newHttpHeaders([("Content-Type", "application/json")])
-      embedResponse = await client.postContent("http://localhost:8080/v1/embeddings", bodyStr)
+      embedResponse = await client.postContent(targetUrl, bodyStr)
     except:
-      embedResponse = "{\"error\": \"Failed to connect to provider\"}"
+      embedResponse = "{\"error\": \"Failed to connect to " & targetUrl & "\"}"
     finally:
       client.close()
     
