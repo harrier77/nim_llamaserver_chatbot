@@ -138,27 +138,8 @@ proc getModelsFromConfig*(providerUrl: string): Future[string] {.async.} =
     finally:
       client.close()
   elif providerUrl.contains("ollama.com"):
-    var client = newAsyncHttpClient()
-    try:
-      let modelsUrl = "https://ollama.com/api/tags"
-      let response = await client.getContent(modelsUrl)
-      try:
-        let j = parseJson(response)
-        var models: seq[JsonNode] = @[]
-        if j.hasKey("models"):
-          for m in j["models"]:
-            var modelItem = newJObject()
-            modelItem["id"] = m["name"]
-            modelItem["object"] = %*"model"
-            modelItem["owned_by"] = %*"ollama"
-            models.add(modelItem)
-        return $ %*{ "data": models }
-      except:
-        return response
-    except:
-      discard
-    finally:
-      client.close()
+    # Use models.json fallback (same mechanism as nvidia provider)
+    discard
   elif providerUrl.contains("nvidia"):
     var client = newAsyncHttpClient()
     try:

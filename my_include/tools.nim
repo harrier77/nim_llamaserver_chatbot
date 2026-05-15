@@ -54,7 +54,7 @@ const ToolsSchemaJson* = """[
      "type": "function",
      "function": {
        "name": "readDelibera",
-       "description": "Read a delibera file from the summary directory. Automatically composes filename as delibera_XXXX_YYYY.txt where XXXX is 4-digit zero-padded number and YYYY is the year.",
+       "description": "Read a delibera file from '%userprofile%/Desktop/python/flask_root/principale/pareri/delibere/testi'; automatically composes filename as delibera_XXXX_YYYY.txt where XXXX is 4-digit zero-padded number and YYYY is the year.",
        "parameters": {
          "type": "object",
          "properties": {
@@ -65,6 +65,14 @@ const ToolsSchemaJson* = """[
            "year": {
              "type": "string",
              "description": "The year of the delibera (e.g., '2026')"
+           },
+           "limit": {
+             "type": "number",
+             "description": "Maximum bytes to return (default: 1024, i.e. 1k)"
+           },
+           "offset": {
+             "type": "number",
+             "description": "Byte offset to start reading from (default: 0, beginning of file)"
            }
          },
          "required": ["number", "year"]
@@ -185,6 +193,11 @@ proc readDelibera*(args: JsonNode): string =
     if numberStr == "" or yearStr == "":
         return $(%*{"error": "Invalid number or year parameter"})
     
+    # Get limit parameter (default: 1024 = 1k)
+    let limitBytes = if args.hasKey("limit"): args["limit"].getInt() else: 1024
+    # Get offset parameter (default: 0 = beginning of file)
+    let offsetBytes = if args.hasKey("offset"): args["offset"].getInt() else: 0
+
     # Pad number to 4 digits with leading zeros
     var paddedNumber = numberStr
     while paddedNumber.len < 4:
@@ -204,17 +217,25 @@ proc readDelibera*(args: JsonNode): string =
     try:
       let parsed = parseJson(resultJson)
       if parsed.hasKey("error"):
-        return resultJson
+        # Return a friendly message for the model instead of raw OS error
+        return $(%*{"content": "The requested delibera (" & filename & ") was not found. " &
+          "It may not exist or the number/year combination may be wrong. " &
+          "Do not attempt to read this delibera again with the same parameters."})
       
       var content = parsed["content"].getStr()
       
       # Clean the text: remove everything before "Pag 1 di" if present
       content = cleanDeliberaText(content)
       
-      # Truncate to max 1KB (1024 bytes)
-      const MaxBytes = 2048
-      if content.len > MaxBytes:
-        content = content[0..<MaxBytes] & "\n[... truncated to 1KB]"
+      # Apply byte offset (skip first offsetBytes bytes)
+      if offsetBytes > 0 and offsetBytes < content.len:
+        content = content[offsetBytes..<content.len]
+      elif offsetBytes >= content.len:
+        content = ""
+      
+      # Truncate to limitBytes
+      if content.len > limitBytes:
+        content = content[0..<limitBytes] & "\n[... truncated to " & $limitBytes & " bytes]"
       
       # Return JSON format
       return $(%*{"content": content})

@@ -12,7 +12,7 @@ system_prompt: |
 
   Tool: readDelibera
   Description: Read the text of an Italian administrative act ("delibera") given its number and year. The number can be multi-digit (e.g., 1979, 1234, 42). The year is a 4-digit number (e.g., 2025, 2026).
-  Parameters: number (required, the full number like 1979 or 42), year (required, like 2025)
+  Parameters: number (required, the full number like 1979 or 42), year (required, like 2025), limit (optional, max bytes to return, default 1024), offset (optional, byte offset to start reading from, default 0)
 
   Always use the appropriate tool when asked. 
   Only if asked use tool readDelibera, for other files use tool read.
