@@ -221,70 +221,81 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
 
   if path == "/api/providers":
     let modelsJsonPath = getModelsJsonPath()
-    var providers: seq[string] = @[]
-    providers.add("http://localhost:8080")
-    providers.add("http://172.20.14.47:8080")
+    var providersList: seq[JsonNode] = @[]
     
+    # 1. Default localhost provider (always available)
+    providersList.add(%*{
+      "name": "🖥 Local Server",
+      "baseUrl": "http://localhost:8080",
+      "isRemote": false,
+      "source": "default",
+      "hasApiKey": false,
+      "modelsKnown": false
+    })
+    
+    # 2. Read ALL providers from models.json dynamically (like providers.nim does)
     if fileExists(modelsJsonPath):
       try:
         let content = readFile(modelsJsonPath)
         let json = parseJson(content)
         if json.hasKey("providers"):
-          let provs = json["providers"]
-          if provs.hasKey("ollama"):
-            let ollama = provs["ollama"]
-            if ollama.hasKey("baseUrl"):
-              let baseUrl = ollama["baseUrl"].getStr()
-              if baseUrl.len > 0:
-                let idx = baseUrl.find("/v1")
-                if idx > 0:
-                  providers.add(baseUrl[0 .. idx - 1])
-                else:
-                  providers.add(baseUrl)
-          if provs.hasKey("nvidia"):
-            let nvidia = provs["nvidia"]
-            if nvidia.hasKey("baseUrl"):
-              let baseUrl = nvidia["baseUrl"].getStr()
-              if baseUrl.len > 0:
-                let idx = baseUrl.find("/v1")
-                if idx > 0:
-                  providers.add(baseUrl[0 .. idx - 1])
-          if provs.hasKey("zaya"):
-            let zaya = provs["zaya"]
-            if zaya.hasKey("baseUrl"):
-              let baseUrl = zaya["baseUrl"].getStr()
-              if baseUrl.len > 0:
-                providers.add(baseUrl)
-          if provs.hasKey("opencode"):
-            let oc = provs["opencode"]
-            if oc.hasKey("baseUrl"):
-              let baseUrl = oc["baseUrl"].getStr()
-              if baseUrl.len > 0:
-                let idx = baseUrl.find("/v1")
-                if idx > 0:
-                  providers.add(baseUrl[0 .. idx - 1])
+          for provName, provVal in json["providers"]:
+            let baseUrl = provVal{"baseUrl"}.getStr("")
+            if baseUrl.len == 0: continue
+            
+            let isRemote = provName != "llamacpp"
+            let apiKey = getApiKey(provName)
+            let hasApiKey = apiKey.len > 0
+            
+            var modelIds: seq[string] = @[]
+            if provVal.hasKey("models"):
+              for m in provVal["models"]:
+                modelIds.add(m.getStr())
+            
+            var entry = %*{
+              "name": provName,
+              "baseUrl": baseUrl,
+              "isRemote": isRemote,
+              "source": "config",
+              "hasApiKey": hasApiKey,
+              "modelsKnown": modelIds.len > 0
+            }
+            if modelIds.len > 0:
+              entry["models"] = %modelIds
+            providersList.add(entry)
       except:
         discard
     
+    # 3. Custom URL entry (always at the end)
+    providersList.add(%*{
+      "name": "✏️ Custom URL...",
+      "baseUrl": "",
+      "isRemote": false,
+      "source": "custom",
+      "hasApiKey": false,
+      "modelsKnown": false
+    })
+    
     let headers = newHttpHeaders([("Content-Type", "application/json")])
-    let response = %*{ "providers": providers }
+    let response = %*{ "providers": providersList }
     await req.respond(Http200, $response, headers)
     return
 
   if path == "/api/models":
     var providerUrl = "http://localhost:8080"
+    var providerName = ""
     
     if req.url.query.len > 0:
-      let queryParams = req.url.query.split("&")
-      for param in queryParams:
+      for param in req.url.query.split("&"):
         let parts = param.split("=")
-        if parts.len == 2 and parts[0] == "provider":
-          debugLog("/api/models raw parts[1]=" & parts[1])
-          providerUrl = decodeUrlParam(parts[1])
-          debugLog("/api/models decoded providerUrl=" & providerUrl)
+        if parts.len == 2:
+          if parts[0] == "provider":
+            providerUrl = decodeUrlParam(parts[1])
+          elif parts[0] == "providerName":
+            providerName = decodeUrlParam(parts[1])
     
-    debugLog("=== /api/models final providerUrl=" & providerUrl)
-    var modelsResponse = ""
+    debugLog("=== /api/models providerUrl=" & providerUrl & " providerName=" & providerName)
+    var modelsResponse: string
     
     let isCloud = providerUrl.contains("ollama.com") or providerUrl.contains("opencode.ai") or
                    providerUrl.contains("nvidia") or providerUrl.contains("zyphra") or
@@ -296,11 +307,18 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
     else:
       var client = newAsyncHttpClient()
       try:
+        let apiKey = if providerName.len > 0: getApiKey(providerName) else: ""
+        if apiKey.len > 0:
+          client.headers = newHttpHeaders({
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " & apiKey
+          })
         let fetchUrl = providerUrl & "/v1/models"
         debugLog("/api/models trying " & fetchUrl)
+        if apiKey.len > 0:
+          debugLog("/api/models using API key for " & providerName)
         modelsResponse = await client.getContent(fetchUrl)
         debugLog("/api/models SUCCESS " & $modelsResponse.len & " bytes")
-        debugLog("/api/models response body: " & modelsResponse)
       except CatchableError as e:
         debugLog("/api/models /v1/models FAILED: " & e.msg)
         try:
@@ -308,10 +326,13 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
           debugLog("/api/models trying fallback " & fetchUrl2)
           modelsResponse = await client.getContent(fetchUrl2)
           debugLog("/api/models fallback SUCCESS " & $modelsResponse.len & " bytes")
-          debugLog("/api/models fallback body: " & modelsResponse)
         except CatchableError as e2:
           debugLog("/api/models fallback ALSO FAILED: " & e2.msg)
-          modelsResponse = "{\"data\": []}"
+          if providerName.len > 0:
+            debugLog("/api/models trying JSON fallback for " & providerName)
+            modelsResponse = await getModelsFromJsonFallback(providerUrl, providerName)
+          else:
+            modelsResponse = "{\"data\": []}"
       finally:
         client.close()
 

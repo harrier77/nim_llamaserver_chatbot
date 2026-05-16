@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="utf-8">
   <link rel="stylesheet" href="miostile.css?v=20260513">
 </head>
 <body>
@@ -130,27 +131,42 @@
     console.log('[DEBUG] localStorage provider:', localStorage.getItem('provider'));
     console.log('[DEBUG] currentProvider init:', currentProvider);
 
-    function initProvider() {
-      console.log('[DEBUG] initProvider()', currentProvider);
-      document.getElementById('provider-label').textContent = currentProvider;
+    function getProviderLabel(url) {
+      var pObj = availableProviders.find(function(p) { return p.baseUrl === url; });
+      return pObj ? pObj.name : url;
+    }
+
+    function getProviderObj(url) {
+      return availableProviders.find(function(p) { return p.baseUrl === url; }) || null;
+    }
+
+    function updateProviderBadge(pObj) {
+      var isRemoteProvider = pObj ? pObj.isRemote : false;
       var host = window.location.hostname;
-      if (host !== 'localhost' && host !== '127.0.0.1' && host !== '[::1]') {
-        document.getElementById('provider-remote-badge').style.display = 'inline';
-      }
+      var isRemoteHost = host !== 'localhost' && host !== '127.0.0.1' && host !== '[::1]';
+      document.getElementById('provider-remote-badge').style.display =
+        (isRemoteProvider || isRemoteHost) ? 'inline' : 'none';
+    }
+
+    function initProvider() {
+      var label = getProviderLabel(currentProvider);
+      document.getElementById('provider-label').textContent = label;
+      updateProviderBadge(getProviderObj(currentProvider));
       fetchProviders();
     }
 
     async function fetchProviders() {
-      console.log('[DEBUG] fetchProviders() - currentProvider:', currentProvider);
       try {
         const res = await fetch('/api/providers');
-        console.log('[DEBUG] fetchProviders status:', res.status, res.statusText);
         const data = await res.json();
-        console.log('[DEBUG] fetchProviders response:', JSON.stringify(data));
-        availableProviders = data.providers || [PROVIDER_DEFAULT];
+        availableProviders = data.providers || [];
+        // Update label with friendly name now that providers are loaded
+        var label = getProviderLabel(currentProvider);
+        document.getElementById('provider-label').textContent = label;
+        updateProviderBadge(getProviderObj(currentProvider));
       } catch (e) {
         console.error('[DEBUG] fetchProviders FAILED:', e.message);
-        availableProviders = [PROVIDER_DEFAULT];
+        availableProviders = [];
       }
     }
 
@@ -164,6 +180,14 @@
       let isOpen = false;
       let dropdownEl = null;
 
+      function promptCustomUrl() {
+        closeDropdown();
+        var url = prompt('Enter provider URL:', 'http://');
+        if (url && url.trim()) {
+          selectProvider(url.trim());
+        }
+      }
+
       function createDropdown() {
         const dropdown = document.createElement('div');
         dropdown.className = 'provider-dropdown';
@@ -176,7 +200,21 @@
         const listDiv = document.createElement('div');
         listDiv.style.padding = '0.25rem';
         
-        availableProviders.forEach(provider => {
+        // Build display list: ensure currentProvider is included even if not in availableProviders
+        var displayList = availableProviders.slice();
+        var isCurrentInList = displayList.some(function(p) { return p.baseUrl === currentProvider; });
+        if (currentProvider && !isCurrentInList) {
+          displayList.splice(displayList.length - 1, 0, {
+            name: currentProvider,
+            baseUrl: currentProvider,
+            isRemote: false,
+            source: 'manual',
+            hasApiKey: false,
+            modelsKnown: false
+          });
+        }
+        
+        displayList.forEach(function(providerObj) {
           const item = document.createElement('button');
           item.className = 'dropdown-item';
           item.style.display = 'flex';
@@ -186,21 +224,59 @@
           item.style.background = 'none';
           item.style.cursor = 'pointer';
           item.style.color = isDark ? '#f9fafb' : '#1f2937';
-          item.style.fontSize = '0.75rem';
+          item.style.fontSize = '0.85rem';
           item.style.borderRadius = '0.25rem';
-          item.textContent = provider;
-          if (provider === currentProvider) {
-            item.style.backgroundColor = isDark ? '#333333' : '#e5e7eb';
+          item.style.textAlign = 'left';
+          item.style.alignItems = 'center';
+          item.style.gap = '0.5rem';
+          
+          if (providerObj.source === 'custom') {
+            item.textContent = providerObj.name;
+            item.style.fontStyle = 'italic';
+            item.style.opacity = '0.8';
+            item.addEventListener('click', promptCustomUrl);
+          } else {
+            var displayName = providerObj.name + '  →  ' + providerObj.baseUrl;
+            item.textContent = displayName;
+            if (providerObj.baseUrl === currentProvider) {
+              item.style.backgroundColor = isDark ? '#333333' : '#e5e7eb';
+            }
+            if (providerObj.isRemote) {
+              var badge = document.createElement('span');
+              badge.textContent = 'remote';
+              badge.style.fontSize = '0.8em';
+              badge.style.padding = '1px 4px';
+              badge.style.borderRadius = '3px';
+              badge.style.background = '#e53e3e';
+              badge.style.color = '#fff';
+              badge.style.fontWeight = 'bold';
+              badge.style.marginLeft = '4px';
+              item.appendChild(badge);
+            }
+            if (providerObj.modelsKnown) {
+              var modelCount = document.createElement('span');
+              modelCount.textContent = '(' + providerObj.models.length + ' models)';
+              modelCount.style.fontSize = '0.6em';
+              modelCount.style.opacity = '0.6';
+              modelCount.style.marginLeft = '4px';
+              item.appendChild(modelCount);
+            }
+            item.addEventListener('click', function(url) {
+              return function() { selectProvider(url); };
+            }(providerObj.baseUrl));
           }
+          
           item.addEventListener('mouseenter', () => {
             item.style.backgroundColor = isDark ? '#1a1a1a' : '#f3f4f6';
           });
           item.addEventListener('mouseleave', () => {
-            item.style.backgroundColor = provider === currentProvider 
-              ? (isDark ? '#333333' : '#e5e7eb') 
-              : 'transparent';
+            if (providerObj.source !== 'custom' && providerObj.baseUrl === currentProvider) {
+              item.style.backgroundColor = isDark ? '#333333' : '#e5e7eb';
+            } else {
+              item.style.backgroundColor = 'transparent';
+            }
           });
-          item.addEventListener('click', () => selectProvider(provider));
+          
           listDiv.appendChild(item);
         });
         
@@ -228,9 +304,12 @@
         console.log('[DEBUG] selectProvider() ->', provider);
         currentProvider = provider;
         localStorage.setItem('provider', provider);
-        label.textContent = provider;
+        var pObj = getProviderObj(provider);
+        var displayLabel = pObj ? pObj.name : provider;
+        label.textContent = displayLabel;
+        updateProviderBadge(pObj);
         closeDropdown();
-        addChatMessage('system', 'Provider changed to: ' + provider);
+        addChatMessage('system', 'Provider changed to: ' + displayLabel + ' (' + provider + ')');
         // Fetch models for new provider
         window.dispatchEvent(new CustomEvent('provider-changed', { detail: provider }));
       }
@@ -666,7 +745,12 @@
         console.log('[DEBUG] fetchModels() - currentProvider:', currentProvider);
         try {
           label.textContent = 'Loading...';
-          const modelsUrl = `/api/models?provider=${encodeURIComponent(currentProvider)}`;
+          var pObj = getProviderObj(currentProvider);
+          var providerName = pObj && pObj.source === 'config' ? pObj.name : '';
+          var modelsUrl = '/api/models?provider=' + encodeURIComponent(currentProvider);
+          if (providerName) {
+            modelsUrl += '&providerName=' + encodeURIComponent(providerName);
+          }
           console.log('[DEBUG] fetchModels URL:', modelsUrl);
           const res = await fetch(modelsUrl);
           console.log('[DEBUG] fetchModels status:', res.status, res.statusText);
@@ -690,7 +774,7 @@
           // Now find the currently loaded model from server response
           let foundLoadedModel = null;
           for (const m of models) {
-            if (m.status?.value === 'loaded') {
+            if (m.status && m.status.value === 'loaded') {
               foundLoadedModel = m.id;
               break;
             }
