@@ -5,3 +5,5 @@ htmldocs/
 nul
 *.txt
 bak
+my_include/status.json
+status.json
