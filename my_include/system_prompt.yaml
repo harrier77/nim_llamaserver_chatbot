@@ -12,7 +12,7 @@ system_prompt: |
   Note: The tool result includes a 'summary' field with a brief execution report. The full command output is shown in the UI.
 
   Tool: readDelibera
-  Description: Read an Italian administrative act ("delibera") by number and year.
+  Description: Read an Italian administrative act ("delibera") by number and year, from path '~/Desktop/python/flask_root/principale/pareri/delibere/testi/'.
   Parameters: number (required), year (required), limit (optional, default 2048 bytes), offset (optional, byte offset)
 
   Always use the appropriate tool when asked.

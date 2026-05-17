@@ -50,23 +50,23 @@ proc launchDetached*(target: string) =
 # Exit proc (terminal cleanup)
 # ============================================================
 
-var serverOnlyMode = false
+var tuiEnabled = false
 
 proc exitProc() {.noconv.} =
   try:
-    if not serverOnlyMode:
+    if tuiEnabled:
       var tb = newTerminalBuffer(terminalWidth(), terminalHeight())
       tb.resetAttributes()
       tb.display()
   except: discard
 
-  if not serverOnlyMode:
+  if tuiEnabled:
     illwillDeinit()
 
   stdout.write("\e[0m")
   stdout.flushFile()
 
-  if not serverOnlyMode:
+  if tuiEnabled:
     showCursor()
   quit(0)
 
@@ -95,10 +95,12 @@ proc main() =
   ## (e.g. sleep interval, server check frequency), modify here.
 
   # --- Parse CLI flags ---
-  serverOnlyMode = paramCount() > 0 and paramStr(1) == "--server"
+  for i in 1..paramCount():
+    if paramStr(i) == "--chat":
+      tuiEnabled = true
 
-  # --- TUI initialization (skip in server-only mode) ---
-  if not serverOnlyMode:
+  # --- TUI initialization ---
+  if tuiEnabled:
     illwillInit(fullscreen = true, mouse = true)
     hideCursor()
     ui.setOpenInMicroExit(exitProc)
@@ -125,7 +127,7 @@ proc main() =
   startServer(Port(8000))
 
   # --- Welcome messages ---
-  if serverOnlyMode:
+  if not tuiEnabled:
     echo ""
     echo repeat("=", 55)
     echo "  Nim LlamaServer Chatbot - Server Mode"
@@ -145,7 +147,7 @@ proc main() =
                     $maxHistoryMessages & ")")
 
   # --- Main loop ---
-  if serverOnlyMode:
+  if not tuiEnabled:
     while true:
       try:
         poll()
