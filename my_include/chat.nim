@@ -109,6 +109,23 @@ proc sendToLLM*(prompt: string = "") {.async.} =
     else:
       client.headers = newHttpHeaders({"Content-Type": "application/json"})
 
+    # OpenCode Zen headers: see applyOpenCodeHeaders() in httpdserver.nim for
+    # the full explanation of why each header is required and what breaks if
+    # any of them is missing (free-tier 429 regression).
+    if currentProvider.name == "opencode":
+      let reqId = nextOpenCodeRequestId()
+      for h in currentProvider.extraHeaders:
+        var val = h.value
+        if h.key == "x-opencode-session" and val.startsWith("ses_"):
+          val = opencodeSessionId
+        elif h.key == "x-opencode-request" and val.startsWith("req_"):
+          val = reqId
+        client.headers[h.key] = val
+      client.headers["User-Agent"] = "opencode/latest/1.3.15/cli"
+    else:
+      for h in currentProvider.extraHeaders:
+        client.headers[h.key] = h.value
+
 
 
     # Variables for SSE parsing

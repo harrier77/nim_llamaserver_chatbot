@@ -23,6 +23,12 @@ proc loadProvidersConfig*() =
 
           let apiKey = authJson{provName}{"key"}.getStr(provVal{"apiKey"}.getStr(""))
 
+          var extraHdrs: seq[HeaderTuple] = @[]
+          let provAuth = authJson{provName}
+          if provAuth != nil and provAuth.hasKey("headers"):
+            for hdrKey, hdrVal in provAuth{"headers"}:
+              extraHdrs.add((key: hdrKey, value: hdrVal.getStr("")))
+
           var chatUrl = baseUrl
           if not chatUrl.endsWith("/chat/completions"):
             if chatUrl.endsWith("/v1"):
@@ -45,7 +51,8 @@ proc loadProvidersConfig*() =
             enabled: apiKey.len > 0,
             modelIds: modelIds,
             linesPerChunk: if provName == "opencode": 3 else: 1,
-            isRemote: true
+            isRemote: true,
+            extraHeaders: extraHdrs
           ))
     except:
       discard
@@ -60,5 +67,6 @@ proc loadProvidersConfig*() =
       enabled: true,
       modelIds: @[],
       linesPerChunk: 0,
-      isRemote: false
+      isRemote: false,
+      extraHeaders: @[]
     ))

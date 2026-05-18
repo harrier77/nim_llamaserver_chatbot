@@ -111,7 +111,15 @@ proc fetchModels*() {.async.} =
       providerList[i].modelIds = @[]
       var clientOc = newAsyncHttpClient()
       try:
+        # OpenCode Zen headers: see applyOpenCodeHeaders() in httpdserver.nim.
+        # Models endpoint has the same 429 risk as chat if headers are missing.
         clientOc.headers = newHttpHeaders({"Authorization": "Bearer " & p.apiKey})
+        for h in p.extraHeaders:
+          var val = h.value
+          if h.key == "x-opencode-session" and val.startsWith("ses_"):
+            val = opencodeSessionId
+          clientOc.headers[h.key] = val
+        clientOc.headers["User-Agent"] = "opencode/latest/1.3.15/cli"
         let response = await clientOc.get(p.modelsUrl & "/models")
         if response.code == Http200:
           let jsonNode = parseJson(await response.body())

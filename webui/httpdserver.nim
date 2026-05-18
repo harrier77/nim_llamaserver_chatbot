@@ -4,9 +4,10 @@
 ## Runs in a separate thread to avoid blocking the TUI
 ##
 
-import std/[asyncdispatch, asynchttpserver, asyncnet, httpclient, httpcore, json, os, strutils, strformat, times]
+import std/[asyncdispatch, asynchttpserver, asyncnet, httpclient, httpcore, json, os, strutils, strformat, times, random]
 import tools
 import system_prompt
+import config
 
 # Thread synchronization
 var serverRunning*: bool = false
@@ -62,7 +63,7 @@ proc getChatEndpoint*(providerUrl: string): string =
     return providerUrl & "/v1/chat/completions"
 
 # Get API key from auth.json for a provider
-proc getApiKey*(provider: string): string =
+proc getApiKey*(provider: string): string {.gcsafe.} =
   let authFile = getHomeDir() / ".nim_chatbot" / "auth.json"
   if not fileExists(authFile):
     return ""
@@ -75,6 +76,69 @@ proc getApiKey*(provider: string): string =
   except:
     discard
   return ""
+
+# Get extra headers from auth.json for a provider
+proc getApiHeaders*(provider: string): seq[tuple[key, value: string]] {.gcsafe.} =
+  let authFile = getHomeDir() / ".nim_chatbot" / "auth.json"
+  if not fileExists(authFile):
+    return @[]
+  try:
+    let content = readFile(authFile)
+    let j = parseJson(content)
+    if j.hasKey(provider) and j[provider].hasKey("headers"):
+      var hdrs: seq[tuple[key, value: string]] = @[]
+      for hdrKey, hdrVal in j[provider]["headers"]:
+        hdrs.add((key: hdrKey, value: hdrVal.getStr("")))
+      return hdrs
+  except:
+    discard
+  return @[]
+
+var
+  ocServerSessionId {.threadvar.}: string
+  ocRequestCounter {.threadvar.}: int
+
+# OpenCode (Zen) headers required for free-tier models (big-pickle, *-free)
+#
+# The OpenCode Zen backend at https://opencode.ai/zen/v1 inspects these
+# custom headers to distinguish official CLI traffic from anonymous clients.
+# Without them, free-tier requests are throttled aggressively (429
+# FreeUsageLimitError). The official opencode CLI sends all five headers
+# automatically (see packages/opencode/src/session/llm.ts in the opencode repo).
+#
+# Required headers:
+#   x-opencode-client:  "cli"                             (static)
+#   x-opencode-project: project identifier                (static, per-user)
+#   x-opencode-session: "ses_<random-hex>"                (per-process, must rotate)
+#   x-opencode-request: "req_<incrementing-counter>"      (per-request, unique)
+#   User-Agent:         "opencode/latest/<version>/cli"   (identifies as official CLI)
+#
+# REGRESSION WARNING:
+# - If ANY of these five headers is missing or has a static value that is
+#   reused across requests, the backend WILL return 429 for free-tier models.
+# - The session and request IDs MUST be unique and non-repeating; the code
+#   below uses a thread-local session ID (random at first call) and an
+#   incrementing counter for request IDs.
+# - The values "ses_" and "req_" in auth.json are TEMPLATES: the code detects
+#   the prefix and substitutes the dynamic value. Never change them to a
+#   static string or the substitution will be skipped.
+# - The User-Agent MUST start with "opencode/" to pass the backend check.
+proc applyOpenCodeHeaders*(headers: var HttpHeaders, provider: string) {.gcsafe.} =
+  if provider != "opencode": return
+  if ocServerSessionId.len == 0:
+    var rng = initRand()
+    ocServerSessionId = "ses_" & rng.rand(high(int32)).toHex(8) & rng.rand(high(int32)).toHex(8)
+  inc(ocRequestCounter)
+  let reqId = "req_" & ocRequestCounter.toHex
+  let apiHeaders = getApiHeaders(provider)
+  for h in apiHeaders:
+    var val = h.value
+    if h.key == "x-opencode-session" and val.startsWith("ses_"):
+      val = ocServerSessionId
+    elif h.key == "x-opencode-request" and val.startsWith("req_"):
+      val = reqId
+    headers[h.key] = val
+  headers["User-Agent"] = "opencode/latest/1.3.15/cli"
 
 # Fallback: read models from models.json config file
 proc getModelsFromJsonFallback*(providerUrl: string, providerType: string): Future[string] {.async.} =
@@ -129,6 +193,7 @@ proc getModelsFromConfig*(providerUrl: string): Future[string] {.async.} =
       client.headers = newHttpHeaders({
         "Authorization": "Bearer " & apiKey
       })
+      applyOpenCodeHeaders(client.headers, "opencode")
       let modelsUrl = "https://opencode.ai/zen/v1/models"
       let response = await client.getContent(modelsUrl)
       
@@ -410,6 +475,7 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
           let apiKey = getApiKey(authHeader)
           if apiKey.len > 0:
             client.headers["Authorization"] = "Bearer " & apiKey
+          applyOpenCodeHeaders(client.headers, authHeader)
         
         let response = await client.request(targetUrl, httpMethod = HttpPost, body = bodyStr)
         
@@ -470,6 +536,7 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
           let apiKey = getApiKey(authHeader)
           if apiKey.len > 0:
             headers["Authorization"] = "Bearer " & apiKey
+          applyOpenCodeHeaders(headers, authHeader)
         client.headers = headers
         chatResponse = await client.postContent(targetUrl, bodyStr)
       except:

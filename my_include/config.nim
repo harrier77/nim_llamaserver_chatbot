@@ -11,7 +11,7 @@
 # - New slash command? → add to SlashCommands AND handle in input.nim
 # ============================================================
 
-import os, strutils, json, unicode
+import os, strutils, json, unicode, random
 import system_prompt
 import editor
 export editor
@@ -43,6 +43,15 @@ const
   ExternalModelsFile* = NimChatbotDir / "models.json"
   AuthFile*           = NimChatbotDir / "auth.json"
 
+# OpenCode (Zen) session ID — generated once at module load, then immutable.
+# Shared across threads (let) to identify this process as a single CLI session.
+# Used as the value for the x-opencode-session header. Must be unique per
+# process invocation; reusing the same ID across restarts may trigger rate
+# limiting. Format matches the official CLI: "ses_" + 16 hex chars.
+let opencodeSessionId* = block:
+  var rng = initRand()
+  "ses_" & rng.rand(high(int32)).toHex(8) & rng.rand(high(int32)).toHex(8)
+
 # ============================================================
 # 3. Default arguments for the llama.cpp server
 #    EDIT: change here to modify startup parameters
@@ -62,6 +71,8 @@ var LlamaServerArgs* = @[
 # ============================================================
 
 type
+  HeaderTuple* = tuple[key, value: string]
+
   AppState* = enum
     Chatting,       ## Normal conversation mode
     SelectingModel  ## Model selection menu active
@@ -75,6 +86,7 @@ type
     modelIds*: seq[string]
     linesPerChunk*: int
     isRemote*: bool
+    extraHeaders*: seq[HeaderTuple]
 
 ## Available slash commands
 ## EDIT: add here for new commands, then handle in input.nim
@@ -144,6 +156,9 @@ var
       "content": SYSTEM_PROMPT
     }
   ]
+
+  # --- OpenCode session tracking (TUI) ---
+  opencodeRequestCount*: int = 0
 
 # ============================================================
 # 6. Helper procs
@@ -215,7 +230,7 @@ proc wrapText*(text: string, maxWidth: int): seq[string] =
 proc findProviderForModel*(modelName: string): Provider =
   ## Returns the provider that owns the given model name.
   if providerList.len == 0:
-    return Provider(name: "llamacpp", baseUrl: APIUrl, modelsUrl: ServerBaseUrl, isRemote: false, enabled: true, linesPerChunk: 0)
+    return Provider(name: "llamacpp", baseUrl: APIUrl, modelsUrl: ServerBaseUrl, isRemote: false, enabled: true, linesPerChunk: 0, extraHeaders: @[])
   for p in providerList:
     if p.enabled:
       for mId in p.modelIds:
@@ -230,3 +245,10 @@ proc hasRemoteProvider*(): bool =
   for p in providerList:
     if p.enabled and p.isRemote:
       return true
+
+proc initOpenCodeSession*() {.gcsafe.} =
+  discard
+
+proc nextOpenCodeRequestId*(): string {.gcsafe.} =
+  inc(opencodeRequestCount)
+  return "req_" & opencodeRequestCount.toHex
