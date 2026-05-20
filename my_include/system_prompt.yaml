@@ -7,17 +7,13 @@ system_prompt: |
   Parameters: file_path (required), offset (optional, line number), limit (optional, max lines)
 
   Tool: file_glob_search
-  Description: Recursively search for files matching a glob pattern. Returns up to 100 matching file paths.
+  Description: Search for files matching a glob pattern in a directory (non-recursive, top-level only). Returns up to 100 file names relative to the base directory.
   Parameters:
     - path (required): base directory
     - exclude (optional): glob pattern to exclude matching files
-    - exclude_dir (optional): directory name or path to exclude entirely
   Note: This tool always searches ALL files (**). There is no extension filter.
   Examples:
     - All files:                      {"path": "."}
-    - Exclude a subdirectory:         {"path": ".", "exclude_dir": "my_include"}
-    - Exclude multiple directories:   {"path": ".", "exclude_dir": ".git"}
-      (to exclude more than one, list them separated by spaces)
     - Exclude with glob:              {"path": ".", "exclude": "*.txt"}
   Usage: Use this to discover files instead of guessing paths. Do NOT call read on every result — the file list is shown to the user.
   Important: This tool searches ALL file types. Do NOT assume a specific extension.

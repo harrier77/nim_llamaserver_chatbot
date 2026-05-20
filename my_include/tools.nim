@@ -37,7 +37,7 @@ const ToolsSchemaJson* = """[
     "type": "function",
     "function": {
       "name": "file_glob_search",
-      "description": "Recursively search for files matching a glob pattern under a directory.",
+      "description": "Search for files matching a glob pattern in a directory (non-recursive, top-level only).",
       "parameters": {
         "type": "object",
         "properties": {
@@ -48,10 +48,6 @@ const ToolsSchemaJson* = """[
           "exclude": {
             "type": "string",
             "description": "Glob pattern for files to exclude"
-          },
-          "exclude_dir": {
-            "type": "string",
-            "description": "Directory name (or path) to exclude entirely. Simpler than crafting a glob pattern."
           }
         },
         "required": ["path"]
@@ -234,7 +230,6 @@ proc bashTool*(args: JsonNode): string =
 
     # --- Build summary for the model (avoids repeating full output) ---
     var summary: string
-    let cmdShort = if command.len > 60: command[0..59] & "..." else: command
     if exitCode == 0:
       # Include first few lines as preview so model has context,
       # then instruct not to repeat since user already saw full output
@@ -351,7 +346,7 @@ proc readDelibera*(args: JsonNode): string =
       return $(%*{"error": e.msg})
 
 proc fileGlobSearchTool*(args: JsonNode): string =
-  ## Recursively search for files matching a glob pattern under a directory.
+  ## Search for files matching a glob pattern in a directory (non-recursive, top-level only).
   ## Inspired by llama.cpp's file_glob_search tool (server-tools.cpp).
   const MaxResults = 100
 
@@ -371,26 +366,18 @@ proc fileGlobSearchTool*(args: JsonNode): string =
   # — it keeps forcing *.nim regardless of the user's request.
   const includeGlob = "**"
 
-  # Collect exclude patterns from both `exclude` (glob) and `exclude_dir` (simple dir name)
+  # Collect exclude glob patterns
   var excludePatterns: seq[string] = @[]
   if args.hasKey("exclude"):
     let e = args["exclude"].getStr()
     if e.len > 0: excludePatterns.add(e)
-  if args.hasKey("exclude_dir"):
-    let ed = args["exclude_dir"].getStr()
-    if ed.len > 0:
-      # Normalize separators and ensure it ends with /**
-      var dir = ed.replace("\\", "/")
-      if not dir.endsWith("/**"):
-        dir = dir.strip(chars = {'/'}) & "/**"
-      excludePatterns.add(dir)
 
   var results: seq[string] = @[]
   var totalCount = 0
   var truncated = false
 
   try:
-    for path in walkDirRec(resolvedBase, yieldFilter = {pcFile}, relative = false):
+    for (kind, path) in walkDir(resolvedBase, relative = false):
 
       # Compute relative path and normalize separators for glob matching
       var relPath = relativePath(path, resolvedBase).replace("\\", "/")
@@ -399,7 +386,7 @@ proc fileGlobSearchTool*(args: JsonNode): string =
       if not globMatch(includeGlob, relPath):
         continue
 
-      # Check exclude patterns (both glob and dir-based)
+      # Check exclude patterns
       var excluded = false
       for ep in excludePatterns:
         if globMatch(ep, relPath):
@@ -407,7 +394,7 @@ proc fileGlobSearchTool*(args: JsonNode): string =
           break
       if excluded: continue
 
-      results.add(path)
+      results.add(relPath)
       totalCount += 1
       if totalCount >= MaxResults:
         truncated = true
@@ -415,7 +402,7 @@ proc fileGlobSearchTool*(args: JsonNode): string =
   except Exception as e:
     return $(%*{"error": e.msg})
 
-  let content = results.join("\n")
+  let content = resolvedBase & "\n" & results.join("\n")
 
   # --- Build summary for the model (avoids reading each file) ---
   const PreviewResults = 10
