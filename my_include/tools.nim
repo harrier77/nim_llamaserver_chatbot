@@ -183,8 +183,22 @@ proc readTool*(args: JsonNode): string =
     if lastLineReturned < totalLines:
       content &= "\n[... truncated at " & $MaxReadLines & " lines, use offset/limit to read more]"
 
-    # Return JSON format
-    return $(%*{"content": content})
+    # --- Build fact-only summary for the model ---
+    var summary = "Read \"" & resolvedPath & "\""
+    summary &= " (lines " & $(offset) & "-" & $(lastLineReturned)
+    if totalLines > lastLineReturned:
+      summary &= " of " & $totalLines
+    summary &= ")"
+    const PreviewLines = 3
+    if slice.len > 0:
+      let previewEnd = min(slice.len - 1, PreviewLines - 1)
+      var preview = slice[0..previewEnd].join("\n")
+      if slice.len > PreviewLines:
+        preview &= "\n[... " & $(slice.len - PreviewLines) & " more lines]"
+      summary &= "\n" & preview
+
+    # Return JSON format with both content (UI) and summary (model)
+    return $(%*{"content": content, "summary": summary})
   except Exception as e:
     return $(%*{"error": e.msg})
 
@@ -228,24 +242,20 @@ proc bashTool*(args: JsonNode): string =
     if lastLineReturned < totalLines:
       content &= "\n[... truncated at " & $effectiveLimit & " lines, use offset/limit to read more]"
 
-    # --- Build summary for the model (avoids repeating full output) ---
+    # --- Build fact-only summary for the model ---
     var summary: string
     if exitCode == 0:
-      # Include first few lines as preview so model has context,
-      # then instruct not to repeat since user already saw full output
       const PreviewLines = 5
       var preview = ""
       let previewEnd = min(slice.len - 1, PreviewLines - 1)
       if previewEnd >= 0:
         preview = slice[0..previewEnd].join("\n")
       if slice.len > PreviewLines:
-        preview &= "\n[... " & $(slice.len - PreviewLines) & " more lines, full output visible above for user]"
-      else:
-        preview &= "\n[full output visible above for user]"
-      summary = preview & "\n" & "(respond to the user naturally about this result, but do NOT repeat the full output)"
+        preview &= "\n[... " & $(slice.len - PreviewLines) & " more lines]"
+      summary = "Command exited " & $exitCode & "\n" & preview
     else:
       let firstErrLine = if lines.len > 0: lines[0] else: ""
-      summary = "✗ Tool bash failed, exit " & $exitCode
+      summary = "Command failed, exit " & $exitCode
       if firstErrLine.len > 0:
         summary &= ": " & firstErrLine
 
@@ -321,9 +331,9 @@ proc readDelibera*(args: JsonNode): string =
       let parsed = parseJson(resultJson)
       if parsed.hasKey("error"):
         # Return a friendly message for the model instead of raw OS error
-        return $(%*{"content": "The requested delibera (" & filename & ") was not found. " &
-          "It may not exist or the number/year combination may be wrong. " &
-          "Do not attempt to read this delibera again with the same parameters."})
+        let errContent = "The requested delibera (" & filename & ") was not found. " &
+          "It may not exist or the number/year combination may be wrong."
+        return $(%*{"content": errContent, "summary": "Delibera \"" & filename & "\" not found"})
       
       var content = parsed["content"].getStr()
       
@@ -337,11 +347,22 @@ proc readDelibera*(args: JsonNode): string =
         content = ""
       
       # Truncate to limitBytes
-      if content.len > limitBytes:
-        content = content[0..<limitBytes] & "\n[... truncated to " & $limitBytes & " bytes]  SYSTEM INSTRUCTION: Content above is sufficient for answering. Do not request additional chunks. Do not call readDelibera again. Answer now."
-        #content = content[0..<limitBytes] 
-      # Return JSON format
-      return $(%*{"content": content})
+      let wasTruncated = content.len > limitBytes
+      if wasTruncated:
+        content = content[0..<limitBytes] & "\n[... truncated to " & $limitBytes & " bytes]"
+
+      # --- Build fact-only summary for the model ---
+      var summary = "Read \"" & filename & "\""
+      let totalSize = content.len
+      if wasTruncated:
+        summary &= " (truncated to " & $limitBytes & " bytes, total file is larger)"
+      else:
+        summary &= " (" & $totalSize & " bytes)"
+      if offsetBytes > 0:
+        summary &= ", offset " & $offsetBytes
+
+      # Return JSON format with both content (UI) and summary (model)
+      return $(%*{"content": content, "summary": summary})
     except Exception as e:
       return $(%*{"error": e.msg})
 
@@ -404,25 +425,22 @@ proc fileGlobSearchTool*(args: JsonNode): string =
 
   let content = resolvedBase & "\n" & results.join("\n")
 
-  # --- Build summary for the model (avoids reading each file) ---
+  # --- Build fact-only summary for the model ---
   const PreviewResults = 10
   var preview = ""
   if results.len > 0:
     let previewEnd = min(results.len - 1, PreviewResults - 1)
     preview = results[0..previewEnd].join("\n")
   if results.len > PreviewResults:
-    preview &= "\n[... " & $(results.len - PreviewResults) & " more files, full list visible above for user]"
-  else:
-    preview &= "\n[full list visible above for user]"
+    preview &= "\n[... " & $(results.len - PreviewResults) & " more files]"
 
-  var summary = preview & "\n\n"
-  summary &= "Total matches: " & $totalCount
+  var summary = "Found " & $totalCount & " file"
+  if totalCount != 1: summary &= "s"
   if truncated:
-    summary &= " (truncated at " & $MaxResults & " results)"
-  summary &= " in " & resolvedBase & "\n"
-  summary &= "(respond to the user naturally about this result — " &
-    "the full file list is shown above. " &
-    "Do NOT read individual files. If the user wants to explore a specific file, they will ask.)"
+    summary &= " (truncated at " & $MaxResults & ")"
+  summary &= " in \"" & resolvedBase & "\""
+  if preview.len > 0:
+    summary &= "\n" & preview
 
   return $(%*{
     "content": content,
