@@ -145,7 +145,7 @@ proc globMatch(pattern: string, str: string): bool =
 
 
 proc readTool*(args: JsonNode): string =
-  const MaxReadLines = 1000
+  const MaxReadLines = 25
 
   let path = if args.hasKey("file_path"): args["file_path"].getStr() else: ""
   if path == "": return $(%*{"error": "Missing file_path parameter"})

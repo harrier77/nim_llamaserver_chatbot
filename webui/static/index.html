@@ -360,9 +360,15 @@
     function initTheme() {
       // Check saved preference
       const savedTheme = localStorage.getItem('theme');
+      const themeBtn = document.getElementById('theme-toggle-btn');
       if (savedTheme === 'dark') {
         isDark = true;
         document.documentElement.classList.add('dark');
+        if (themeBtn) themeBtn.textContent = 'Light';
+      } else {
+        isDark = false;
+        document.documentElement.classList.remove('dark');
+        if (themeBtn) themeBtn.textContent = 'Dark';
       }
     }
 
@@ -597,10 +603,13 @@
                     aiBuffer += delta.content;
                     if (aiBubble) {
                       aiBubble.innerHTML = aiBuffer.replace(/\n/g, '<br/>');
-                      // Auto-scroll during streaming
+                      // Auto-scroll durante lo streaming solo se l'utente è vicino al fondo
                       const wrapper = document.querySelector('.chat-messages-wrapper');
                       if (wrapper) {
-                        wrapper.scrollTo({ top: wrapper.scrollHeight, behavior: 'instant' });
+                        const isNearBottom = (wrapper.scrollHeight - wrapper.scrollTop - wrapper.clientHeight) < 100;
+                        if (isNearBottom) {
+                          wrapper.scrollTo({ top: wrapper.scrollHeight, behavior: 'instant' });
+                        }
                       }
                     }
                   }
@@ -652,7 +661,7 @@
               } catch(e) { toolArgs = {}; }
               const toolId = tc.id;
 
-              addChatMessage('system', 'Tool Call -> ' + toolName + '(' + tc.function.arguments + ')');
+              addChatMessage('system', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon lucide lucide-wrench h-4 w-4" style="display:inline-block;vertical-align:middle;margin-right:8px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg> Tool Call -> ' + toolName + '(' + tc.function.arguments + ')');
 
               const result = await executeTool(toolName, toolArgs);
               let displayContent = '';

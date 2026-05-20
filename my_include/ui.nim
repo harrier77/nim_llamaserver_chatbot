@@ -72,7 +72,7 @@ proc openSystemPromptInNewConsole*() =
   ## Unlike openInMicro, this does NOT suspend the TUI — micro runs
   ## in its own window and the chat continues normally.
   try:
-    let filepath = "my_include/system_prompt.yaml"
+    let filepath = ExeDir / "my_include" / "system_prompt.yaml"  # Use ExeDir so this works when launched via PATH (CWD-independent)
     when defined(windows):
       var p = startProcess("cmd.exe", args = @["/c", "start", "micro", filepath])
       p.close()

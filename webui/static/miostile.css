@@ -305,9 +305,9 @@ html.dark .new-chat-btn:hover { background-color: #374151; }
   word-wrap: break-word;
   white-space: pre-wrap;
 }
-.chat-messages .message-user { background-color: #3b82f6; color: #ffffff; }
-.chat-messages .message-assistant { background-color: #e5e7eb; color: #1f2937; }
-.chat-messages .message-system { background-color: #fef3c7; color: #92400e; font-size: 0.875rem; }
+.chat-messages .message-user { background-color: #f0f0f0; color: black; }
+.chat-messages .message-assistant { background-color: white; color: #1f2937; }
+.chat-messages .message-system { background-color: #f0f0f0; color: black; font-size: 0.875rem; }
 
 /* Dark mode chat */
 html.dark .chat-messages .message-user { background-color: #3b82f6; color: #ffffff; }

@@ -14,6 +14,7 @@ import os, asyncdispatch, times, osproc, strutils
 import illwill
 import config   # constants, global variables, types
 import server   # server and model management
+import system_prompt  # system prompt (initSystemPrompt)
 import providers  # external provider config loaders
 import input    # keyboard input handling
 import ui       # TUI rendering
@@ -112,6 +113,21 @@ proc main() =
 
   # Load all providers from ~/.nim_chatbot/
   providers.loadProvidersConfig()
+
+  # --- Resolve ExeDir for PATH-independent resource lookup ---
+  # FIX: when main.exe is launched via PATH from a different directory,
+  # the OS resolves getAppFilename() to the canonical absolute path of
+  # the executable, which we use as the base for all relative resource
+  # lookups (e.g., status.json). Without this, CWD would be used instead.
+  ExeDir = getAppFilename().parentDir()
+  StatusFile = ExeDir / "my_include" / "status.json"
+  SystemPromptPath = ExeDir / "my_include" / "system_prompt.yaml"  # same fix: absolute path instead of CWD-relative
+
+  # --- Reload system prompt with correct ExeDir-relative path ---
+  system_prompt.initSystemPrompt()
+  # Refresh conversation history so the first system message uses the
+  # correctly-loaded prompt (instead of the initial CWD-relative fallback)
+  config.resetConversation()
 
   # --- Load previous state ---
   server.loadModelStatus()

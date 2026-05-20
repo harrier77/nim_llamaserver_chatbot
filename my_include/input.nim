@@ -231,7 +231,11 @@ proc handleInput*(key: illwill.Key): bool =
           return false
         of "/edit":
           if cmdParts.len == 2:
-            ui.openInMicro(cmdParts[1])
+            var filepath = cmdParts[1]
+            # Resolve relative paths to ExeDir (supports launch via PATH)
+            if ExeDir.len > 0 and not isAbsolute(filepath):
+              filepath = ExeDir / filepath
+            ui.openInMicro(filepath)
           else:
             outputLines.add("System: Usage: /edit <filename>")
           inputEditor.setText("")
@@ -242,7 +246,10 @@ proc handleInput*(key: illwill.Key): bool =
           return false
         of "/read":
           if cmdParts.len >= 2:
-            let filename = cmdParts[1]
+            var filename = cmdParts[1]
+            # Resolve relative paths to ExeDir (supports launch via PATH)
+            if ExeDir.len > 0 and not isAbsolute(filename):
+              filename = ExeDir / filename
             if fileExists(filename):
               try:
                 let content = readFile(filename)

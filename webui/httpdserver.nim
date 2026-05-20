@@ -14,8 +14,15 @@ var serverRunning*: bool = false
 var serverThread*: Thread[void]
 var serverPort*: Port
 
-proc debugLog*(msg: string) =
-  let logPath = getCurrentDir() / "nimlog.txt"
+proc debugLog*(msg: string) {.gcsafe.} =
+  ## Writes a timestamped message to nimlog.txt in the exe directory.
+  ## Uses ExeDir (set by main.nim at startup) so the log file is always
+  ## written next to main.exe, regardless of the directory from which
+  ## the application was launched (PATH-independent deployment).
+  var logDir: string
+  {.cast(gcsafe).}:
+    logDir = if ExeDir.len > 0: ExeDir else: getCurrentDir()
+  let logPath = logDir / "nimlog.txt"
   let timestamp = now().format("HH:mm:ss")
   try:
     var f = open(logPath, fmAppend)

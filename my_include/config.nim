@@ -34,8 +34,15 @@ const
 # 2. File path constants
 # ============================================================
 
-const
-  StatusFile* = "my_include/status.json"  ## State persistence file
+# --- ExeDir: absolute directory of the executable ---
+# Populated by main.nim at startup to support launching via PATH.
+# If empty (e.g., during compilation), relative paths fall back to CWD.
+var ExeDir*: string = ""
+
+var StatusFile*: string = "my_include/status.json"  ## State persistence file; recomputed by main.nim at startup relative to ExeDir
+  # NOTE: SystemPromptPath lives in system_prompt.nim (not here) to avoid
+  # circular imports — config imports system_prompt, so the path variable
+  # is owned by system_prompt.nim and set by main.nim at startup.
 
 # --- External config paths (~/.nim_chatbot/) ---
 const
