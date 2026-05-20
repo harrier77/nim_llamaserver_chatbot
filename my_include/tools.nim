@@ -36,63 +36,117 @@ const ToolsSchemaJson* = """[
   {
     "type": "function",
     "function": {
-      "name": "bash",
-"description": "Execute a bash command on the system. Use for running shell commands, listing files, etc.\n\nOUTPUT LIMIT: Output is capped at 20 lines by default. If the full output exceeds this, a '[... truncated at N lines...]' message is appended.\n\nPAGINATION: To read more output, call bash again with 'offset' and 'limit' (e.g., offset: 21, limit: 20). Use the last line number returned + 1 as the next offset. Multiple calls are fine for pagination; just avoid redundant calls that fetch the same information.\n\nNote: The tool result includes a 'summary' field with a brief execution report. The full command output is shown in the UI for the user.",
+      "name": "file_glob_search",
+      "description": "Recursively search for files matching a glob pattern under a directory.",
       "parameters": {
         "type": "object",
         "properties": {
-          "command": {
+          "path": {
             "type": "string",
-            "description": "The bash command to execute"
+            "description": "Base directory to search in"
           },
-          "offset": {
-            "type": "number",
-            "description": "Line number to start output from (1-indexed). Default: 1"
+          "exclude": {
+            "type": "string",
+            "description": "Glob pattern for files to exclude"
           },
-          "limit": {
-            "type": "number",
-            "description": "Maximum number of lines of output to return (max 20). Default: 20"
+          "exclude_dir": {
+            "type": "string",
+            "description": "Directory name (or path) to exclude entirely. Simpler than crafting a glob pattern."
           }
         },
-        "required": ["command"]
+        "required": ["path"]
       }
     }
-  },
-   {
-     "type": "function",
-     "function": {
-       "name": "readDelibera",
-       "description": "Read a delibera file from '~/Desktop/python/flask_root/principale/pareri/delibere/testi/'; automatically composes filename as delibera_XXXX_YYYY.txt where XXXX is 4-digit zero-padded number and YYYY is the year.",
-       "parameters": {
-         "type": "object",
-         "properties": {
-           "number": {
-             "type": "string",
-             "description": "The delibera number (e.g., '1' becomes '0001', '1979' becomes '1979')"
-           },
-           "year": {
-             "type": "string",
-             "description": "The year of the delibera (e.g., '2026')"
-           },
-           "limit": {
-             "type": "number",
-             "description": "Maximum bytes to return (default: 2048, i.e. 2k)"
-           },
-           "offset": {
-             "type": "number",
-             "description": "Byte offset to start reading from (default: 0, beginning of file)"
-           }
-         },
-         "required": ["number", "year"]
-       }
-      }
-    }
+  }
 ]"""
 
 # Export ToolsSchema for use by other modules (e.g., chat.nim)
 let ToolsSchema* = parseJson(ToolsSchemaJson)
 
+
 proc delibsBaseDir*: string = getHomeDir() / "Desktop/python/flask_root/principale/pareri/delibere/testi"
+
+proc globMatch(pattern: string, str: string): bool =
+  ## Simple glob matching.
+  ## - * matches any characters except /
+  ## - ** matches any characters including /
+  ## - ? matches a single character except /
+  ## - [abc] / [!abc] character class with ranges support
+  ##
+  ## Inspired by llama.cpp's glob_match in common/common.cpp
+
+  proc rec(pi: int, si: int): bool =
+    if pi >= pattern.len:
+      return si >= str.len
+
+    # ** matches anything including /
+    if pi + 1 < pattern.len and pattern[pi] == '*' and pattern[pi + 1] == '*':
+      if rec(pi + 2, si): return true
+      if si < str.len: return rec(pi, si + 1)
+      return false
+
+    # * matches any characters except /
+    if pattern[pi] == '*':
+      var i = si
+      while i < str.len and str[i] != '/':
+        if rec(pi + 1, i): return true
+        i += 1
+      return rec(pi + 1, i)
+
+    # ? matches a single character except /
+    if pattern[pi] == '?' and si < str.len and str[si] != '/':
+      return rec(pi + 1, si + 1)
+
+    # [abc] character class
+    if pattern[pi] == '[':
+      let closePos = pattern.find(']', pi + 1)
+      if closePos >= 0:
+        if si >= str.len: return false
+        var negated = false
+        var classStart = pi + 1
+        if classStart < closePos and pattern[classStart] == '!':
+          negated = true
+          classStart += 1
+        # Skip leading ] or - as literal
+        if classStart < closePos and (pattern[classStart] == ']' or pattern[classStart] == '-'):
+          if str[si] == pattern[classStart]:
+            if negated: return false
+            return rec(closePos + 1, si + 1)
+          classStart += 1
+        var matched = false
+        var j = classStart
+        while j < closePos:
+          if j + 2 < closePos and pattern[j + 1] == '-':
+            let startChar = pattern[j]
+            let endChar = pattern[j + 2]
+            if str[si] >= startChar and str[si] <= endChar:
+              matched = true
+              break
+            j += 3
+          else:
+            if pattern[j] == str[si]:
+              matched = true
+              break
+            j += 1
+        if negated: matched = not matched
+        if matched:
+          return rec(closePos + 1, si + 1)
+        else:
+          return false
+      else:
+        # No closing bracket, treat [ as literal
+        if si < str.len and str[si] == '[':
+          return rec(pi + 1, si + 1)
+        return false
+
+    # Literal character match (must check si < str.len first)
+    if si < str.len and pattern[pi] == str[si]:
+      return rec(pi + 1, si + 1)
+
+    return false
+
+  return rec(0, 0)
+
 
 proc readTool*(args: JsonNode): string =
   const MaxReadLines = 1000
@@ -296,10 +350,105 @@ proc readDelibera*(args: JsonNode): string =
     except Exception as e:
       return $(%*{"error": e.msg})
 
-proc executeTool*(name: string, args: JsonNode): string =
- case name
- of "read": return readTool(args)
- of "bash": return bashTool(args)
- of "readDelibera": return readDelibera(args)
+proc fileGlobSearchTool*(args: JsonNode): string =
+  ## Recursively search for files matching a glob pattern under a directory.
+  ## Inspired by llama.cpp's file_glob_search tool (server-tools.cpp).
+  const MaxResults = 100
 
- else: return $(%*{"error": "Unknown tool: " & name})
+  let basePath = if args.hasKey("path"): args["path"].getStr() else: ""
+  if basePath == "":
+    return $(%*{"error": "Missing path parameter"})
+
+  # Resolve relative paths
+  var resolvedBase = basePath.replace("\\", "/")
+  if not resolvedBase.startsWith("/") and not (resolvedBase.len >= 2 and resolvedBase[1] == ':'):
+    resolvedBase = getCurrentDir() / resolvedBase
+
+  if not dirExists(resolvedBase):
+    return $(%*{"error": "Directory not found: " & resolvedBase})
+
+  # Fixed: always search all files. The model (0.8B) cannot be trusted with an include parameter
+  # — it keeps forcing *.nim regardless of the user's request.
+  const includeGlob = "**"
+
+  # Collect exclude patterns from both `exclude` (glob) and `exclude_dir` (simple dir name)
+  var excludePatterns: seq[string] = @[]
+  if args.hasKey("exclude"):
+    let e = args["exclude"].getStr()
+    if e.len > 0: excludePatterns.add(e)
+  if args.hasKey("exclude_dir"):
+    let ed = args["exclude_dir"].getStr()
+    if ed.len > 0:
+      # Normalize separators and ensure it ends with /**
+      var dir = ed.replace("\\", "/")
+      if not dir.endsWith("/**"):
+        dir = dir.strip(chars = {'/'}) & "/**"
+      excludePatterns.add(dir)
+
+  var results: seq[string] = @[]
+  var totalCount = 0
+  var truncated = false
+
+  try:
+    for path in walkDirRec(resolvedBase, yieldFilter = {pcFile}, relative = false):
+
+      # Compute relative path and normalize separators for glob matching
+      var relPath = relativePath(path, resolvedBase).replace("\\", "/")
+
+      # Check include pattern
+      if not globMatch(includeGlob, relPath):
+        continue
+
+      # Check exclude patterns (both glob and dir-based)
+      var excluded = false
+      for ep in excludePatterns:
+        if globMatch(ep, relPath):
+          excluded = true
+          break
+      if excluded: continue
+
+      results.add(path)
+      totalCount += 1
+      if totalCount >= MaxResults:
+        truncated = true
+        break
+  except Exception as e:
+    return $(%*{"error": e.msg})
+
+  let content = results.join("\n")
+
+  # --- Build summary for the model (avoids reading each file) ---
+  const PreviewResults = 10
+  var preview = ""
+  if results.len > 0:
+    let previewEnd = min(results.len - 1, PreviewResults - 1)
+    preview = results[0..previewEnd].join("\n")
+  if results.len > PreviewResults:
+    preview &= "\n[... " & $(results.len - PreviewResults) & " more files, full list visible above for user]"
+  else:
+    preview &= "\n[full list visible above for user]"
+
+  var summary = preview & "\n\n"
+  summary &= "Total matches: " & $totalCount
+  if truncated:
+    summary &= " (truncated at " & $MaxResults & " results)"
+  summary &= " in " & resolvedBase & "\n"
+  summary &= "(respond to the user naturally about this result — " &
+    "the full file list is shown above. " &
+    "Do NOT read individual files. If the user wants to explore a specific file, they will ask.)"
+
+  return $(%*{
+    "content": content,
+    "summary": summary,
+    "total_matches": totalCount
+  })
+
+
+proc executeTool*(name: string, args: JsonNode): string =
+  ## Dispatch tool calls to the appropriate implementation.
+  case name
+  of "read": return readTool(args)
+  of "file_glob_search": return fileGlobSearchTool(args)
+  of "bash", "readDelibera":
+    return $(%*{"error": "Tool suspended: " & name & " is not available (only 'read' and 'file_glob_search' are active)"})
+  else: return $(%*{"error": "Unknown tool: " & name})
