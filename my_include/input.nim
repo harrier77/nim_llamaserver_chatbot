@@ -84,6 +84,25 @@ proc handleHistoryCommand*(cmdParts: seq[string], showOnly: bool = false) =
     outputLines.add("System: Current max history: " & $maxHistoryMessages &
                      ". Usage: /history <number>")
 
+proc handleCdCommand*(cmdParts: seq[string]) =
+  if cmdParts.len == 1:
+    outputLines.add("System: Current session dir: " & SessionDir)
+    outputLines.add("System: Usage: /cd <path>")
+  elif cmdParts.len >= 2:
+    var newDir = cmdParts[1]
+    if not isAbsolute(newDir):
+      newDir = SessionDir / newDir
+    newDir = newDir.replace("\\", "/")
+    if dirExists(newDir):
+      SessionDir = newDir
+      try:
+        setCurrentDir(newDir)
+        outputLines.add("System: Session dir changed to: " & SessionDir)
+      except:
+        outputLines.add("System: Error changing directory: " & getCurrentExceptionMsg())
+    else:
+      outputLines.add("System: Directory not found: " & newDir)
+
 # ============================================================
 # Keypress handling (main input handler)
 # ============================================================
@@ -229,12 +248,16 @@ proc handleInput*(key: illwill.Key): bool =
           handleHistoryCommand(cmdParts)
           inputEditor.setText("")
           return false
+        of "/cd":
+          handleCdCommand(cmdParts)
+          inputEditor.setText("")
+          return false
         of "/edit":
           if cmdParts.len == 2:
             var filepath = cmdParts[1]
-            # Resolve relative paths to ExeDir (supports launch via PATH)
-            if ExeDir.len > 0 and not isAbsolute(filepath):
-              filepath = ExeDir / filepath
+            # Resolve relative paths to SessionDir
+            if SessionDir.len > 0 and not isAbsolute(filepath):
+              filepath = SessionDir / filepath
             ui.openInMicro(filepath)
           else:
             outputLines.add("System: Usage: /edit <filename>")
@@ -247,9 +270,9 @@ proc handleInput*(key: illwill.Key): bool =
         of "/read":
           if cmdParts.len >= 2:
             var filename = cmdParts[1]
-            # Resolve relative paths to ExeDir (supports launch via PATH)
-            if ExeDir.len > 0 and not isAbsolute(filename):
-              filename = ExeDir / filename
+            # Resolve relative paths to SessionDir
+            if SessionDir.len > 0 and not isAbsolute(filename):
+              filename = SessionDir / filename
             if fileExists(filename):
               try:
                 let content = readFile(filename)

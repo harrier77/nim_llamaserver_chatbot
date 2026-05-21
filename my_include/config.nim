@@ -38,6 +38,7 @@ const
 # Populated by main.nim at startup to support launching via PATH.
 # If empty (e.g., during compilation), relative paths fall back to CWD.
 var ExeDir*: string = ""
+var SessionDir*: string = ""
 
 var StatusFile*: string = "my_include/status.json"  ## State persistence file; recomputed by main.nim at startup relative to ExeDir
   # NOTE: SystemPromptPath lives in system_prompt.nim (not here) to avoid
@@ -101,7 +102,7 @@ type SlashCommand* = object
   name*: string
   description*: string
 
-const SlashCommands*: array[7, SlashCommand] = [
+const SlashCommands*: array[8, SlashCommand] = [
   SlashCommand(name: "/quit",   description: "Exit the application (also /q)"),
   SlashCommand(name: "/model",  description: "Change the current model"),
   SlashCommand(name: "/new",    description: "Reset conversation and start new chat"),
@@ -109,6 +110,7 @@ const SlashCommands*: array[7, SlashCommand] = [
   SlashCommand(name: "/edit",   description: "Open file in micro editor"),
   SlashCommand(name: "/system", description: "Open system prompt in micro editor"),
   SlashCommand(name: "/read",   description: "Read a file into the chat output"),
+  SlashCommand(name: "/cd",     description: "Change session working directory"),
 ]
 
 # ============================================================

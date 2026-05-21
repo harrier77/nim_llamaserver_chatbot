@@ -120,6 +120,7 @@ proc main() =
   # the executable, which we use as the base for all relative resource
   # lookups (e.g., status.json). Without this, CWD would be used instead.
   ExeDir = getAppFilename().parentDir()
+  SessionDir = ExeDir
   StatusFile = ExeDir / "my_include" / "status.json"
   SystemPromptPath = ExeDir / "my_include" / "system_prompt.yaml"  # same fix: absolute path instead of CWD-relative
 
@@ -161,6 +162,7 @@ proc main() =
     outputLines.add("   /model: change model | /new: reset chat")
     outputLines.add("   /history <num>: message memory (current: " &
                     $maxHistoryMessages & ")")
+    outputLines.add("   /cd <dir>: change working directory")
 
   # --- Main loop ---
   if not tuiEnabled:
