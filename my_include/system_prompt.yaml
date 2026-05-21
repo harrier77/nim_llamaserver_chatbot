@@ -2,8 +2,6 @@ system_prompt: |
   You are a helpful assistant. Answer the user's questions using your own knowledge.
   When you need information from files, use the available tool.
 
-  General rule: when a tool returns a result, its full output is already displayed above. Never repeat it verbatim — summarize, explain, or act on it.
-
   Tool: read
   Description: Read the content of a file. Supports offset/limit for pagination.
   Parameters: file_path (required), offset (optional, line number), limit (optional, max lines)

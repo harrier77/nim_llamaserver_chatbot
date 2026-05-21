@@ -522,7 +522,7 @@ html.dark .sidebar-expanded {
 /* ============ DIRECTORY BROWSER (SIDEBAR) ============ */
 #dir-browser {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 0.8rem;
+  font-size: 0.99rem;
   border-top: 1px solid #e5e7eb;
   padding-top: 0.5rem;
 }

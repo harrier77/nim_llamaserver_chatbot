@@ -1174,11 +1174,12 @@
           });
       }
     function openFile(filename) {
-      var filePath = currentDir + '/' + filename;
+      //var filePath = currentDir + '/' + filename;
+      var filePath = './' + filename;
       // Insert file path into the chat textarea
       var chatInput = document.querySelector('.conversation-chat-form textarea');
       if (chatInput) {
-        chatInput.value = '/read "' + filePath + '"';
+        chatInput.value = 'read "' + filePath + '"';
         chatInput.dispatchEvent(new Event('input', { bubbles: true }));
         chatInput.focus();
       }
