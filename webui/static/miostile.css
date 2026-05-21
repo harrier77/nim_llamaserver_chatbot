@@ -460,6 +460,23 @@ html.dark .new-chat-button:hover { background-color: #1a1a1a; }
 html.dark .theme-toggle { background-color: #1a1a1a; color: #f9fafb; border-color: #333333; }
 html.dark .theme-toggle:hover { background-color: #333333; }
 
+.toolbar-btn {
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  border: 1px solid #e5e7eb;
+  background-color: #f3f4f6;
+  color: #1f2937;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background-color 150ms;
+  display: inline-flex;
+  align-items: center;
+}
+.toolbar-btn:hover { background-color: #e5e7eb; }
+.toolbar-btn:disabled { opacity: 0.5; cursor: wait; }
+html.dark .toolbar-btn { background-color: #1a1a1a; color: #f9fafb; border-color: #333333; }
+html.dark .toolbar-btn:hover { background-color: #333333; }
+
 .provider-dropdown {
   position: fixed;
   z-index: 99999;

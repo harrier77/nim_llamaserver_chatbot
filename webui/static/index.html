@@ -14,6 +14,21 @@
     </svg></span>
   </button>
   <button id="theme-toggle-btn" class="theme-toggle" type="button">Light</button>
+  <button id="launch-llama-btn" class="toolbar-btn" type="button" title="Launch llama.cpp server">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px">
+      <rect x="4" y="4" width="16" height="16" rx="2"/>
+      <path d="M9 9h6v6H9z"/>
+      <path d="M9 1v3"/>
+      <path d="M15 1v3"/>
+      <path d="M9 20v3"/>
+      <path d="M15 20v3"/>
+      <path d="M20 9h3"/>
+      <path d="M20 14h3"/>
+      <path d="M1 9h3"/>
+      <path d="M1 14h3"/>
+    </svg>
+    <span id="llama-btn-label">Llama</span>
+  </button>
 </div>
 
 <div id="sidebar-left" style="display: flex; flex-direction: column; gap: 0.5rem; padding: 0.5rem; border-right: 1px solid #ccc; width: auto; transition: width 0.3s ease, background-color 0.3s ease; overflow: hidden; white-space: nowrap; background-color: transparent;">
@@ -420,6 +435,29 @@
       const themeBtn = document.getElementById('theme-toggle-btn');
       if (themeBtn) themeBtn.textContent = isDark ? 'Light' : 'Dark';
     }
+
+    // ============ LAUNCH LLAMA BUTTON ============
+    document.getElementById('launch-llama-btn').addEventListener('click', async () => {
+      const btn = document.getElementById('launch-llama-btn');
+      const label = document.getElementById('llama-btn-label');
+      btn.disabled = true;
+      label.textContent = 'Launching...';
+      try {
+        const res = await fetch('/api/launch-llama');
+        const data = await res.json();
+        if (data.ok) {
+          label.textContent = '✅ Launched';
+          addChatMessage('system', 'Llama server launched');
+        }
+      } catch (e) {
+        label.textContent = '❌ Error';
+        console.error('Failed to launch llama:', e);
+      }
+      setTimeout(() => {
+        btn.disabled = false;
+        label.textContent = 'Llama';
+      }, 3000);
+    });
 
     // Initialize
     initTheme();

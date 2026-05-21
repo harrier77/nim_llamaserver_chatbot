@@ -10,7 +10,7 @@
 # IMPORTANT: do not import main.nim from other local modules
 # ============================================================
 
-import os, asyncdispatch, times, osproc, strutils
+import os, asyncdispatch, times, strutils
 import illwill
 import config   # constants, global variables, types
 import server   # server and model management
@@ -20,32 +20,9 @@ import input    # keyboard input handling
 import ui       # TUI rendering
 import webui/httpdserver  # WebUI HTTP server
 
-# ============================================================
-# Detached process launcher (Windows shell32 / POSIX xdg-open)
-# ============================================================
-
 when defined(windows):
-  proc ShellExecuteA(hwnd: int, operation: cstring, file: cstring,
-                     parameters: cstring, directory: cstring, showCmd: int): int
-                     {.stdcall, dynlib: "shell32.dll", importc.}
-
   proc kbhit(): cint {.importc: "_kbhit", dynlib: "msvcrt".}
   proc getch(): cint {.importc: "_getch", dynlib: "msvcrt".}
-
-proc launchDetached*(target: string) =
-  ## Opens a file/URL/batch script in a separate process independent
-  ## of the terminal that launched this application.
-  when defined(windows):
-    if target.endsWith(".bat") or target.endsWith(".cmd"):
-      # Use ShellExecuteA with the working directory set to the bat's folder.
-      # This creates a completely independent process without touching the
-      # parent console, preserving illwill's mouse input mode.
-      let dir = target.parentDir()
-      discard ShellExecuteA(0, "open", target, nil, cstring(dir), 1)
-    else:
-      discard ShellExecuteA(0, "open", target, nil, nil, 1)
-  else:
-    discard execCmd("xdg-open " & target)
 
 # ============================================================
 # Exit proc (terminal cleanup)

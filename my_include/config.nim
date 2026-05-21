@@ -261,3 +261,24 @@ proc initOpenCodeSession*() {.gcsafe.} =
 proc nextOpenCodeRequestId*(): string {.gcsafe.} =
   inc(opencodeRequestCount)
   return "req_" & opencodeRequestCount.toHex
+
+# ============================================================
+# 7. Detached process launcher (Windows shell32 / POSIX xdg-open)
+# ============================================================
+
+when defined(windows):
+  proc ShellExecuteA(hwnd: int, operation: cstring, file: cstring,
+                     parameters: cstring, directory: cstring, showCmd: int): int
+                     {.stdcall, dynlib: "shell32.dll", importc.}
+
+proc launchDetached*(target: string) =
+  ## Opens a file/URL/batch script in a separate process independent
+  ## of the calling terminal.
+  when defined(windows):
+    if target.endsWith(".bat") or target.endsWith(".cmd"):
+      let dir = target.parentDir()
+      discard ShellExecuteA(0, "open", target, nil, cstring(dir), 1)
+    else:
+      discard ShellExecuteA(0, "open", target, nil, nil, 1)
+  else:
+    discard execCmd("xdg-open " & target)

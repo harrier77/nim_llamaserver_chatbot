@@ -713,6 +713,14 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
       await req.respond(Http200, $response, headers)
       return
 
+    if path == "/api/launch-llama":
+      let headers = newHttpHeaders([("Content-Type", "application/json")])
+      launchDetached(r"C:\down\llama-latest\lancia_router.bat")
+      debugLog("Launching llama server via /api/launch-llama endpoint")
+      let response = %*{"ok": true, "message": "Llama server launched"}
+      await req.respond(Http200, $response, headers)
+      return
+
     let staticDir = getAppDir() / "webui" / "static"
     let filePath = staticDir / path
 
