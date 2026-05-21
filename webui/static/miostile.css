@@ -276,6 +276,12 @@ html.dark .file-upload-button:hover { background-color: rgba(255, 255, 255, 0.1)
 html.dark .new-chat-btn { background-color: #1f2937; color: #f9fafb; border-color: #3b82f6; }
 html.dark .new-chat-btn:hover { background-color: #374151; }
 
+.sidebar-toggle-btn { color: #1f2937; }
+.sidebar-toggle-btn:hover { color: #4b5563; }
+
+html.dark .sidebar-toggle-btn { color: #f9fafb; }
+html.dark .sidebar-toggle-btn:hover { color: #d1d5db; }
+
 /* ============ FONTS ============ */
 .font-medium { font-weight: 500; }
 .font-mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
@@ -484,6 +490,85 @@ html.dark .provider-dropdown { background-color: #000000; border-color: #333333;
 html.dark .provider-btn { background-color: #1f2937; color: #f9fafb; border-color: #333333; }
 html.dark .provider-btn:hover { background-color: #374151; }
 .provider-btn svg { flex-shrink: 0; }
+
+/* ============ SIDEBAR ============ */
+#sidebar-left {
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+.sidebar-expanded {
+  background-color: #f3f4f6 !important;
+}
+html.dark .sidebar-expanded {
+  background-color: #1a1a1a !important;
+}
+
+/* ============ DIRECTORY BROWSER (SIDEBAR) ============ */
+#dir-browser {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.8rem;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 0.5rem;
+}
+html.dark #dir-browser {
+  border-top-color: #333;
+}
+.dir-path {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.7rem;
+  color: #6b7280;
+  word-break: break-all;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 0.25rem;
+  white-space: normal;
+}
+html.dark .dir-path {
+  color: #9ca3af;
+  border-bottom-color: #333;
+}
+#dir-entries {
+  overflow-y: auto;
+}
+.dir-entry {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.5rem;
+  cursor: pointer;
+  border-radius: 0.25rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background-color 100ms;
+}
+.dir-entry:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+html.dark .dir-entry:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+.dir-entry-dir {
+  font-weight: 500;
+  color: #1f2937;
+}
+html.dark .dir-entry-dir {
+  color: #f9fafb;
+}
+.dir-entry-file {
+  color: #6b7280;
+}
+html.dark .dir-entry-file {
+  color: #9ca3af;
+}
+.dir-icon {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+}
+.dir-empty {
+  padding: 1rem 0.5rem;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 0.75rem;
+}
 
 /* ============ UTILITY CLASSES ============ */
 .hidden { display: none; }

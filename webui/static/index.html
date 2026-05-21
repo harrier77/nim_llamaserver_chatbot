@@ -25,6 +25,10 @@
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; flex-shrink: 0;"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg>
     <span class="sidebar-label" style="display: none;">New chat</span>
   </button>
+  <div id="dir-browser" style="display: none; flex: 1; overflow-y: auto; margin-top: 0.5rem; min-height: 0;">
+    <div id="dir-path" class="dir-path"></div>
+    <div id="dir-entries"></div>
+  </div>
 </div>
 <div role="main" style="min-height:80vh;position: relative; display: flex; flex-direction: column">
     <div class="chat-messages-wrapper" style="flex: 1; overflow-y: auto;">
@@ -107,10 +111,23 @@
     // System prompt that instructs the model how to use tools
     var SYSTEM_PROMPT = "";
 
+    // ============ FETCH WITH TIMEOUT ============
+    async function fetchWithTimeout(url, options, timeoutMs) {
+      timeoutMs = timeoutMs || 5000;
+      const controller = new AbortController();
+      const timer = setTimeout(function() { controller.abort(); }, timeoutMs);
+      try {
+        const res = await fetch(url, Object.assign({}, options, { signal: controller.signal }));
+        return res;
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
     // ============ FETCH SYSTEM PROMPT FROM SERVER ============
     async function fetchSystemPrompt() {
       try {
-        const res = await fetch('/api/system-prompt');
+        const res = await fetchWithTimeout('/api/system-prompt', {}, 5000);
         const data = await res.json();
         SYSTEM_PROMPT = data.content || '';
       } catch (e) {
@@ -122,7 +139,7 @@
     // ============ FETCH TOOLS FROM SERVER ============
     async function fetchTools() {
       try {
-        const res = await fetch('/api/tools');
+        const res = await fetchWithTimeout('/api/tools', {}, 5000);
         availableTools = await res.json();
       } catch (e) {
         console.error('Failed to fetch tools:', e);
@@ -165,7 +182,7 @@
 
     async function fetchProviders() {
       try {
-        const res = await fetch('/api/providers');
+        const res = await fetchWithTimeout('/api/providers', {}, 5000);
         const data = await res.json();
         availableProviders = data.providers || [];
         // Update label with friendly name now that providers are loaded
@@ -769,7 +786,7 @@
             modelsUrl += '&providerName=' + encodeURIComponent(providerName);
           }
           console.log('[DEBUG] fetchModels URL:', modelsUrl);
-          const res = await fetch(modelsUrl);
+          const res = await fetchWithTimeout(modelsUrl, {}, 15000);
           console.log('[DEBUG] fetchModels status:', res.status, res.statusText);
           const responseText = await res.text();
           console.log('[DEBUG] fetchModels RAW response:', responseText);
@@ -969,14 +986,25 @@
       }
 
       btn.addEventListener('click', async (e) => {
+        console.log('[DEBUG] MODELS-DROPDOWN CLICK: isOpen=' + isOpen + ' modelsLoaded=' + modelsLoaded + ' models.length=' + models.length);
         e.stopPropagation();
         if (isOpen) {
           closeDropdown();
         } else {
-          if (!modelsLoaded) {
+          // Always try to fetch models if we have none, even if modelsLoaded is true.
+          // This handles the case where llamaserver wasn't running on page load but is now.
+          if (!modelsLoaded || models.length === 0) {
+            console.log('[DEBUG] MODELS-DROPDOWN fetching models (modelsLoaded=' + modelsLoaded + ', models.length=' + models.length + ')');
             await fetchModels();
+            console.log('[DEBUG] MODELS-DROPDOWN after fetchModels: models.length=' + models.length + ' modelsLoaded=' + modelsLoaded);
+          } else {
+            console.log('[DEBUG] MODELS-DROPDOWN modelsLoaded=true with ' + models.length + ' models, skipping fetchModels');
           }
+          console.log('[DEBUG] MODELS-DROPDOWN checking models.length > 0:', models.length);
           if (models.length > 0) {
+            openDropdown();
+          } else {
+            console.log('[DEBUG] MODELS-DROPDOWN models.length=0, still opening dropdown to show message');
             openDropdown();
           }
         }
@@ -985,8 +1013,11 @@
       btn.addEventListener('keydown', (e) => {
         if (e.key === 'ArrowDown' || e.key === 'Enter') {
           e.preventDefault();
-          if (!modelsLoaded) fetchModels().then(openDropdown);
-          else openDropdown();
+          if (!modelsLoaded || models.length === 0) {
+            fetchModels().then(openDropdown);
+          } else {
+            openDropdown();
+          }
         }
       });
 
@@ -1001,23 +1032,143 @@
         await fetchModels();
       });
     })();
+    // ============ DIRECTORY BROWSER ============
+    var currentDir = '';
+    var dirHistory = [];
+
+    function renderDirEntries(data) {
+      const pathDiv = document.getElementById('dir-path');
+      const entriesDiv = document.getElementById('dir-entries');
+      currentDir = data.path || '';
+      pathDiv.textContent = currentDir;
+      entriesDiv.innerHTML = '';
+
+      // Up button if we can go up (always unless at root)
+      const up = document.createElement('div');
+      up.className = 'dir-entry dir-entry-dir';
+      up.innerHTML = '<span class="dir-icon">📁</span> ..';
+      up.addEventListener('click', () => {
+        goUp();
+      });
+      entriesDiv.appendChild(up);
+
+        var entries = data.entries || [];
+        // Sort: dirs first, then files, alphabetically
+        entries.sort(function(a, b) {
+          if (a.type !== b.type) return a.type === 'dir' ? -1 : 1;
+          return a.name.localeCompare(b.name);
+        });
+
+        entries.forEach(function(entry) {
+          const el = document.createElement('div');
+          if (entry.type === 'dir') {
+            el.className = 'dir-entry dir-entry-dir';
+            el.innerHTML = '<span class="dir-icon">📁</span> ' + entry.name + '/';
+            el.addEventListener('click', function(dirName) {
+              return function() { navigateInto(dirName); };
+            }(entry.name));
+          } else {
+            el.className = 'dir-entry dir-entry-file';
+            var sizeStr = entry.size !== undefined ? ' (' + formatSize(entry.size) + ')' : '';
+            el.innerHTML = '<span class="dir-icon">📄</span> ' + entry.name + sizeStr;
+            el.addEventListener('click', function(fname) {
+              return function() { openFile(fname); };
+            }(entry.name));
+          }
+          entriesDiv.appendChild(el);
+        });
+
+        if (entries.length === 0) {
+          entriesDiv.innerHTML = '<div class="dir-empty">(empty directory)</div>';
+        }
+      }
+
+      function formatSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+        return (bytes/1024/1024).toFixed(1) + ' MB';
+      }
+
+      function loadDir() {
+        fetch('/api/list-dir')
+          .then(function(res) { return res.json(); })
+          .then(function(data) {
+            renderDirEntries(data);
+          })
+          .catch(function(err) {
+            console.error('Failed to load directory:', err);
+            document.getElementById('dir-entries').innerHTML = '<div class="dir-empty">Error loading directory</div>';
+          });
+      }
+
+      function navigateInto(subdir) {
+        var newPath = currentDir + '/' + subdir;
+        fetch('/api/cd?path=' + encodeURIComponent(newPath))
+          .then(function(res) { return res.json(); })
+          .then(function(data) {
+            if (data.ok) {
+              loadDir();
+            } else {
+              console.error('cd failed:', data.error);
+            }
+          })
+          .catch(function(err) {
+            console.error('Failed to cd into directory:', err);
+          });
+      }
+
+      function goUp() {
+        fetch('/api/cd?path=..')
+          .then(function(res) { return res.json(); })
+          .then(function(data) {
+            if (data.ok) {
+              loadDir();
+            } else {
+              console.error('cd up failed:', data.error);
+            }
+          })
+          .catch(function(err) {
+            console.error('Failed to go up:', err);
+          });
+      }
+    function openFile(filename) {
+      var filePath = currentDir + '/' + filename;
+      // Insert file path into the chat textarea
+      var chatInput = document.querySelector('.conversation-chat-form textarea');
+      if (chatInput) {
+        chatInput.value = '/read "' + filePath + '"';
+        chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+        chatInput.focus();
+      }
+    }
+
     // ============ SIDEBAR TOGGLE ============
     (function() {
       const sidebar = document.getElementById('sidebar-left');
       const toggleBtn = document.getElementById('sidebar-toggle-btn');
       const labels = document.querySelectorAll('.sidebar-label');
+      const dirBrowser = document.getElementById('dir-browser');
       let isExpanded = false;
 
       toggleBtn.addEventListener('click', () => {
         isExpanded = !isExpanded;
         if (isExpanded) {
           sidebar.style.width = '30%';
-          sidebar.style.backgroundColor = '#f3f4f6';
+          sidebar.classList.add('sidebar-expanded');
+          sidebar.style.overflowY = 'auto';
           labels.forEach(label => label.style.display = 'inline');
+          if (dirBrowser) {
+            dirBrowser.style.display = 'block';
+            loadDir();
+          }
         } else {
           sidebar.style.width = 'auto';
-          sidebar.style.backgroundColor = 'transparent';
+          sidebar.classList.remove('sidebar-expanded');
+          sidebar.style.overflowY = '';
           labels.forEach(label => label.style.display = 'none');
+          if (dirBrowser) {
+            dirBrowser.style.display = 'none';
+          }
         }
       });
     })();

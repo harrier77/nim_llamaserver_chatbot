@@ -4,7 +4,7 @@
 ## Runs in a separate thread to avoid blocking the TUI
 ##
 
-import std/[asyncdispatch, asynchttpserver, asyncnet, httpclient, httpcore, json, os, strutils, strformat, times, random]
+import std/[asyncdispatch, asynchttpserver, asyncnet, httpclient, httpcore, json, os, strutils, strformat, times, random, uri]
 import tools
 import system_prompt
 import config
@@ -289,315 +289,452 @@ proc getModelsFromConfig*(providerUrl: string): Future[string] {.async.} =
     return "{\"data\": []}"
 
 proc requestCallback(req: Request) {.async, gcsafe.} =
-  var path = req.url.path
+  ## Top-level request handler. Catches ALL exceptions to ensure the server
+  ## always sends a response — preventing CLOSE_WAIT socket accumulation
+  ## and async event-loop stalls that freeze the WebUI.
+  try:
+    var path = req.url.path
 
-  if path == "/api/providers":
-    let modelsJsonPath = getModelsJsonPath()
-    var providersList: seq[JsonNode] = @[]
+    if path == "/api/providers":
+      let modelsJsonPath = getModelsJsonPath()
+      var providersList: seq[JsonNode] = @[]
     
-    # 1. Default localhost provider (always available)
-    providersList.add(%*{
-      "name": "🖥 Local Server",
-      "baseUrl": "http://localhost:8080",
-      "isRemote": false,
-      "source": "default",
-      "hasApiKey": false,
-      "modelsKnown": false
-    })
+      # 1. Default localhost provider (always available)
+      providersList.add(%*{
+        "name": "🖥 Local Server",
+        "baseUrl": "http://localhost:8080",
+        "isRemote": false,
+        "source": "default",
+        "hasApiKey": false,
+        "modelsKnown": false
+      })
     
-    # 2. Read ALL providers from models.json dynamically (like providers.nim does)
-    if fileExists(modelsJsonPath):
-      try:
-        let content = readFile(modelsJsonPath)
-        let json = parseJson(content)
-        if json.hasKey("providers"):
-          for provName, provVal in json["providers"]:
-            let baseUrl = provVal{"baseUrl"}.getStr("")
-            if baseUrl.len == 0: continue
-            
-            let isRemote = provName != "llamacpp"
-            let apiKey = getApiKey(provName)
-            let hasApiKey = apiKey.len > 0
-            
-            var modelIds: seq[string] = @[]
-            if provVal.hasKey("models"):
-              for m in provVal["models"]:
-                modelIds.add(m.getStr())
-            
-            var entry = %*{
-              "name": provName,
-              "baseUrl": baseUrl,
-              "isRemote": isRemote,
-              "source": "config",
-              "hasApiKey": hasApiKey,
-              "modelsKnown": modelIds.len > 0
-            }
-            if modelIds.len > 0:
-              entry["models"] = %modelIds
-            providersList.add(entry)
-      except:
-        discard
-    
-    # 3. Custom URL entry (always at the end)
-    providersList.add(%*{
-      "name": "✏️ Custom URL...",
-      "baseUrl": "",
-      "isRemote": false,
-      "source": "custom",
-      "hasApiKey": false,
-      "modelsKnown": false
-    })
-    
-    let headers = newHttpHeaders([("Content-Type", "application/json")])
-    let response = %*{ "providers": providersList }
-    await req.respond(Http200, $response, headers)
-    return
-
-  if path == "/api/models":
-    var providerUrl = "http://localhost:8080"
-    var providerName = ""
-    
-    if req.url.query.len > 0:
-      for param in req.url.query.split("&"):
-        let parts = param.split("=")
-        if parts.len == 2:
-          if parts[0] == "provider":
-            providerUrl = decodeUrlParam(parts[1])
-          elif parts[0] == "providerName":
-            providerName = decodeUrlParam(parts[1])
-    
-    debugLog("=== /api/models providerUrl=" & providerUrl & " providerName=" & providerName)
-    var modelsResponse: string
-    
-    let isCloud = providerUrl.contains("ollama.com") or providerUrl.contains("opencode.ai") or
-                   providerUrl.contains("nvidia") or providerUrl.contains("zyphra") or
-                   providerUrl.contains("zaya")
-
-    if isCloud:
-      debugLog("/api/models isCloud=true -> getModelsFromConfig")
-      modelsResponse = await getModelsFromConfig(providerUrl)
-    else:
-      var client = newAsyncHttpClient()
-      try:
-        let apiKey = if providerName.len > 0: getApiKey(providerName) else: ""
-        if apiKey.len > 0:
-          client.headers = newHttpHeaders({
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " & apiKey
-          })
-        let fetchUrl = providerUrl & "/v1/models"
-        debugLog("/api/models trying " & fetchUrl)
-        if apiKey.len > 0:
-          debugLog("/api/models using API key for " & providerName)
-        modelsResponse = await client.getContent(fetchUrl)
-        debugLog("/api/models SUCCESS " & $modelsResponse.len & " bytes")
-      except CatchableError as e:
-        debugLog("/api/models /v1/models FAILED: " & e.msg)
+      # 2. Read ALL providers from models.json dynamically (like providers.nim does)
+      if fileExists(modelsJsonPath):
         try:
-          let fetchUrl2 = providerUrl & "/models"
-          debugLog("/api/models trying fallback " & fetchUrl2)
-          modelsResponse = await client.getContent(fetchUrl2)
-          debugLog("/api/models fallback SUCCESS " & $modelsResponse.len & " bytes")
-        except CatchableError as e2:
-          debugLog("/api/models fallback ALSO FAILED: " & e2.msg)
-          if providerName.len > 0:
-            debugLog("/api/models trying JSON fallback for " & providerName)
-            modelsResponse = await getModelsFromJsonFallback(providerUrl, providerName)
-          else:
-            modelsResponse = "{\"data\": []}"
-      finally:
-        client.close()
-
-    let modelHeaders = newHttpHeaders([("Content-Type", "application/json")])
-    await req.respond(Http200, modelsResponse, modelHeaders)
-    return
-
-  if path == "/v1/embeddings":
-    let bodyStr = req.body
-    var targetUrl = "http://localhost:8080/v1/embeddings"
-
-    if req.url.query.len > 0:
-      let queryParams = req.url.query.split("&")
-      for param in queryParams:
-        let parts = param.split("=")
-        if parts.len == 2 and parts[0] == "provider":
-          let providerUrl = decodeUrlParam(parts[1])
-          targetUrl = providerUrl & "/v1/embeddings"
-
-    var client = newAsyncHttpClient()
-    var embedResponse = ""
-    try:
-      client.headers = newHttpHeaders([("Content-Type", "application/json")])
-      embedResponse = await client.postContent(targetUrl, bodyStr)
-    except:
-      embedResponse = "{\"error\": \"Failed to connect to " & targetUrl & "\"}"
-    finally:
-      client.close()
+          let content = readFile(modelsJsonPath)
+          let json = parseJson(content)
+          if json.hasKey("providers"):
+            for provName, provVal in json["providers"]:
+              let baseUrl = provVal{"baseUrl"}.getStr("")
+              if baseUrl.len == 0: continue
+            
+              let isRemote = provName != "llamacpp"
+              let apiKey = getApiKey(provName)
+              let hasApiKey = apiKey.len > 0
+            
+              var modelIds: seq[string] = @[]
+              if provVal.hasKey("models"):
+                for m in provVal["models"]:
+                  modelIds.add(m.getStr())
+            
+              var entry = %*{
+                "name": provName,
+                "baseUrl": baseUrl,
+                "isRemote": isRemote,
+                "source": "config",
+                "hasApiKey": hasApiKey,
+                "modelsKnown": modelIds.len > 0
+              }
+              if modelIds.len > 0:
+                entry["models"] = %modelIds
+              providersList.add(entry)
+        except:
+          discard
     
-    let embedHeaders = newHttpHeaders([("Content-Type", "application/json")])
-    await req.respond(Http200, embedResponse, embedHeaders)
-    return
-
-  if path == "/v1/chat/completions":
-    let bodyStr = req.body
-    var targetUrl = "http://localhost:8080/v1/chat/completions"
-    var authHeader = ""
+      # 3. Custom URL entry (always at the end)
+      providersList.add(%*{
+        "name": "✏️ Custom URL...",
+        "baseUrl": "",
+        "isRemote": false,
+        "source": "custom",
+        "hasApiKey": false,
+        "modelsKnown": false
+      })
     
-    # Parse stream flag from body
-    var isStreaming = false
-    try:
-      let bodyJson = parseJson(bodyStr)
-      if bodyJson.hasKey("stream"):
-        isStreaming = bodyJson["stream"].getBool()
-    except:
-      discard
-
-    if req.url.query.len > 0:
-      let queryParams = req.url.query.split("&")
-      for param in queryParams:
-        let parts = param.split("=")
-        if parts.len == 2 and parts[0] == "provider":
-          let providerUrl = decodeUrlParam(parts[1])
-          targetUrl = getChatEndpoint(providerUrl)
-          if providerUrl.contains("ollama.com"):
-            authHeader = "ollama"
-          elif providerUrl.contains("opencode.ai"):
-            authHeader = "opencode"
-          elif providerUrl.contains("nvidia"):
-            authHeader = "nvidia"
-          elif providerUrl.contains("zyphra") or providerUrl.contains("zaya"):
-            authHeader = "zaya"
-    
-    if isStreaming:
-      var client = newAsyncHttpClient()
-      var headersSent = false
-      try:
-        # FIX: Disable compression (gzip) to ensure we receive and forward plain text SSE events.
-        # Remote providers like NVIDIA might otherwise send compressed chunks that break the browser's parser.
-        client.headers = newHttpHeaders({
-          "Content-Type": "application/json",
-          "Accept-Encoding": "identity"
-        })
-        if authHeader.len > 0:
-          let apiKey = getApiKey(authHeader)
-          if apiKey.len > 0:
-            client.headers["Authorization"] = "Bearer " & apiKey
-          applyOpenCodeHeaders(client.headers, authHeader)
-        
-        let response = await client.request(targetUrl, httpMethod = HttpPost, body = bodyStr)
-        
-        # If provider returns an error (e.g., 401, 429), catch it before starting the stream
-        # to return a clean JSON error response to the frontend.
-        if response.code != Http200:
-          let errorBody = await response.body
-          let errorHeaders = newHttpHeaders([
-            ("Content-Type", "application/json"),
-            ("Access-Control-Allow-Origin", "*")
-          ])
-          await req.respond(response.code, errorBody, errorHeaders)
-          return
-
-        # FIX: Use raw streaming mode with 'Connection: close' instead of 'Transfer-Encoding: chunked'.
-        # Some browsers and remote endpoints struggle with manual chunked encoding over SSE.
-        # Closing the connection is the most reliable way to signal the end of a proxied stream.
-        var respHeaders = &"HTTP/1.1 200 OK\r\n"
-        respHeaders.add("Content-Type: text/event-stream\r\n")
-        respHeaders.add("Cache-Control: no-cache\r\n")
-        respHeaders.add("Connection: close\r\n")
-        respHeaders.add("Access-Control-Allow-Origin: *\r\n")
-        respHeaders.add("\r\n")
-        await req.client.send(respHeaders)
-        headersSent = true
-        
-        # Stream the body raw to avoid protocol overhead or formatting errors.
-        while true:
-          let (hasData, chunk) = await response.bodyStream.read()
-          if not hasData: break
-          if chunk.len > 0:
-            await req.client.send(chunk)
-        
-        # FIX: Explicitly close the browser connection to signal the end of the stream.
-        # Without this, since we use 'Connection: close' without 'Transfer-Encoding: chunked',
-        # the browser's fetch reader remains in a pending state indefinitely, 
-        # preventing the WebUI from resetting its 'isProcessing' state for the next query.
-        req.client.close()
-        
-      except CatchableError as e:
-        if not headersSent:
-          let errorMsg = "{\"error\": \"Failed to connect to provider: " & targetUrl & " - " & e.msg & "\"}"
-          let errorHeaders = newHttpHeaders([("Content-Type", "application/json"), ("Access-Control-Allow-Origin", "*")])
-          await req.respond(Http500, errorMsg, errorHeaders)
-        else:
-          # If headers were already sent, ensure the connection is closed even on error
-          # to prevent the browser from hanging on a broken stream.
-          req.client.close()
-      finally:
-        client.close()
-      return
-    else:
-      var client = newAsyncHttpClient()
-      var chatResponse = ""
-      try:
-        var headers = newHttpHeaders([("Content-Type", "application/json")])
-        if authHeader.len > 0:
-          let apiKey = getApiKey(authHeader)
-          if apiKey.len > 0:
-            headers["Authorization"] = "Bearer " & apiKey
-          applyOpenCodeHeaders(headers, authHeader)
-        client.headers = headers
-        chatResponse = await client.postContent(targetUrl, bodyStr)
-      except:
-        chatResponse = "{\"error\": \"Failed to connect to provider: " & targetUrl & "\"}"
-      finally:
-        client.close()
-      
-      let chatHeaders = newHttpHeaders([("Content-Type", "application/json")])
-      await req.respond(Http200, chatResponse, chatHeaders)
-      return
-
-  if path == "/api/tools":
-    let headers = newHttpHeaders([("Content-Type", "application/json")])
-    await req.respond(Http200, tools.ToolsSchemaJson, headers)
-    return
-
-  if path == "/api/system-prompt":
-    let headers = newHttpHeaders([("Content-Type", "application/json")])
-    let response = %*{"content": getSystemPrompt()}
-    await req.respond(Http200, $response, headers)
-    return
-
-  if path == "/api/execute-tool":
-    let bodyStr = req.body
-    let args = parseJson(bodyStr)
-    let toolName = if args.hasKey("name"): args["name"].getStr() else: ""
-    let toolArgs = if args.hasKey("arguments"): args["arguments"] else: %*{}
-    let headers = newHttpHeaders([("Content-Type", "application/json")])
-
-    if toolName == "":
-      let response = %*{"error": "Missing name parameter"}
+      let headers = newHttpHeaders([("Content-Type", "application/json")])
+      let response = %*{ "providers": providersList }
       await req.respond(Http200, $response, headers)
       return
 
-    let toolResult = tools.executeTool(toolName, toolArgs)
-    await req.respond(Http200, toolResult, headers)
-    return
+    if path == "/api/models":
+      var providerUrl = "http://localhost:8080"
+      var providerName = ""
+    
+      if req.url.query.len > 0:
+        for param in req.url.query.split("&"):
+          let parts = param.split("=")
+          if parts.len == 2:
+            if parts[0] == "provider":
+              providerUrl = decodeUrlParam(parts[1])
+            elif parts[0] == "providerName":
+              providerName = decodeUrlParam(parts[1])
+    
+      debugLog("=== /api/models providerUrl=" & providerUrl & " providerName=" & providerName)
+      var modelsResponse: string
+    
+      let isCloud = providerUrl.contains("ollama.com") or providerUrl.contains("opencode.ai") or
+                     providerUrl.contains("nvidia") or providerUrl.contains("zyphra") or
+                     providerUrl.contains("zaya")
 
-  if path == "/":
-    path = "/index.html"
+      if isCloud:
+        debugLog("/api/models isCloud=true -> getModelsFromConfig")
+        modelsResponse = await getModelsFromConfig(providerUrl)
+      else:
+        # Quick port check: if the provider port is not reachable, skip HTTP calls
+        # and go directly to config fallback (avoids ~4s timeout delay).
+        var parsed = parseUri(providerUrl)
+        let host = if parsed.hostname.len > 0: parsed.hostname else: "localhost"
+        let port = if parsed.port.len > 0: Port(parseInt(parsed.port)) else: Port(8080)
+        var portReachable = false
+        try:
+          let checkSocket = newAsyncSocket()
+          portReachable = await checkSocket.connect(host, port).withTimeout(1000)
+          checkSocket.close()
+        except:
+          discard
+      
+        if not portReachable:
+          debugLog("/api/models port " & $int(port) & " not reachable, using config fallback")
+          modelsResponse = await getModelsFromConfig(providerUrl)
+        else:
+          debugLog("/api/models port " & $int(port) & " reachable, trying HTTP")
+          # Use ASYNC httpclient to avoid blocking the event loop.
+          # When a timeout occurs, we MUST await/consume the pending future
+          # after closing the client, otherwise an unhandled future error
+          # will crash the server's event loop thread.
+          var asyncClient = newAsyncHttpClient()
+          try:
+            let apiKey = if providerName.len > 0: getApiKey(providerName) else: ""
+            let fetchUrl = providerUrl & "/v1/models"
+            debugLog("/api/models trying " & fetchUrl)
+            if apiKey.len > 0:
+              debugLog("/api/models using API key for " & providerName)
+              asyncClient.headers = newHttpHeaders({
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " & apiKey
+              })
+            
+            # Try /v1/models (async — does NOT block the event loop)
+            var succeeded = false
+            let fut1 = asyncClient.getContent(fetchUrl)
+            try:
+              let ok1 = await fut1.withTimeout(3000)
+              if ok1:
+                modelsResponse = await fut1
+                debugLog("/api/models SUCCESS " & $modelsResponse.len & " bytes")
+                succeeded = true
+            except CatchableError as e:
+              debugLog("/api/models /v1/models FAILED: " & e.msg)
+            
+            if not succeeded:
+              # Close client (synchronously fails all pending futures)
+              # THEN consume any error to prevent unhandled-future crash in the event loop
+              asyncClient.close()
+              try:
+                if fut1.finished:
+                  discard fut1.read()
+                else:
+                  discard await fut1
+              except:
+                discard
+              
+              # Try fallback /models endpoint
+              asyncClient = newAsyncHttpClient()
+              let fetchUrl2 = providerUrl & "/models"
+              debugLog("/api/models trying fallback " & fetchUrl2)
+              let fut2 = asyncClient.getContent(fetchUrl2)
+              try:
+                let ok2 = await fut2.withTimeout(3000)
+                if ok2:
+                  modelsResponse = await fut2
+                  debugLog("/api/models fallback SUCCESS " & $modelsResponse.len & " bytes")
+                  succeeded = true
+              except CatchableError as e2:
+                debugLog("/api/models fallback ALSO FAILED: " & e2.msg)
+              
+              if not succeeded:
+                asyncClient.close()
+                try:
+                  if fut2.finished:
+                    discard fut2.read()
+                  else:
+                    discard await fut2
+                except:
+                  discard
+                if providerName.len > 0:
+                  debugLog("/api/models trying JSON fallback for " & providerName)
+                  modelsResponse = await getModelsFromJsonFallback(providerUrl, providerName)
+                else:
+                  debugLog("/api/models trying getModelsFromConfig as fallback")
+                  modelsResponse = await getModelsFromConfig(providerUrl)
+          finally:
+            asyncClient.close()
 
-  let staticDir = getAppDir() / "webui" / "static"
-  let filePath = staticDir / path
+      let modelHeaders = newHttpHeaders([("Content-Type", "application/json")])
+      await req.respond(Http200, modelsResponse, modelHeaders)
+      return
 
-  if fileExists(filePath):
-    let content = readFile(filePath)
-    let contentType = if path.endsWith(".html"): "text/html"
-                      elif path.endsWith(".css"): "text/css"
-                      elif path.endsWith(".js"): "application/javascript"
-                      else: "text/plain"
-    let headers = newHttpHeaders([("Content-Type", contentType)])
-    await req.respond(Http200, content, headers)
-  else:
-    await req.respond(Http404, "Not Found")
+    if path == "/v1/embeddings":
+      let bodyStr = req.body
+      var targetUrl = "http://localhost:8080/v1/embeddings"
+
+      if req.url.query.len > 0:
+        let queryParams = req.url.query.split("&")
+        for param in queryParams:
+          let parts = param.split("=")
+          if parts.len == 2 and parts[0] == "provider":
+            let providerUrl = decodeUrlParam(parts[1])
+            targetUrl = providerUrl & "/v1/embeddings"
+
+      var client = newAsyncHttpClient()
+      var embedResponse = ""
+      try:
+        client.headers = newHttpHeaders([("Content-Type", "application/json")])
+        embedResponse = await client.postContent(targetUrl, bodyStr)
+      except:
+        embedResponse = "{\"error\": \"Failed to connect to " & targetUrl & "\"}"
+      finally:
+        client.close()
+    
+      let embedHeaders = newHttpHeaders([("Content-Type", "application/json")])
+      await req.respond(Http200, embedResponse, embedHeaders)
+      return
+
+    if path == "/v1/chat/completions":
+      let bodyStr = req.body
+      var targetUrl = "http://localhost:8080/v1/chat/completions"
+      var authHeader = ""
+    
+      # Parse stream flag from body
+      var isStreaming = false
+      try:
+        let bodyJson = parseJson(bodyStr)
+        if bodyJson.hasKey("stream"):
+          isStreaming = bodyJson["stream"].getBool()
+      except:
+        discard
+
+      if req.url.query.len > 0:
+        let queryParams = req.url.query.split("&")
+        for param in queryParams:
+          let parts = param.split("=")
+          if parts.len == 2 and parts[0] == "provider":
+            let providerUrl = decodeUrlParam(parts[1])
+            targetUrl = getChatEndpoint(providerUrl)
+            if providerUrl.contains("ollama.com"):
+              authHeader = "ollama"
+            elif providerUrl.contains("opencode.ai"):
+              authHeader = "opencode"
+            elif providerUrl.contains("nvidia"):
+              authHeader = "nvidia"
+            elif providerUrl.contains("zyphra") or providerUrl.contains("zaya"):
+              authHeader = "zaya"
+    
+      if isStreaming:
+        var client = newAsyncHttpClient()
+        var headersSent = false
+        try:
+          # FIX: Disable compression (gzip) to ensure we receive and forward plain text SSE events.
+          # Remote providers like NVIDIA might otherwise send compressed chunks that break the browser's parser.
+          client.headers = newHttpHeaders({
+            "Content-Type": "application/json",
+            "Accept-Encoding": "identity"
+          })
+          if authHeader.len > 0:
+            let apiKey = getApiKey(authHeader)
+            if apiKey.len > 0:
+              client.headers["Authorization"] = "Bearer " & apiKey
+            applyOpenCodeHeaders(client.headers, authHeader)
+        
+          let response = await client.request(targetUrl, httpMethod = HttpPost, body = bodyStr)
+        
+          # If provider returns an error (e.g., 401, 429), catch it before starting the stream
+          # to return a clean JSON error response to the frontend.
+          if response.code != Http200:
+            let errorBody = await response.body
+            let errorHeaders = newHttpHeaders([
+              ("Content-Type", "application/json"),
+              ("Access-Control-Allow-Origin", "*")
+            ])
+            await req.respond(response.code, errorBody, errorHeaders)
+            return
+
+          # FIX: Use raw streaming mode with 'Connection: close' instead of 'Transfer-Encoding: chunked'.
+          # Some browsers and remote endpoints struggle with manual chunked encoding over SSE.
+          # Closing the connection is the most reliable way to signal the end of a proxied stream.
+          var respHeaders = &"HTTP/1.1 200 OK\r\n"
+          respHeaders.add("Content-Type: text/event-stream\r\n")
+          respHeaders.add("Cache-Control: no-cache\r\n")
+          respHeaders.add("Connection: close\r\n")
+          respHeaders.add("Access-Control-Allow-Origin: *\r\n")
+          respHeaders.add("\r\n")
+          await req.client.send(respHeaders)
+          headersSent = true
+        
+          # Stream the body raw to avoid protocol overhead or formatting errors.
+          while true:
+            let (hasData, chunk) = await response.bodyStream.read()
+            if not hasData: break
+            if chunk.len > 0:
+              await req.client.send(chunk)
+        
+          # FIX: Explicitly close the browser connection to signal the end of the stream.
+          # Without this, since we use 'Connection: close' without 'Transfer-Encoding: chunked',
+          # the browser's fetch reader remains in a pending state indefinitely, 
+          # preventing the WebUI from resetting its 'isProcessing' state for the next query.
+          req.client.close()
+        
+        except CatchableError as e:
+          if not headersSent:
+            let errorMsg = "{\"error\": \"Failed to connect to provider: " & targetUrl & " - " & e.msg & "\"}"
+            let errorHeaders = newHttpHeaders([("Content-Type", "application/json"), ("Access-Control-Allow-Origin", "*")])
+            await req.respond(Http500, errorMsg, errorHeaders)
+          else:
+            # If headers were already sent, ensure the connection is closed even on error
+            # to prevent the browser from hanging on a broken stream.
+            req.client.close()
+        finally:
+          client.close()
+        return
+      else:
+        var client = newAsyncHttpClient()
+        var chatResponse = ""
+        try:
+          var headers = newHttpHeaders([("Content-Type", "application/json")])
+          if authHeader.len > 0:
+            let apiKey = getApiKey(authHeader)
+            if apiKey.len > 0:
+              headers["Authorization"] = "Bearer " & apiKey
+            applyOpenCodeHeaders(headers, authHeader)
+          client.headers = headers
+          chatResponse = await client.postContent(targetUrl, bodyStr)
+        except:
+          chatResponse = "{\"error\": \"Failed to connect to provider: " & targetUrl & "\"}"
+        finally:
+          client.close()
+      
+        let chatHeaders = newHttpHeaders([("Content-Type", "application/json")])
+        await req.respond(Http200, chatResponse, chatHeaders)
+        return
+
+    if path == "/api/tools":
+      let headers = newHttpHeaders([("Content-Type", "application/json")])
+      await req.respond(Http200, tools.ToolsSchemaJson, headers)
+      return
+
+    if path == "/api/system-prompt":
+      let headers = newHttpHeaders([("Content-Type", "application/json")])
+      let response = %*{"content": getSystemPrompt()}
+      await req.respond(Http200, $response, headers)
+      return
+
+    if path == "/api/execute-tool":
+      let bodyStr = req.body
+      let args = parseJson(bodyStr)
+      let toolName = if args.hasKey("name"): args["name"].getStr() else: ""
+      let toolArgs = if args.hasKey("arguments"): args["arguments"] else: %*{}
+      let headers = newHttpHeaders([("Content-Type", "application/json")])
+
+      if toolName == "":
+        let response = %*{"error": "Missing name parameter"}
+        await req.respond(Http200, $response, headers)
+        return
+
+      let toolResult = tools.executeTool(toolName, toolArgs)
+      await req.respond(Http200, toolResult, headers)
+      return
+
+
+
+    if path == "/":
+      path = "/index.html"
+
+    if path == "/api/cd":
+      let headers = newHttpHeaders([("Content-Type", "application/json")])
+      var targetDir = getCurrentDir()
+
+      if req.url.query.len > 0:
+        for param in req.url.query.split("&"):
+          let parts = param.split("=")
+          if parts.len == 2 and parts[0] == "path":
+            let decoded = decodeUrlParam(parts[1])
+            if decoded.len > 0:
+              targetDir = decoded
+
+      # Resolve relative paths
+      if not isAbsolute(targetDir):
+        targetDir = getCurrentDir() / targetDir
+      targetDir = targetDir.replace("\\", "/")
+
+      if dirExists(targetDir):
+        {.cast(gcsafe).}:
+          SessionDir = targetDir
+        setCurrentDir(targetDir)
+        let response = %*{"ok": true, "path": targetDir}
+        await req.respond(Http200, $response, headers)
+      else:
+        let response = %*{"ok": false, "error": "Directory not found: " & targetDir}
+        await req.respond(Http200, $response, headers)
+      return
+
+    if path == "/api/list-dir":
+      let headers = newHttpHeaders([("Content-Type", "application/json")])
+      var targetDir = getCurrentDir()
+
+      if req.url.query.len > 0:
+        for param in req.url.query.split("&"):
+          let parts = param.split("=")
+          if parts.len == 2 and parts[0] == "path":
+            let decoded = decodeUrlParam(parts[1])
+            if dirExists(decoded):
+              targetDir = decoded
+
+      var entries: seq[JsonNode] = @[]
+      try:
+        for (kind, filePath) in walkDir(targetDir, relative = true):
+          let fullPath = targetDir / filePath
+          var entry = %*{
+            "name": filePath,
+            "type": if kind == pcDir: "dir" else: "file"
+          }
+          if kind == pcFile:
+            entry["size"] = %getFileSize(fullPath)
+          entry["modified"] = %getLastModificationTime(fullPath).format("yyyy-MM-dd HH:mm")
+          entries.add(entry)
+      except CatchableError as e:
+        let errResponse = %*{"path": targetDir, "error": e.msg, "entries": []}
+        await req.respond(Http200, $errResponse, headers)
+        return
+
+      # Normalize path separators to forward slashes for the frontend
+      let normalizedPath = targetDir.replace("\\", "/")
+      let response = %*{"path": normalizedPath, "entries": entries}
+      await req.respond(Http200, $response, headers)
+      return
+
+    let staticDir = getAppDir() / "webui" / "static"
+    let filePath = staticDir / path
+
+    if fileExists(filePath):
+      let content = readFile(filePath)
+      let contentType = if path.endsWith(".html"): "text/html"
+                        elif path.endsWith(".css"): "text/css"
+                        elif path.endsWith(".js"): "application/javascript"
+                        else: "text/plain"
+      let headers = newHttpHeaders([("Content-Type", contentType)])
+      await req.respond(Http200, content, headers)
+    else:
+      await req.respond(Http404, "Not Found")
+  except CatchableError as topErr:
+    # Catch-all: any unhandled exception gets logged and returned as 500
+    debugLog("/api UNHANDLED ERROR: " & topErr.msg)
+    try:
+      let errHeaders = newHttpHeaders([("Content-Type", "application/json")])
+      let errBody = %*{"error": topErr.msg}
+      await req.respond(Http500, $errBody, errHeaders)
+    except:
+      discard
 
 proc serverWorker() {.thread, gcsafe.} =
   let server = newAsyncHttpServer()
