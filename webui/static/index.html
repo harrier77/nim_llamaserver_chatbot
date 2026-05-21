@@ -1014,12 +1014,16 @@
           if (response.ok) {
             addChatMessage('system', 'OK Model loaded: ' + modelId);
           } else {
-            addChatMessage('system', 'OK Model selected: ' + modelId);
+            addChatMessage('system', modelId === 'llamaserver missing'
+              ? 'Failed, use toolbar to launch...'
+              : 'OK Model selected: ' + modelId);
           }
           await fetchModels();
         } catch (e) {
           console.error('[DEBUG] selectModel fetch FAILED:', e.message);
-          addChatMessage('system', 'OK Model selected: ' + modelId);
+          addChatMessage('system', modelId === 'llamaserver missing'
+            ? 'Failed, use toolbar to launch...'
+            : 'OK Model selected: ' + modelId);
         }
       }
 

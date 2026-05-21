@@ -395,8 +395,12 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
           discard
       
         if not portReachable:
-          debugLog("/api/models port " & $int(port) & " not reachable, using config fallback")
-          modelsResponse = await getModelsFromConfig(providerUrl)
+          debugLog("/api/models port " & $int(port) & " not reachable")
+          if providerUrl.contains("localhost:8080"):
+            debugLog("/api/models port unreachable for localhost:8080, reporting llamaserver missing")
+            modelsResponse = """{"data":[{"id":"llamaserver missing","object":"model","owned_by":"local","status":{"value":"unloaded"}}]}"""
+          else:
+            modelsResponse = await getModelsFromConfig(providerUrl)
         else:
           debugLog("/api/models port " & $int(port) & " reachable, trying HTTP")
           # Use ASYNC httpclient to avoid blocking the event loop.
@@ -462,7 +466,10 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
                     discard await fut2
                 except:
                   discard
-                if providerName.len > 0:
+                if providerUrl.contains("localhost:8080"):
+                  debugLog("/api/models HTTP failed for localhost:8080, reporting llamaserver missing")
+                  modelsResponse = """{"data":[{"id":"llamaserver missing","object":"model","owned_by":"local","status":{"value":"unloaded"}}]}"""
+                elif providerName.len > 0:
                   debugLog("/api/models trying JSON fallback for " & providerName)
                   modelsResponse = await getModelsFromJsonFallback(providerUrl, providerName)
                 else:
