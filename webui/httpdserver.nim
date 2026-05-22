@@ -7,7 +7,7 @@
 import std/[asyncdispatch, asynchttpserver, asyncnet, httpclient, httpcore, json, os, strutils, strformat, times, random, uri]
 import tools
 import system_prompt
-import config
+import config_web
 
 # Thread synchronization
 var serverRunning*: bool = false
