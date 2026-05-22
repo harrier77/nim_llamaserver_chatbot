@@ -67,7 +67,9 @@ proc getChatEndpoint*(providerUrl: string): string =
   elif providerUrl.contains("zyphra"):
     return "https://api.zyphracloud.com/api/v1/chat/completions"
   else:
-    return providerUrl & "/v1/chat/completions"
+    var cleanUrl = providerUrl
+    cleanUrl.removeSuffix('/')
+    return cleanUrl & "/v1/chat/completions"
 
 # Get API key from auth.json for a provider
 proc getApiKey*(provider: string): string {.gcsafe.} =
@@ -316,7 +318,8 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
           let json = parseJson(content)
           if json.hasKey("providers"):
             for provName, provVal in json["providers"]:
-              let baseUrl = provVal{"baseUrl"}.getStr("")
+              var baseUrl = provVal{"baseUrl"}.getStr("")
+              baseUrl.removeSuffix('/')
               if baseUrl.len == 0: continue
             
               let isRemote = provName != "llamacpp"

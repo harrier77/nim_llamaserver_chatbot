@@ -5,7 +5,7 @@
   <link rel="stylesheet" href="miostile.css?v=20260513">
 </head>
 <body>
-<div id="upper_toolbar" style="width: 99%; display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; border-bottom: 1px solid #ccc;">
+<div id="upper_toolbar" style="width: 95%; margin-left:4rem;display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; ">
   <button id="provider-btn" type="button" style="width:18rem;text-align:left;font-size:1em">
     <span id="provider-label">Loading...</span>
     <span id="provider-remote-badge" style="display:none;background:#e53e3e;color:#fff;font-size:0.65em;padding:1px 5px;border-radius:3px;margin-left:4px;vertical-align:middle;font-weight:bold">remote</span>
@@ -32,13 +32,13 @@
 </div>
 
 <div style="display: flex; flex: 1; min-height: 0; overflow: hidden;">
-  <div id="sidebar-left" style="display: flex; flex-direction: column; gap: 0.5rem; padding: 0.5rem; border-right: 1px dashed gray; width: auto; transition: width 0.3s ease, background-color 0.3s ease; overflow: hidden; white-space: nowrap; background-color: transparent;">
+  <div id="sidebar-left" style="display: flex; flex-direction: column; gap: 0.5rem; padding: 0.5rem; width: auto; transition: width 0.3s ease, background-color 0.3s ease; overflow: hidden; white-space: nowrap; background-color: transparent;">
   <button id="sidebar-toggle-btn" class="sidebar-toggle-btn" title="Toggle sidebar" type="button" style="display: flex; align-items: center; gap: 0.5rem; border: none; background: none; cursor: pointer;">
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon lucide lucide-panel-left" style="width: 16px; height: 16px;"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18"></path></svg>
     <span class="sidebar-label" style="display: none;">Toggle</span>
   </button>
   <button id="new-chat-btn" class="new-chat-btn" title="New chat" type="button" style="display: flex; align-items: center; gap: 0.5rem; border: none; background: none; cursor: pointer; min-width: max-content;">
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; flex-shrink: 0;"><path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg>
+     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon lucide lucide-square-pen h-4 w-4"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"></path></svg>
     <span class="sidebar-label" style="display: none;">New chat</span>
   </button>
   <div id="dir-browser" style="display: none; flex: 1; overflow-y: auto; margin-top: 0.5rem; min-height: 0;">
@@ -50,9 +50,9 @@
     <div class="chat-messages-wrapper" style="flex: 1; overflow-y: auto;">
       <div>
         <div class="mb-8 text-center">
-          <h1>Hello there</h1>
-          <p class="text-muted-foreground">Type message...</p>
-        </div>
+          <h2 style="margin-top:23rem;margin-bottom:0;font-size:1.8rem;font-weight:500">Hello there</h2>
+          <p class="text-muted-foreground" style="margin-block-start: 1rem; margin-block-end: 0px">Type a message to get started...</p>
+        </div> 
       </div> 
       <div class="conversation-chat-form" style="top:35rem;flex-shrink: 0; position: sticky; bottom: 5px; backdrop-filter: blur(5px); z-index: 10; padding: 0.5rem 1rem;">
       <div class="relative" style="margin:auto">
@@ -344,6 +344,8 @@
 
       function selectProvider(provider) {
         console.log('[DEBUG] selectProvider() ->', provider);
+        // Normalizza: rimuove slash finale per evitare // nel target URL
+        provider = provider.replace(/\/$/, '');
         currentProvider = provider;
         localStorage.setItem('provider', provider);
         var pObj = getProviderObj(provider);
@@ -384,9 +386,9 @@
       const chatDiv = document.querySelector('.chat-messages');
       if (chatDiv) chatDiv.remove();
       // Show welcome message
-      const h1 = document.querySelector('[role="main"] h1');
+      const h2 = document.querySelector('[role="main"] h2');
       const p = document.querySelector('[role="main"] p');
-      if (h1) h1.style.display = '';
+      if (h2) h2.style.display = '';
       if (p) p.style.display = '';
     });
 
@@ -551,8 +553,8 @@
       const wrapper = mainDiv?.querySelector('.chat-messages-wrapper');
 
       // Hide welcome message
-      const h1 = mainDiv?.querySelector('h1');
-      if (h1) h1.style.display = 'none';
+      const h2 = mainDiv?.querySelector('h2');
+      if (h2) h2.style.display = 'none';
       const p = mainDiv?.querySelector('p');
       if (p) p.style.display = 'none';
 

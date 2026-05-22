@@ -15,7 +15,8 @@ proc loadProvidersConfig*() =
 
       if modelsJson.hasKey("providers"):
         for provName, provVal in modelsJson["providers"]:
-          let baseUrl = provVal{"baseUrl"}.getStr("")
+          var baseUrl = provVal{"baseUrl"}.getStr("")
+          baseUrl.removeSuffix('/')
           if baseUrl.len == 0: continue
 
           if provName == "llamacpp":
