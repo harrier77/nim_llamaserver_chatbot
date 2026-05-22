@@ -1,45 +1,45 @@
 # Nim LLaMA Server Chatbot
 
-Chat client in Nim che si collega a un server [llama.cpp](https://github.com/ggerganov/llama.cpp) con supporto multi-provider (OpenCode, Ollama, NVIDIA, Zaya), tool calling, interfaccia web e finestra nativa WebView2.
+Nim chat client that connects to a [llama.cpp](https://github.com/ggerganov/llama.cpp) server with multi-provider support (OpenCode, Ollama, NVIDIA, Zaya), tool calling, web interface, and native WebView2 window.
 
-## Eseguibili
+## Binaries
 
-| Comando | File | Descrizione |
+| Command | File | Description |
 |---------|------|-------------|
-| `compila` | `webui_only.exe` | Solo server HTTP (browser) |
-| `compila wv` | `webui_wv.exe` | Server HTTP + finestra WebView2 nativa (no console) |
-| `compila tui` | `chatbot_main.exe` | Versione completa con TUI (terminal UI) |
-| `compila both` | tutti | Compila tutti e tre |
+| `compila` | `webui_only.exe` | HTTP server only (browser) |
+| `compila wv` | `webui_wv.exe` | HTTP server + native WebView2 window (no console) |
+| `compila tui` | `chatbot_main.exe` | Full version with TUI (terminal UI) |
+| `compila both` | all | Build all three |
 
 ## Quick Start
 
 ```bash
-# Server + finestra WebView2 nativa
+# Server + native WebView2 window
 compila wv
 webui_wv.exe
 
-# Solo server HTTP, apri http://localhost:8000 nel browser
+# HTTP server only, open http://localhost:8000 in browser
 compila
 webui_only.exe
 
-# Versione completa con TUI
+# Full TUI version
 compila tui
 chatbot_main.exe --chat
 ```
 
 ## Build Flags
 
-Tutte le build usano: `--threads:on --define:ssl --path:"my_include" --path:"webui"`.  
-La build `wv` aggiunge `--path:"webview2_nim" --app:gui`.
+All builds use: `--threads:on --define:ssl --path:"my_include" --path:"webui"`.  
+The `wv` build adds `--path:"webview2_nim" --app:gui`.
 
-## Dipendenze
+## Dependencies
 
 - [Nim](https://nim-lang.org/) compiler
-- [illwill](https://github.com/johnnovak/illwill) — solo per `chatbot_main.exe`
-- [winim](https://github.com/khchen/winim) — solo per `webui_wv.exe` (`nimble install winim`)
-- WebView2 Runtime — preinstallato su Windows 10/11 con Edge Chromium
-- `llama-server` in esecuzione su `localhost:8080` (per modelli locali)
+- [illwill](https://github.com/johnnovak/illwill) — `chatbot_main.exe` only
+- [winim](https://github.com/khchen/winim) — `webui_wv.exe` only (`nimble install winim`)
+- WebView2 Runtime — preinstalled on Windows 10/11 with Edge Chromium
+- `llama-server` running on `localhost:8080` (for local models)
 
-## Configurazione
+## Configuration
 
-I file di configurazione (provider, API key, stato) sono in `~/.nim_chatbot/`.
+Configuration files (providers, API keys, state) are stored in `~/.nim_chatbot/`.
