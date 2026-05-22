@@ -171,7 +171,7 @@ proc readTool*(args: JsonNode): string =
       return $(%*{"error": "Offset beyond file length"})
 
     let startIdx = max(0, offset - 1)
-    let effectiveLimit = if limit == -1: MaxReadLines else: min(limit, MaxReadLines)
+    let effectiveLimit = if limit == -1: MaxReadLines else: limit
     let endIdx = min(lines.len - 1, startIdx + effectiveLimit - 1)
 
     let slice = lines[startIdx .. endIdx]
@@ -181,7 +181,7 @@ proc readTool*(args: JsonNode): string =
     let totalLines = lines.len
     let lastLineReturned = endIdx + 1
     if lastLineReturned < totalLines:
-      content &= "\n[... truncated at " & $MaxReadLines & " lines, use offset/limit to read more]"
+      content &= "\n[... truncated at " & $effectiveLimit & " lines, use offset/limit to read more]"
 
     return $(%*{"content": content})
   except Exception as e:
