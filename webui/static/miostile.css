@@ -52,7 +52,7 @@ html.dark #upper_toolbar {
   display: flex;
   flex-direction: column;
   padding: 1rem 1.5rem;
-  min-width: 600px;
+  min-width: 500px;
   flex: 1;
 }
 .pointer-events-auto { pointer-events: auto; }
