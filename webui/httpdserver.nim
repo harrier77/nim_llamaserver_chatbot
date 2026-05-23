@@ -57,19 +57,52 @@ proc getModelsJsonPath(): string =
   return homeDir / ".nim_chatbot" / "models.json"
 
 # Get chat endpoint for a provider
+#
+# Normalizes a provider's baseUrl into a valid /v1/chat/completions endpoint.
+# Handles all forms:
+#   - Already complete: "https://api.together.xyz/v1/chat/completions"  → as-is
+#   - Ends with /v1:    "https://ollama.com/v1"                         → append /chat/completions
+#   - Plain base:       "http://localhost:8080"                          → append /v1/chat/completions
+#
+# Uses the same logic as providers.nim (TUI) to ensure consistent behaviour
+# between WebUI and TUI for all OpenAI-compatible providers.
 proc getChatEndpoint*(providerUrl: string): string =
-  if providerUrl.contains("ollama.com"):
-    return "https://ollama.com/v1/chat/completions"
-  elif providerUrl.contains("opencode.ai"):
-    return "https://opencode.ai/zen/v1/chat/completions"
-  elif providerUrl.contains("nvidia"):
-    return "https://integrate.api.nvidia.com/v1/chat/completions"
-  elif providerUrl.contains("zyphra"):
-    return "https://api.zyphracloud.com/api/v1/chat/completions"
+  var cleanUrl = providerUrl
+  cleanUrl.removeSuffix('/')
+
+  if cleanUrl.endsWith("/chat/completions"):
+    # Already has the full path (e.g. together, nvidia, opencode, openrouter)
+    return cleanUrl
+  elif cleanUrl.endsWith("/v1"):
+    # Ends with /v1 (e.g. ollama) — just append /chat/completions
+    return cleanUrl & "/chat/completions"
   else:
+    # Plain base URL — append the standard OpenAI path
+    return cleanUrl & "/v1/chat/completions"
+
+# Look up the provider name from models.json by matching the baseUrl.
+# This replaces fragile hardcoded contains() checks with a dynamic lookup,
+# so any provider added to models.json (cerebras, together, groq, …) is
+# automatically found and its API key used.
+proc getProviderNameByUrl*(providerUrl: string): string =
+  let modelsJsonPath = getHomeDir() / ".nim_chatbot" / "models.json"
+  if not fileExists(modelsJsonPath):
+    return ""
+  try:
+    let content = readFile(modelsJsonPath)
+    let j = parseJson(content)
+    if not j.hasKey("providers"):
+      return ""
     var cleanUrl = providerUrl
     cleanUrl.removeSuffix('/')
-    return cleanUrl & "/v1/chat/completions"
+    for provName, provVal in j["providers"]:
+      var baseUrl = provVal{"baseUrl"}.getStr("")
+      baseUrl.removeSuffix('/')
+      if baseUrl == cleanUrl:
+        return provName
+  except:
+    discard
+  return ""
 
 # Get API key from auth.json for a provider
 proc getApiKey*(provider: string): string {.gcsafe.} =
@@ -234,7 +267,35 @@ proc getModelsFromConfig*(providerUrl: string): Future[string] {.async.} =
       discard
     finally:
       client.close()
-  
+
+  # Generic cloud provider handler: try /v1/models with API key.
+  # Works for any OpenAI-compatible provider (cerebras, together, groq, …).
+  let apiProviderName = getProviderNameByUrl(providerUrl)
+  if apiProviderName.len > 0:
+    let apiKey = getApiKey(apiProviderName)
+    if apiKey.len > 0:
+      var client = newAsyncHttpClient()
+      try:
+        client.headers = newHttpHeaders({
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " & apiKey
+        })
+        # Construct /v1/models URL from the provider's baseUrl
+        var modelsUrl = providerUrl
+        modelsUrl.removeSuffix('/')
+        if modelsUrl.endsWith("/chat/completions"):
+          modelsUrl = modelsUrl.replace("/chat/completions", "/models")
+        elif modelsUrl.endsWith("/v1"):
+          modelsUrl = modelsUrl & "/models"
+        else:
+          modelsUrl = modelsUrl & "/v1/models"
+        let response = await client.getContent(modelsUrl)
+        return response
+      except:
+        discard
+      finally:
+        client.close()
+
   let modelsJsonPath = getModelsJsonPath()
   let statusFile = getCurrentDir() / "my_include" / "status.json"
   if not fileExists(modelsJsonPath):
@@ -250,16 +311,8 @@ proc getModelsFromConfig*(providerUrl: string): Future[string] {.async.} =
     var foundModels: seq[string] = @[]
     var providerType = ""
     
-    if providerUrl.contains("ollama"):
-      providerType = "ollama"
-    elif providerUrl.contains("zyphra"):
-      providerType = "zaya"
-    elif providerUrl.contains("nvidia"):
-      providerType = "nvidia"
-    elif providerUrl.contains("opencode"):
-      providerType = "opencode"
-    elif providerUrl.contains("localhost:8080"):
-      providerType = "llamacpp"
+    # Dynamic lookup: match against models.json (works for any provider)
+    providerType = getProviderNameByUrl(providerUrl)
     
     if providerType.len > 0 and provs.hasKey(providerType):
       let providerData = provs[providerType]
@@ -376,9 +429,11 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
       debugLog("=== /api/models providerUrl=" & providerUrl & " providerName=" & providerName)
       var modelsResponse: string
     
-      let isCloud = providerUrl.contains("ollama.com") or providerUrl.contains("opencode.ai") or
-                     providerUrl.contains("nvidia") or providerUrl.contains("zyphra") or
-                     providerUrl.contains("zaya")
+      # Dynamic cloud detection: any provider in models.json that is not local
+      let cloudProviderType = getProviderNameByUrl(providerUrl)
+      let isCloud = cloudProviderType.len > 0 and
+                     cloudProviderType != "llamacpp" and
+                     cloudProviderType != "2nd_llama"
 
       if isCloud:
         debugLog("/api/models isCloud=true -> getModelsFromConfig")
@@ -532,14 +587,10 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
           if parts.len == 2 and parts[0] == "provider":
             let providerUrl = decodeUrlParam(parts[1])
             targetUrl = getChatEndpoint(providerUrl)
-            if providerUrl.contains("ollama.com"):
-              authHeader = "ollama"
-            elif providerUrl.contains("opencode.ai"):
-              authHeader = "opencode"
-            elif providerUrl.contains("nvidia"):
-              authHeader = "nvidia"
-            elif providerUrl.contains("zyphra") or providerUrl.contains("zaya"):
-              authHeader = "zaya"
+            # Dynamic lookup: match the providerUrl against models.json to
+            # find the provider name, then use it to fetch the API key.
+            # Handles any provider without hardcoding (cerebras, together, …).
+            authHeader = getProviderNameByUrl(providerUrl)
     
       if isStreaming:
         var client = newAsyncHttpClient()
@@ -583,12 +634,32 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
           headersSent = true
         
           # Stream the body raw to avoid protocol overhead or formatting errors.
+          # Use a timeout (30s) only for reads AFTER the first chunk has arrived.
+          # The first chunk can take long (model loading), so we wait indefinitely.
+          var firstChunk = true
           while true:
-            let (hasData, chunk) = await response.bodyStream.read()
-            if not hasData: break
-            if chunk.len > 0:
-              await req.client.send(chunk)
+            let readFut = response.bodyStream.read()
+            var gotData: bool
+            if firstChunk:
+              # Wait indefinitely for the first chunk (slow model load)
+              let (hasData, chunk) = await readFut
+              gotData = hasData
+              if gotData and chunk.len > 0:
+                await req.client.send(chunk)
+                firstChunk = false
+            else:
+              # Subsequent chunks: 30s timeout to detect upstream keep-alive
+              if await readFut.withTimeout(30000):
+                let (hasData, chunk) = readFut.read()
+                gotData = hasData
+                if gotData and chunk.len > 0:
+                  await req.client.send(chunk)
+              else:
+                debugLog("Stream chunk timeout (30s) — upstream keep-alive, closing")
+                break
+            if not gotData: break
         
+          debugLog("Stream finished — closing browser connection")
           # FIX: Explicitly close the browser connection to signal the end of the stream.
           # Without this, since we use 'Connection: close' without 'Transfer-Encoding: chunked',
           # the browser's fetch reader remains in a pending state indefinitely, 

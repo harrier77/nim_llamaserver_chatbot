@@ -622,6 +622,8 @@
         addChatMessage('user', message);
       }
 
+      console.log('[DEBUG sendMessage] ENTER provider=' + currentProvider + ' model=' + currentModel + ' msgLen=' + (message?message.length:0));
+
       // Main loop: continues until there are no more tool calls
       while (true) {
         initConversation();
@@ -631,6 +633,7 @@
 
         try {
           const chatUrl = '/v1/chat/completions?provider=' + encodeURIComponent(currentProvider);
+          console.log('[DEBUG sendMessage] FETCH start url=' + chatUrl + ' model=' + currentModel);
           const response = await fetch(chatUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -641,14 +644,30 @@
               tools: availableTools
             })
           });
+          console.log('[DEBUG sendMessage] FETCH done status=' + response.status + ' ' + response.statusText + ' ok=' + response.ok + ' contentType=' + (response.headers.get('content-type')||'none'));
+
+          if (!response.ok) {
+            // Leggi il body di errore come testo
+            const errBody = await response.text();
+            console.error('[DEBUG sendMessage] FETCH non-OK body:', errBody.substring(0, 500));
+            if (aiBubble) aiBubble.textContent = 'Error ' + response.status + ': ' + errBody;
+            break;
+          }
 
           const reader = response.body.getReader();
           const decoder = new TextDecoder();
           let pending = '';
+          let chunkCount = 0;
+          console.log('[DEBUG sendMessage] STREAM reader created');
 
           while (true) {
             const { done, value } = await reader.read();
-            if (done) break;
+            if (done) {
+              console.log('[DEBUG sendMessage] STREAM done totalChunks=' + chunkCount + ' aiBufferLen=' + aiBuffer.length);
+              break;
+            }
+            chunkCount++;
+            if (chunkCount === 1) console.log('[DEBUG sendMessage] STREAM first chunk arrived');
 
             const data = pending + decoder.decode(value);
             pending = '';
@@ -798,6 +817,7 @@
             break;
           }
         } catch (e) {
+          console.error('[DEBUG sendMessage] CATCH error:', e.message, e.stack);
           if (aiBubble) aiBubble.textContent = 'Error: ' + e.message;
           break;
         }
