@@ -1,0 +1,3 @@
+[submodule "webview2_nim"]
+	path = webview2_nim
+	url = https://github.com/harrier77/webview2_nim
