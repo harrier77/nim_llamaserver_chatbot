@@ -47,7 +47,7 @@ proc main() =
     height = 800,
     resizable = true,
     debug = defined(release),  # true unless -d:release
-    miotop = 0                # no toolbar: full client area
+    miotop = 0                # 0 = disable native WebView2 toolbar (Back/Forward/Refresh)
   )
 
   if w == nil:
