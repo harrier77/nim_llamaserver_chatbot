@@ -536,6 +536,21 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
           finally:
             asyncClient.close()
 
+      # OpenRouter filter: mostra solo modelli free (contengono ":free" nel nome)
+      let providerType = getProviderNameByUrl(providerUrl)
+      if providerType == "openrouter" and modelsResponse.len > 0:
+        try:
+          let modelsJson = parseJson(modelsResponse)
+          if modelsJson.hasKey("data"):
+            var freeModels: seq[JsonNode] = @[]
+            for m in modelsJson["data"]:
+              if m{"id"}.getStr("").contains(":free"):
+                freeModels.add(m)
+            modelsResponse = $(%*{ "data": freeModels })
+            debugLog("/api/models openrouter filter: " & $freeModels.len & " free models of " & $modelsJson["data"].len & " total")
+        except:
+          debugLog("/api/models openrouter filter FAILED to parse response")
+
       let modelHeaders = newHttpHeaders([("Content-Type", "application/json")])
       await req.respond(Http200, modelsResponse, modelHeaders)
       return
@@ -591,6 +606,17 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
             # find the provider name, then use it to fetch the API key.
             # Handles any provider without hardcoding (cerebras, together, …).
             authHeader = getProviderNameByUrl(providerUrl)
+      
+      # === DEBUG: log what we're about to send to the provider ===
+      debugLog("[PROXY] providerUrl from query: " & (if req.url.query.len > 0: req.url.query else: "none"))
+      debugLog("[PROXY] targetUrl: " & targetUrl)
+      debugLog("[PROXY] authHeader (provider name): " & (if authHeader.len > 0: authHeader else: "(empty)"))
+      if authHeader.len > 0:
+        let apiKeyCheck = getApiKey(authHeader)
+        debugLog("[PROXY] apiKey found: " & (if apiKeyCheck.len > 0: "YES (len=" & $apiKeyCheck.len & ")" else: "NO"))
+      else:
+        debugLog("[PROXY] apiKey found: NO (no authHeader)")
+      debugLog("[PROXY] body (first 500 chars): " & bodyStr[0 .. min(bodyStr.len - 1, 499)])
     
       if isStreaming:
         var client = newAsyncHttpClient()

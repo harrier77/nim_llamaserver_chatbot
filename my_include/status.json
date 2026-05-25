@@ -1,1 +1,1 @@
-{"selected_model":"meta/llama-3.3-70b-instruct","max_history_messages":10,"server_url":"http://localhost:8080"}
+{"selected_model":"nvidia/nemotron-3-nano-30b-a3b:free","max_history_messages":10,"server_url":"http://localhost:8080"}

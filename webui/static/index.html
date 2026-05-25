@@ -633,16 +633,21 @@
 
         try {
           const chatUrl = '/v1/chat/completions?provider=' + encodeURIComponent(currentProvider);
-          console.log('[DEBUG sendMessage] FETCH start url=' + chatUrl + ' model=' + currentModel);
+          const requestBody = {
+            model: currentModel,
+            messages: conversationHistory,
+            stream: true,
+            tools: availableTools
+          };
+          //console.log('[DEBUG sendMessage] === FULL REQUEST DUMP ===');
+          //console.log('[DEBUG sendMessage] URL:', chatUrl);
+          //console.log('[DEBUG sendMessage] PROVIDER detail:', JSON.stringify(getProviderObj(currentProvider)));
+          //console.log('[DEBUG sendMessage] REQUEST BODY:', JSON.stringify(requestBody, null, 2));
+          //console.log('[DEBUG sendMessage] === END REQUEST DUMP ===');
           const response = await fetch(chatUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              model: currentModel,
-              messages: conversationHistory,
-              stream: true,
-              tools: availableTools
-            })
+            body: JSON.stringify(requestBody)
           });
           console.log('[DEBUG sendMessage] FETCH done status=' + response.status + ' ' + response.statusText + ' ok=' + response.ok + ' contentType=' + (response.headers.get('content-type')||'none'));
 
@@ -847,11 +852,11 @@
           if (providerName) {
             modelsUrl += '&providerName=' + encodeURIComponent(providerName);
           }
-          console.log('[DEBUG] fetchModels URL:', modelsUrl);
+          //console.log('[DEBUG] fetchModels URL:', modelsUrl);
           const res = await fetchWithTimeout(modelsUrl, {}, 15000);
-          console.log('[DEBUG] fetchModels status:', res.status, res.statusText);
+          //console.log('[DEBUG] fetchModels status:', res.status, res.statusText);
           const responseText = await res.text();
-          console.log('[DEBUG] fetchModels RAW response:', responseText);
+          //console.log('[DEBUG] fetchModels RAW response:', responseText);
           let data;
           try {
             data = JSON.parse(responseText);
@@ -864,7 +869,7 @@
           const prevSelected = currentModel || selectedModel;
           
           models = data.data || [];
-          console.log('[DEBUG] fetchModels parsed models:', models.length, models);
+          //console.log('[DEBUG] fetchModels parsed models:', models.length, models);
           modelsLoaded = true;
 
           // Now find the currently loaded model from server response
