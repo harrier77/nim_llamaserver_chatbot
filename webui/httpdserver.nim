@@ -828,6 +828,31 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
       await req.respond(Http200, $response, headers)
       return
 
+    if path == "/api/llama-log":
+      let headers = newHttpHeaders([("Content-Type", "application/json")])
+      var logDir: string
+      {.cast(gcsafe).}:
+        logDir = if ExeDir.len > 0: ExeDir else: getCurrentDir()
+      let logPath = logDir / "llama_server.log"
+      var lines: seq[string] = @[]
+      if fileExists(logPath):
+        try:
+          let content = readFile(logPath)
+          var allLines = content.splitLines()
+          # Filter empty lines, keep last 2 non-empty
+          var nonEmpty: seq[string] = @[]
+          for l in allLines:
+            if l.len > 0:
+              nonEmpty.add(l)
+          let n = nonEmpty.len
+          if n > 0:
+            lines = nonEmpty[n - min(n, 2) .. ^1]
+        except:
+          discard
+      let response = %*{"lines": lines}
+      await req.respond(Http200, $response, headers)
+      return
+
     let staticDir = getAppDir() / "webui" / "static"
     let filePath = staticDir / path
 

@@ -519,6 +519,32 @@ html.dark .provider-btn:hover { background-color: #374151; }
 html.dark .sidebar-expanded {
   background-color: #1a1a1a !important;
 }
+.sidebar-no-transition {
+  transition: none !important;
+}
+
+/* ============ SIDEBAR RESIZE HANDLE ============ */
+#sidebar-resize-handle {
+  width: 6px;
+  cursor: col-resize;
+  flex-shrink: 0;
+  background: transparent;
+  position: relative;
+  z-index: 5;
+  transition: background-color 0.15s ease;
+  display: none;  /* hidden when sidebar collapsed */
+}
+#sidebar-resize-handle:hover,
+#sidebar-resize-handle.dragging {
+  background-color: rgba(59, 130, 246, 0.3);
+}
+#sidebar-resize-handle.dragging {
+  transition: none;
+}
+html.dark #sidebar-resize-handle:hover,
+html.dark #sidebar-resize-handle.dragging {
+  background-color: rgba(59, 130, 246, 0.5);
+}
 
 /* ============ DIRECTORY BROWSER (SIDEBAR) ============ */
 #dir-browser {
