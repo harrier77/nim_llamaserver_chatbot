@@ -36,6 +36,31 @@ const ToolsSchemaJson* = """[
   {
     "type": "function",
     "function": {
+      "name": "get_file",
+      "description": "Read a text file with byte-based offset/limit. Use this to read specific portions of a file when byte position is known.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "description": "Path to the file to read"
+          },
+          "offset_bytes": {
+            "type": "number",
+            "description": "Byte offset to start reading from (default: 0)"
+          },
+          "limit_bytes": {
+            "type": "number",
+            "description": "Maximum bytes to read (default: 2048)"
+          }
+        },
+        "required": ["file_path"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
       "name": "file_glob_search",
       "description": "Search for files matching a glob pattern in a directory (non-recursive, top-level only).",
       "parameters": {
@@ -59,8 +84,6 @@ const ToolsSchemaJson* = """[
 # Export ToolsSchema for use by other modules (e.g., chat.nim)
 let ToolsSchema* = parseJson(ToolsSchemaJson)
 
-
-proc delibsBaseDir*: string = getHomeDir() / "Desktop/python/flask_root/principale/pareri/delibere/testi"
 
 proc globMatch(pattern: string, str: string): bool =
   ## Simple glob matching.
@@ -234,93 +257,51 @@ proc bashTool*(args: JsonNode): string =
   except Exception as e:
     return $(%*{"error": e.msg})
 
-proc cleanDeliberaText*(text: string): string =
-  # If "Pag 1 di" is found in the text, remove everything before it
-  let searchStr = "Pag 1 di"
-  let pos = text.find(searchStr)
-  if pos >= 0:
-    # Return text starting from "Pag 1 di"
-    return text[pos..<text.len]
-  return text
+proc getFileTool*(args: JsonNode): string =
+  ## Read a text file with byte-based offset/limit.
+  ## Default limit is 2048 bytes, offset defaults to 0 (start of file).
+  const MaxReadBytes = 2048
 
-proc listDelibs*(args: JsonNode): string =
-  # temporarily disabled
-  let bashArgs = %*{"command": "ls '" & delibsBaseDir() & "'"}
-  return bashTool(bashArgs)
+  let path = if args.hasKey("file_path"): args["file_path"].getStr() else: ""
+  if path == "": return $(%*{"error": "Missing file_path parameter"})
 
-proc readDelibera*(args: JsonNode): string =
-    var path_for_summary = delibsBaseDir()
-    
-    # Get number and year parameters
-    let numberNode = args{"number"}
-    let yearNode = args{"year"}
-    
-    if numberNode.isNil or yearNode.isNil:
-        return $(%*{"error": "Missing number or year parameter"})
-    
-    # Extract number as string (handle both JSON int and string)
-    let numberStr = case numberNode.kind
-      of JInt: $(numberNode.getInt())
-      of JString: numberNode.getStr()
-      else: ""
-    
-    # Extract year as string (handle both JSON int and string)
-    let yearStr = case yearNode.kind
-      of JInt: $(yearNode.getInt())
-      of JString: yearNode.getStr()
-      else: ""
-    
-    if numberStr == "" or yearStr == "":
-        return $(%*{"error": "Invalid number or year parameter"})
-    
-    # Get limit parameter (default: 2048 = 2k)
-    let limitBytes = if args.hasKey("limit"): args["limit"].getInt() else: 2048
-    # Get offset parameter (default: 0 = beginning of file)
-    let offsetBytes = if args.hasKey("offset"): args["offset"].getInt() else: 0
+  # Resolve path relative to cwd (same logic as readTool)
+  var resolvedPath = path.replace("\\", "/")
+  if not resolvedPath.startsWith("/") and not (resolvedPath.len >= 2 and resolvedPath[1] == ':'):
+    resolvedPath = getCurrentDir() / resolvedPath
 
-    # Pad number to 4 digits with leading zeros
-    var paddedNumber = numberStr
-    while paddedNumber.len < 4:
-      paddedNumber = "0" & paddedNumber
-    
-    # Compose filename: delibera_0001_2026.txt
-    let filename = "delibera_" & paddedNumber & "_" & yearStr & ".txt"
-    
-    # Construct full path
-    let fullPath = path_for_summary / filename
-    
-    # Use readTool to read the file
-    let readArgs = %*{"file_path": fullPath}
-    let resultJson = readTool(readArgs)
-    
-    # Parse the result
-    try:
-      let parsed = parseJson(resultJson)
-      if parsed.hasKey("error"):
-        # Return a friendly message for the model instead of raw OS error
-        let errContent = "The requested delibera (" & filename & ") was not found. " &
-          "It may not exist or the number/year combination may be wrong."
-        return $(%*{"content": errContent, "summary": "Delibera \"" & filename & "\" not found"})
-      
-      var content = parsed["content"].getStr()
-      
-      # Clean the text: remove everything before "Pag 1 di" if present
-      content = cleanDeliberaText(content)
-      
-      # Apply byte offset (skip first offsetBytes bytes)
-      if offsetBytes > 0 and offsetBytes < content.len:
-        content = content[offsetBytes..<content.len]
-      elif offsetBytes >= content.len:
-        content = ""
-      
-      # Truncate to limitBytes
-      let wasTruncated = content.len > limitBytes
-      if wasTruncated:
-        content = content[0..<limitBytes] & "\n[... truncated to " & $limitBytes & " bytes]"
+  if not fileExists(resolvedPath):
+    return $(%*{"error": "File not found: " & resolvedPath})
 
-      return $(%*{"content": content})
-    except Exception as e:
-      return $(%*{"error": e.msg})
+  let offsetBytes = if args.hasKey("offset_bytes"): args["offset_bytes"].getInt() else: 0
+  let limitBytes = if args.hasKey("limit_bytes"): args["limit_bytes"].getInt() else: MaxReadBytes
+
+  try:
+    var content = readFile(resolvedPath)
+
+    # Clean text: skip everything before page marker if present
+    # (common in PDF-derived text files like delibere documents).
+    # Checks both "Pagina 1 di" and "Pag 1 di".
+    var markerPos = content.find("Pagina 1 di")
+    if markerPos < 0:
+      markerPos = content.find("Pag 1 di")
+    if markerPos >= 0:
+      content = content[markerPos..<content.len]
+
+    # Apply byte offset
+    if offsetBytes > 0 and offsetBytes < content.len:
+      content = content[offsetBytes..<content.len]
+    elif offsetBytes >= content.len:
+      content = ""
+
+    # Truncate to limit bytes
+    let wasTruncated = content.len > limitBytes
+    if wasTruncated:
+      content = content[0..<limitBytes] & "\n[... truncated to " & $limitBytes & " bytes]"
+
+    return $(%*{"content": content})
+  except Exception as e:
+    return $(%*{"error": e.msg})
 
 proc fileGlobSearchTool*(args: JsonNode): string =
   ## Search for files matching a glob pattern in a directory (non-recursive, top-level only).
@@ -391,7 +372,8 @@ proc executeTool*(name: string, args: JsonNode): string =
   ## Dispatch tool calls to the appropriate implementation.
   case name
   of "read": return readTool(args)
+  of "get_file": return getFileTool(args)
   of "file_glob_search": return fileGlobSearchTool(args)
   of "bash", "readDelibera":
-    return $(%*{"error": "Tool suspended: " & name & " is not available (only 'read' and 'file_glob_search' are active)"})
+    return $(%*{"error": "Tool suspended: " & name & " is not available (only 'read', 'get_file', and 'file_glob_search' are active)"})
   else: return $(%*{"error": "Unknown tool: " & name})
