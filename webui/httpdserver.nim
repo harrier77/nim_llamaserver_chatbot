@@ -15,21 +15,12 @@ var serverThread*: Thread[void]
 var serverPort*: Port
 
 proc debugLog*(msg: string) {.gcsafe.} =
-  ## Writes a timestamped message to nimlog.txt in the exe directory.
-  ## Uses ExeDir (set by main.nim at startup) so the log file is always
-  ## written next to main.exe, regardless of the directory from which
-  ## the application was launched (PATH-independent deployment).
-  var logDir: string
+  ## Writes a timestamped message to nimlog.txt with automatic rotation.
+  ## See config_web.writeLog for the rotation logic (rename to .bak at 1 MB).
+  var dir: string
   {.cast(gcsafe).}:
-    logDir = if ExeDir.len > 0: ExeDir else: getCurrentDir()
-  let logPath = logDir / "nimlog.txt"
-  let timestamp = now().format("HH:mm:ss")
-  try:
-    var f = open(logPath, fmAppend)
-    f.writeLine(timestamp & " " & msg)
-    f.close()
-  except:
-    discard
+    dir = ExeDir
+  writeLog(dir, msg)
 
 #const MaxReadLines = 1000
 
@@ -769,9 +760,12 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
             if decoded.len > 0:
               targetDir = decoded
 
-      # Resolve relative paths
+      # Resolve relative paths against the project root (ExeDir) instead of the
+      # current CWD, so that bookmarks with relative paths work consistently
+      # regardless of previous directory navigation.
       if not isAbsolute(targetDir):
-        targetDir = getCurrentDir() / targetDir
+        {.cast(gcsafe).}:
+          targetDir = ExeDir / targetDir
       targetDir = targetDir.replace("\\", "/")
 
       if dirExists(targetDir):

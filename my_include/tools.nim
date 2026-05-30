@@ -1,4 +1,5 @@
 import json, os, osproc, strutils
+import config_web
 
 # ============================================================
 # Tools schema (single source of truth)
@@ -276,8 +277,19 @@ proc getFileTool*(args: JsonNode): string =
   let offsetBytes = if args.hasKey("offset_bytes"): args["offset_bytes"].getInt() else: 0
   let limitBytes = if args.hasKey("limit_bytes"): args["limit_bytes"].getInt() else: MaxReadBytes
 
+  # ── Debug ──────────────────────────────────────────────────────────────────
+  var dbg: seq[string] = @[]
+  dbg.add "=== getFileTool ==="
+  dbg.add "args: " & $args
+  dbg.add "path: " & path
+  dbg.add "resolvedPath: " & resolvedPath
+  dbg.add "offsetBytes: " & $offsetBytes
+  dbg.add "limitBytes: " & $limitBytes
+  # ───────────────────────────────────────────────────────────────────────────
+
   try:
     var content = readFile(resolvedPath)
+    dbg.add "fileSize (raw): " & $content.len
 
     # Clean text: skip everything before page marker if present
     # (common in PDF-derived text files like delibere documents).
@@ -287,20 +299,43 @@ proc getFileTool*(args: JsonNode): string =
       markerPos = content.find("Pag 1 di")
     if markerPos >= 0:
       content = content[markerPos..<content.len]
+      dbg.add "markerPos: " & $markerPos
+      dbg.add "fileSize after marker-cleanup: " & $content.len
+    else:
+      dbg.add "no page marker found"
 
     # Apply byte offset
     if offsetBytes > 0 and offsetBytes < content.len:
       content = content[offsetBytes..<content.len]
+      dbg.add "applied offsetBytes=" & $offsetBytes
     elif offsetBytes >= content.len:
       content = ""
+      dbg.add "offsetBytes >= content.len, content emptied"
+    dbg.add "fileSize after offset: " & $content.len
 
-    # Truncate to limit bytes
-    let wasTruncated = content.len > limitBytes
-    if wasTruncated:
+    # Truncate to limit bytes (always attempted, guarded by try)
+    try:
       content = content[0..<limitBytes] & "\n[... truncated to " & $limitBytes & " bytes]"
+    except:
+      discard
+    dbg.add "final content length: " & $content.len
+
+    # ── Write debug log (with rotation) ───────────────────────────────────────
+    var logDir: string
+    {.cast(gcsafe).}:
+      logDir = config_web.ExeDir
+    for line in dbg:
+      config_web.writeLog(logDir, line)
+    # ──────────────────────────────────────────────────────────────────────────
 
     return $(%*{"content": content})
   except Exception as e:
+    dbg.add "EXCEPTION: " & e.msg
+    var logDir: string
+    {.cast(gcsafe).}:
+      logDir = config_web.ExeDir
+    for line in dbg:
+      config_web.writeLog(logDir, line)
     return $(%*{"error": e.msg})
 
 proc fileGlobSearchTool*(args: JsonNode): string =

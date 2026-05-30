@@ -5,9 +5,28 @@
 # from config.nim, WITHOUT pulling in editor.nim / illwill.
 # ============================================================
 
-import os, strutils
+import os, strutils, times
 
 var ExeDir*: string = ""
+
+proc writeLog*(exeDir: string, msg: string) {.gcsafe.} =
+  ## Writes a timestamped message to nimlog.txt with automatic rotation.
+  ## If nimlog.txt exceeds 1 MB, it is renamed to nimlog.bak (overwriting
+  ## any existing backup) so the new log starts fresh.
+  let logDir = if exeDir.len > 0: exeDir else: getCurrentDir()
+  let logPath = logDir / "nimlog.txt"
+  let bakPath = logDir / "nimlog.bak"
+  let timestamp = now().format("HH:mm:ss")
+  try:
+    if fileExists(logPath) and getFileSize(logPath) > 10_000:
+      # Rotate: rename current log -> .bak (overwrites old .bak)
+      removeFile(bakPath)
+      moveFile(logPath, bakPath)
+    var f = open(logPath, fmAppend)
+    f.writeLine(timestamp & " " & msg)
+    f.close()
+  except:
+    discard
 var SessionDir*: string = ""
 
 when defined(windows):

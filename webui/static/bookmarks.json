@@ -1,0 +1,4 @@
+   [
+     { "label": "debug", "path": "../../Desktop/python/database_pianificazione/logs"},
+     { "label": "delibere", "path": "../../Desktop/python/flask_root/principale/pareri/delibere/testi" }
+   ]
