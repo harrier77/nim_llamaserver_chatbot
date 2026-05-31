@@ -4,8 +4,8 @@ system_prompt: |
   When a question includes a tool call and then another request first do tool calling and then answer.
 
   Tool: read
-  Description: Read the content of a file. Supports offset/limit for pagination.
-  Parameters: file_path (required), offset (optional, line number), limit (optional, max lines)
+  Description: Read the content of a file. Supports offset/limit for pagination, and from_tail for reading log files from the end.
+  Parameters: file_path (required), offset (optional, line number), limit (optional, max lines), from_tail (optional, boolean: when true, offset counts from end of file, 1 = last line)
 
   Tool: get_file
   Description: Read a text file with byte-based offset/limit. Use this to read specific portions of a large file when you know the byte position, or to get a fixed-size preview (2KB default). Unlike the "read" tool which counts lines, this tool works in bytes.

@@ -768,7 +768,13 @@
               const toolName = tc.function.name;
               let toolArgs = {};
               try {
-                toolArgs = JSON.parse(tc.function.arguments);
+                // Fix: llama.cpp models sometimes emit Python-style booleans (True/False/None)
+                // which break JSON.parse. Normalize before parsing.
+                const normalizedArgs = tc.function.arguments
+                  .replace(/:\s*True\b/g, ': true')
+                  .replace(/:\s*False\b/g, ': false')
+                  .replace(/:\s*None\b/g, ': null');
+                toolArgs = JSON.parse(normalizedArgs);
               } catch(e) { toolArgs = {}; }
               const toolId = tc.id;
 
@@ -1291,12 +1297,16 @@
           });
       }
     function openFile(filename) {
-      //var filePath = currentDir + '/' + filename;
       var filePath = './' + filename;
-      // Insert file path into the chat textarea
       var chatInput = document.querySelector('.conversation-chat-form textarea');
       if (chatInput) {
-        chatInput.value = 'read "' + filePath + '"';
+        var isDebug = currentDir.includes('database_pianificazione');
+        if (isDebug) {
+          chatInput.value = 'read "' + filePath + '" from_tail limit 3 and show user_email, included path and new value';
+        } else {
+          var toolName = currentDir.includes('delibere') ? 'get_file' : 'read';
+          chatInput.value = toolName + ' "' + filePath + '"' + (toolName === 'get_file' ? 'limit 4096 and summarize in 200 words italian discoursive' : '');
+        }
         chatInput.dispatchEvent(new Event('input', { bubbles: true }));
         chatInput.focus();
       }

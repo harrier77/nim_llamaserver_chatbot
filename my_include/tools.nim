@@ -32,6 +32,10 @@ const ToolsSchemaJson* = """[
           "limit_bytes": {
             "type": "number",
             "description": "Maximum bytes to read before splitting into lines (default: 2048, -1 to disable)"
+          },
+          "from_tail": {
+            "type": "boolean",
+            "description": "When true, offset is counted from the end of the file (1 = last line). Useful for reading log files tail-first."
           }
         },
         "required": ["file_path"]
@@ -175,13 +179,18 @@ proc globMatch(pattern: string, str: string): bool =
 proc readTool*(args: JsonNode): string =
   const MaxReadLines = 25
   const MaxReadBytes = 2048
+  const MaxReadBytesTail = 4096
 
   let path = if args.hasKey("file_path"): args["file_path"].getStr() else: ""
   if path == "": return $(%*{"error": "Missing file_path parameter"})
 
   let offset = if args.hasKey("offset"): args["offset"].getInt() else: 1
   let limit = if args.hasKey("limit"): args["limit"].getInt() else: -1
-  let limitBytes = if args.hasKey("limit_bytes"): args["limit_bytes"].getInt() else: MaxReadBytes
+  let fromTail = if args.hasKey("from_tail"): args["from_tail"].getBool() else: false
+  var limitBytes = if args.hasKey("limit_bytes"): args["limit_bytes"].getInt() else: MaxReadBytes
+  # When reading from tail, raise byte limit to 4KB unless explicitly overridden
+  if fromTail and not args.hasKey("limit_bytes"):
+    limitBytes = MaxReadBytesTail
 
   # FIX: File path must be resolved relative to program's current working directory (not user home or other path)
   # Before: path was used directly without resolution, so relative paths like "colosseo.txt" failed
@@ -209,19 +218,36 @@ proc readTool*(args: JsonNode): string =
     if offset > lines.len:
       return $(%*{"error": "Offset beyond file length"})
 
-    let startIdx = max(0, offset - 1)
     let effectiveLimit = if limit == -1: MaxReadLines else: limit
-    let endIdx = min(lines.len - 1, startIdx + effectiveLimit - 1)
+    var startIdx: int
+    var endIdx: int
+    var truncatedBefore = false
+
+    if fromTail:
+      # offset counts from end: 1 = last line
+      # endIdx is the line at `offset` from end; startIdx goes backward by effectiveLimit
+      endIdx = max(0, lines.len - offset)
+      startIdx = max(0, endIdx - effectiveLimit + 1)
+      # Check if there are more lines before startIdx
+      if startIdx > 0:
+        truncatedBefore = true
+    else:
+      startIdx = max(0, offset - 1)
+      endIdx = min(lines.len - 1, startIdx + effectiveLimit - 1)
 
     let slice = lines[startIdx .. endIdx]
     var resultContent = slice.join("\n")
 
     # Add truncation notices
     let totalLines = lines.len
-    let lastLineReturned = endIdx + 1
-    if lastLineReturned < totalLines:
-      resultContent &= "\n[... truncated at " & $effectiveLimit & " lines, use offset/limit to read more]"
-    elif truncatedByBytes:
+    if fromTail:
+      if truncatedBefore:
+        resultContent = "[... truncated, use offset/limit to read earlier lines]\n" & resultContent
+    else:
+      let lastLineReturned = endIdx + 1
+      if lastLineReturned < totalLines:
+        resultContent &= "\n[... truncated at " & $effectiveLimit & " lines, use offset/limit to read more]"
+    if truncatedByBytes:
       resultContent &= "\n[... truncated at " & $limitBytes & " bytes, use limit_bytes to read more]"
 
     return $(%*{"content": resultContent})
