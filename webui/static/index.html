@@ -862,8 +862,21 @@
       let isOpen = false;
       let dropdownEl = null;
       let modelsLoaded = false;
+      let fetchModelsPromise = null;
+      let documentClickHandler = null;
 
       async function fetchModels() {
+        // Guard: prevent concurrent executions (race condition fix)
+        if (fetchModelsPromise) return fetchModelsPromise;
+        fetchModelsPromise = _fetchModelsImpl();
+        try {
+          return await fetchModelsPromise;
+        } finally {
+          fetchModelsPromise = null;
+        }
+      }
+
+      async function _fetchModelsImpl() {
         console.log('[DEBUG] fetchModels() - currentProvider:', currentProvider);
         try {
           label.textContent = 'Loading...';
@@ -957,11 +970,6 @@
         listDiv.id = 'models-list';
         dropdown.appendChild(listDiv);
 
-        const closeHandler = (e) => {
-          if (!dropdown.contains(e.target) && !btn.contains(e.target)) closeDropdown();
-        };
-        setTimeout(() => document.addEventListener('click', closeHandler), 0);
-
         return dropdown;
       }
 
@@ -1027,6 +1035,18 @@
         btn.setAttribute('data-state', 'closed');
       }
 
+      // Single persistent document click handler to close dropdown on outside click
+      function setupDocumentClickHandler() {
+        if (documentClickHandler) return; // already registered
+        documentClickHandler = function(e) {
+          if (isOpen && dropdownEl && !dropdownEl.contains(e.target) && !btn.contains(e.target)) {
+            closeDropdown();
+          }
+        };
+        document.addEventListener('click', documentClickHandler);
+      }
+      setupDocumentClickHandler();
+
       async function selectModel(modelId) {
         console.log('[DEBUG] selectModel() ->', modelId, 'currentProvider:', currentProvider);
         selectedModel = modelId;
@@ -1089,6 +1109,8 @@
             console.log('[DEBUG] MODELS-DROPDOWN fetching models (modelsLoaded=' + modelsLoaded + ', models.length=' + models.length + ')');
             await fetchModels();
             console.log('[DEBUG] MODELS-DROPDOWN after fetchModels: models.length=' + models.length + ' modelsLoaded=' + modelsLoaded);
+            // Guard: another click may have opened the dropdown while we were awaiting (#1 fix)
+            if (isOpen) return;
           } else {
             console.log('[DEBUG] MODELS-DROPDOWN modelsLoaded=true with ' + models.length + ' models, skipping fetchModels');
           }

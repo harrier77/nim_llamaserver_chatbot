@@ -28,6 +28,10 @@ const ToolsSchemaJson* = """[
           "limit": {
             "type": "number",
             "description": "Maximum number of lines to read"
+          },
+          "limit_bytes": {
+            "type": "number",
+            "description": "Maximum bytes to read before splitting into lines (default: 2048, -1 to disable)"
           }
         },
         "required": ["file_path"]
@@ -170,12 +174,14 @@ proc globMatch(pattern: string, str: string): bool =
 
 proc readTool*(args: JsonNode): string =
   const MaxReadLines = 25
+  const MaxReadBytes = 2048
 
   let path = if args.hasKey("file_path"): args["file_path"].getStr() else: ""
   if path == "": return $(%*{"error": "Missing file_path parameter"})
 
   let offset = if args.hasKey("offset"): args["offset"].getInt() else: 1
   let limit = if args.hasKey("limit"): args["limit"].getInt() else: -1
+  let limitBytes = if args.hasKey("limit_bytes"): args["limit_bytes"].getInt() else: MaxReadBytes
 
   # FIX: File path must be resolved relative to program's current working directory (not user home or other path)
   # Before: path was used directly without resolution, so relative paths like "colosseo.txt" failed
@@ -190,7 +196,16 @@ proc readTool*(args: JsonNode): string =
     return $(%*{"error": "File not found: " & resolvedPath})
 
   try:
-    let lines = readFile(resolvedPath).splitLines()
+    var content = readFile(resolvedPath)
+
+    # Byte truncation (before splitting into lines)
+    let totalBytes = content.len
+    var truncatedByBytes = false
+    if limitBytes >= 0 and totalBytes > limitBytes:
+      content = content[0..<limitBytes]
+      truncatedByBytes = true
+
+    let lines = content.splitLines()
     if offset > lines.len:
       return $(%*{"error": "Offset beyond file length"})
 
@@ -199,15 +214,17 @@ proc readTool*(args: JsonNode): string =
     let endIdx = min(lines.len - 1, startIdx + effectiveLimit - 1)
 
     let slice = lines[startIdx .. endIdx]
-    var content = slice.join("\n")
+    var resultContent = slice.join("\n")
 
-    # Add truncation notice if the file has more content beyond what was returned
+    # Add truncation notices
     let totalLines = lines.len
     let lastLineReturned = endIdx + 1
     if lastLineReturned < totalLines:
-      content &= "\n[... truncated at " & $effectiveLimit & " lines, use offset/limit to read more]"
+      resultContent &= "\n[... truncated at " & $effectiveLimit & " lines, use offset/limit to read more]"
+    elif truncatedByBytes:
+      resultContent &= "\n[... truncated at " & $limitBytes & " bytes, use limit_bytes to read more]"
 
-    return $(%*{"content": content})
+    return $(%*{"content": resultContent})
   except Exception as e:
     return $(%*{"error": e.msg})
 
