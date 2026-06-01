@@ -45,31 +45,6 @@ const ToolsSchemaJson* = """[
   {
     "type": "function",
     "function": {
-      "name": "get_file",
-      "description": "Read a text file with byte-based offset/limit. Use this to read specific portions of a file when byte position is known.",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "file_path": {
-            "type": "string",
-            "description": "Path to the file to read"
-          },
-          "offset_bytes": {
-            "type": "number",
-            "description": "Byte offset to start reading from (default: 0)"
-          },
-          "limit_bytes": {
-            "type": "number",
-            "description": "Maximum bytes to read (default: 2048)"
-          }
-        },
-        "required": ["file_path"]
-      }
-    }
-  },
-  {
-    "type": "function",
-    "function": {
       "name": "file_glob_search",
       "description": "Search for files matching a glob pattern in a directory (non-recursive, top-level only).",
       "parameters": {
@@ -359,6 +334,13 @@ proc readTool*(args: JsonNode): string =
   try:
     var content = readFile(resolvedPath)
 
+    # Skip page markers (PDF-derived text files like delibere documents)
+    var markerPos = content.find("Pagina 1 di")
+    if markerPos < 0:
+      markerPos = content.find("Pag 1 di")
+    if markerPos >= 0:
+      content = content[markerPos..<content.len]
+
     # Byte truncation (before splitting into lines)
     let totalBytes = content.len
     var truncatedByBytes = false
@@ -609,8 +591,9 @@ proc executeTool*(name: string, args: JsonNode): string =
   ## Dispatch tool calls to the appropriate implementation.
   case name
   of "read": return readTool(args)
-  of "get_file": return getFileTool(args)
+  of "get_file":
+    return $(%*{"error": "Tool suspended: " & name & " is not available (use 'read' with max_bytes instead)"})
   of "file_glob_search": return fileGlobSearchTool(args)
   of "bash", "readDelibera":
-    return $(%*{"error": "Tool suspended: " & name & " is not available (only 'read', 'get_file', and 'file_glob_search' are active)"})
+    return $(%*{"error": "Tool suspended: " & name & " is not available (only 'read' and 'file_glob_search' are active)"})
   else: return $(%*{"error": "Unknown tool: " & name})

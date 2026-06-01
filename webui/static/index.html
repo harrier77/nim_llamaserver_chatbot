@@ -701,7 +701,7 @@
 
       // --- Level 3: regex extraction of known keys ---
       const out = {};
-      const knownKeys = ['max_bytes', 'offset_bytes', 'limit', 'offset',
+      const knownKeys = ['max_bytes', 'limit', 'offset',
                          'file_path', 'from_tail', 'path', 'exclude'];
       const source = fixed;
       for (const key of knownKeys) {
@@ -1398,12 +1398,13 @@
       var filePath = './' + filename;
       var chatInput = document.querySelector('.conversation-chat-form textarea');
       if (chatInput) {
-        var isDebug = currentDir.includes('database_pianificazione');
+          var isDebug = currentDir.includes('database_pianificazione');
         if (isDebug) {
           chatInput.value = 'read "' + filePath + '" from_tail limit 3 and show user_email, included path and new value';
+        } else if (currentDir.includes('delibere')) {
+          chatInput.value = 'read "' + filePath + '" max_bytes 4096 and summarize in 200 words italian discoursive';
         } else {
-          var toolName = currentDir.includes('delibere') ? 'get_file' : 'read';
-          chatInput.value = toolName + ' "' + filePath + '"' + (toolName === 'get_file' ? ' limit 4096 and summarize in 200 words italian discoursive' : '');
+          chatInput.value = 'read "' + filePath + '"';
         }
         chatInput.dispatchEvent(new Event('input', { bubbles: true }));
         chatInput.focus();
