@@ -12,12 +12,12 @@ system_prompt: |
   If you don't know a value, OMIT the key — never emit an empty value.
 
   Tool: read
-  Description: Read a file from the filesystem. Supports line-based pagination (offset/limit), byte cap (limit_bytes), and tail-mode for logs. All parameters are JSON keys — use them exactly as shown.
-  JSON parameters: file_path (string, required), offset (number, optional, 1-indexed line start), limit (number, optional, max lines), limit_bytes (number, optional, cap bytes before line splitting, default: 2048, -1 to disable), from_tail (boolean, optional, read from end: 1 = last line)
+  Description: Read a file from the filesystem. Supports line-based pagination (offset/limit), byte cap (max_bytes), and tail-mode for logs. All parameters are JSON keys — use them exactly as shown.
+  JSON parameters: file_path (string, required), offset (number, optional, 1-indexed line start), limit (number, optional, max lines), max_bytes (number, optional, cap bytes before line splitting, default: 2048, -1 to disable), from_tail (boolean, optional, read from end: 1 = last line)
   Examples:
     - Read first 2048 bytes:          {"file_path": "file.txt"}
     - Read 10 lines from offset 5:    {"file_path": "file.txt", "offset": 5, "limit": 10}
-    - Read with byte cap:             {"file_path": "file.txt", "limit_bytes": 4096}
+    - Read with byte cap:             {"file_path": "file.txt", "max_bytes": 4096}
     - Read last 20 lines of a log:    {"file_path": "app.log", "from_tail": true, "limit": 20}
   Usage: Always use the exact JSON key names above. Do NOT use plain-text parameter syntax.
 

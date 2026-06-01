@@ -701,7 +701,7 @@
 
       // --- Level 3: regex extraction of known keys ---
       const out = {};
-      const knownKeys = ['limit_bytes', 'offset_bytes', 'limit', 'offset',
+      const knownKeys = ['max_bytes', 'offset_bytes', 'limit', 'offset',
                          'file_path', 'from_tail', 'path', 'exclude'];
       const source = fixed;
       for (const key of knownKeys) {

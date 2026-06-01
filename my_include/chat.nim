@@ -13,6 +13,7 @@
 import asyncdispatch, httpclient, json, strutils
 import config
 import tools
+import config_web
 
 # ============================================================
 
@@ -91,6 +92,7 @@ proc sendToLLM*(prompt: string = "") {.async.} =
     })
     # Apply the sliding window after adding the message
     trimConversationHistory()
+    config_web.writeLog(getCurrentDir(), "[CHAT] ▶ QUERY: " & prompt)
 
   var toolCallsCollected: seq[JsonNode] = @[]
 
@@ -103,7 +105,7 @@ proc sendToLLM*(prompt: string = "") {.async.} =
       "stream": true,
       "tools": tools.ToolsSchema
     }
-
+    config_web.writeLog(getCurrentDir(), "[CHAT] ▶ REQUEST: " & $body)
 
 
     var client = newAsyncHttpClient()
@@ -248,6 +250,7 @@ proc sendToLLM*(prompt: string = "") {.async.} =
 
                 # --- 2. Handle tool call chunks ---
                 if delta.hasKey("tool_calls"):
+                  config_web.writeLog(getCurrentDir(), "[CHAT] ◀ TC_DELTA: " & $delta)
                   for tc in delta["tool_calls"]:
                     let idx = tc["index"].getInt()
                     # Ensure there is space for this index
@@ -272,7 +275,7 @@ proc sendToLLM*(prompt: string = "") {.async.} =
             except CatchableError: discard
 
     except CatchableError as e:
-
+      config_web.writeLog(getCurrentDir(), "[CHAT] ❌ ERROR: " & e.msg)
       outputLines.add("❌ Error: " & e.msg)
       client.close()
       break
@@ -299,6 +302,7 @@ proc sendToLLM*(prompt: string = "") {.async.} =
 
     # After streaming ends, check if there are tool calls to execute
     if toolCallsCollected.len > 0:
+      config_web.writeLog(getCurrentDir(), "[CHAT] ◀ TC_COLLECTED: " & $toolCallsCollected)
       # IMPORTANT NOTE: the assistant message MUST have non-null content,
       # otherwise the model keeps making tool calls in an infinite loop.
       let assistantMsg = %*{
@@ -319,8 +323,10 @@ proc sendToLLM*(prompt: string = "") {.async.} =
         let toolArgs = tc["function"]["arguments"].getStr()
         let toolId = tc["id"].getStr()
 
+        config_web.writeLog(getCurrentDir(), "[CHAT] ▶ TC_EXEC: " & toolName & " args_raw=" & toolArgs & " args_parsed=" & $(safeParseToolArgs(toolArgs)))
         outputLines.add("System: Tool Call -> " & toolName & "(" & toolArgs & ")")
         let result = tools.executeTool(toolName, safeParseToolArgs(toolArgs))
+        config_web.writeLog(getCurrentDir(), "[CHAT] ◀ TC_RESULT: " & toolName & " -> " & result)
 
         # Extract content and summary from the tool's JSON result
         # The tool returns: {"content": "...", "summary": "...", "exit_code": X}
@@ -375,6 +381,7 @@ proc sendToLLM*(prompt: string = "") {.async.} =
       # tool results back to the model
       continue
     else:
+      config_web.writeLog(getCurrentDir(), "[CHAT] ◀ NO_TOOL_CALLS (content_len=" & $aiResponseBuffer.len & ")")
       # No tool calls, normal response complete
       if aiResponseBuffer.len > 0:
         conversationHistory.add(%*{
@@ -392,3 +399,4 @@ proc sendToLLM*(prompt: string = "") {.async.} =
   # into view because the renderer always shows the last visibleRows.
   # Apply the sliding window after adding the assistant response
   trimConversationHistory()
+  config_web.writeLog(getCurrentDir(), "[CHAT] ✓ DONE")

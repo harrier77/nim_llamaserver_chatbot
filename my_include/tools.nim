@@ -29,7 +29,7 @@ const ToolsSchemaJson* = """[
             "type": "number",
             "description": "Maximum number of lines to read"
           },
-          "limit_bytes": {
+          "max_bytes": {
             "type": "number",
             "description": "Maximum bytes to read before splitting into lines (default: 2048, -1 to disable)"
           },
@@ -199,8 +199,8 @@ proc safeParseToolArgs*(raw: string): JsonNode =
   result = %*{}
 
   # Try to extract known keys (JSON-style "key": val)
-  # Order matters: more specific keys first (limit_bytes before limit)
-  let knownKeys = @["limit_bytes", "offset_bytes", "limit", "offset",
+  # Order matters: more specific keys first (max_bytes before limit)
+  let knownKeys = @["max_bytes", "offset_bytes", "limit", "offset",
                     "file_path", "from_tail", "path", "exclude"]
 
   for key in knownKeys:
@@ -339,10 +339,10 @@ proc readTool*(args: JsonNode): string =
   let offset = if args.hasKey("offset"): args["offset"].getInt() else: 1
   let limit = if args.hasKey("limit"): args["limit"].getInt() else: -1
   let fromTail = if args.hasKey("from_tail"): args["from_tail"].getBool() else: false
-  var limitBytes = if args.hasKey("limit_bytes"): args["limit_bytes"].getInt() else: MaxReadBytes
+  var maxBytes = if args.hasKey("max_bytes"): args["max_bytes"].getInt() else: MaxReadBytes
   # When reading from tail, raise byte limit to 4KB unless explicitly overridden
-  if fromTail and not args.hasKey("limit_bytes"):
-    limitBytes = MaxReadBytesTail
+  if fromTail and not args.hasKey("max_bytes"):
+    maxBytes = MaxReadBytesTail
 
   # FIX: File path must be resolved relative to program's current working directory (not user home or other path)
   # Before: path was used directly without resolution, so relative paths like "colosseo.txt" failed
@@ -362,8 +362,8 @@ proc readTool*(args: JsonNode): string =
     # Byte truncation (before splitting into lines)
     let totalBytes = content.len
     var truncatedByBytes = false
-    if limitBytes >= 0 and totalBytes > limitBytes:
-      content = content[0..<limitBytes]
+    if maxBytes >= 0 and totalBytes > maxBytes:
+      content = content[0..<maxBytes]
       truncatedByBytes = true
 
     let lines = content.splitLines()
@@ -400,7 +400,7 @@ proc readTool*(args: JsonNode): string =
       if lastLineReturned < totalLines:
         resultContent &= "\n[... truncated at " & $effectiveLimit & " lines, use offset/limit to read more]"
     if truncatedByBytes:
-      resultContent &= "\n[... truncated at " & $limitBytes & " bytes, use limit_bytes to read more]"
+      resultContent &= "\n[... truncated at " & $maxBytes & " bytes, use max_bytes to read more]"
 
     return $(%*{"content": resultContent})
   except Exception as e:

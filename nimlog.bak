@@ -1,113 +1,22 @@
-15:36:38 path: delibera_0005_2026.txt
-15:36:38 resolvedPath: C:\Users\pr30565\Desktop\python\flask_root\principale\pareri\delibere\testi\delibera_0005_2026.txt
-15:36:38 offsetBytes: 0
-15:36:38 limitBytes: 4096
-15:36:38 fileSize (raw): 9616
-15:36:38 no page marker found
-15:36:38 fileSize after offset: 9616
-15:36:38 final content length: 4126
-15:36:38 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
-15:36:38 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
-15:36:38 [PROXY] authHeader (provider name): llamacpp
-15:36:38 [PROXY] apiKey found: NO
-15:36:38 [PROXY] body (first 500 chars): {"model":"Qwen3.5_2b-text","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read a file from the filesystem. Supports line-based pagination (offset/limit), byte cap (limit_bytes), and tail-mode for logs. All parameters are JSON keys
-15:37:08 Stream finished — closing browser connection
-15:37:20 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
-15:37:20 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
-15:37:20 [PROXY] authHeader (provider name): llamacpp
-15:37:20 [PROXY] apiKey found: NO
-15:37:20 [PROXY] body (first 500 chars): {"model":"Qwen3.5_2b-text","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read a file from the filesystem. Supports line-based pagination (offset/limit), byte cap (limit_bytes), and tail-mode for logs. All parameters are JSON keys
-15:37:28 Stream finished — closing browser connection
-15:37:28 === getFileTool ===
-15:37:28 args: {"file_path":"./delibera_0005_2026.txt","offset_bytes":0,"limit_bytes":4096}
-15:37:28 path: ./delibera_0005_2026.txt
-15:37:28 resolvedPath: C:\Users\pr30565\Desktop\python\flask_root\principale\pareri\delibere\testi\delibera_0005_2026.txt
-15:37:28 offsetBytes: 0
-15:37:28 limitBytes: 4096
-15:37:28 fileSize (raw): 9616
-15:37:28 no page marker found
-15:37:28 fileSize after offset: 9616
-15:37:28 final content length: 4126
-15:37:28 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
-15:37:28 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
-15:37:28 [PROXY] authHeader (provider name): llamacpp
-15:37:28 [PROXY] apiKey found: NO
-15:37:28 [PROXY] body (first 500 chars): {"model":"Qwen3.5_2b-text","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read a file from the filesystem. Supports line-based pagination (offset/limit), byte cap (limit_bytes), and tail-mode for logs. All parameters are JSON keys
-15:38:07 Stream finished — closing browser connection
-16:27:11 === /api/models providerUrl=http://localhost:8080 providerName=
-16:27:12 /api/models port 8080 not reachable
-16:27:12 /api/models port unreachable for localhost:8080, reporting llamaserver missing
-16:27:17 Launching llama server via /api/launch-llama endpoint
-16:27:22 === /api/models providerUrl=http://localhost:8080 providerName=
-16:27:22 /api/models port 8080 reachable, trying HTTP
-16:27:22 /api/models trying http://localhost:8080/v1/models
-16:27:24 /api/models SUCCESS 12599 bytes
-16:27:34 === /api/models providerUrl=http://localhost:8080 providerName=
-16:27:34 /api/models port 8080 reachable, trying HTTP
-16:27:34 /api/models trying http://localhost:8080/v1/models
-16:27:37 /api/models SUCCESS 12730 bytes
-16:27:39 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
-16:27:39 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
-16:27:39 [PROXY] authHeader (provider name): llamacpp
-16:27:39 [PROXY] apiKey found: NO
-16:27:39 [PROXY] body (first 500 chars): {"model":"LFM2-2.5-1.2b-Instruct","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nCRITICAL JSON FORMATTING RULE — every parameter MUST have a value.\n  WRONG:  {\"file_path\": \"x.txt\", \"limit\":}\n  WRONG:  {\"file_path\": \"x.txt\", \"limit\": , \"fr
-16:27:46 Stream finished — closing browser connection
-16:27:46 === getFileTool ===
-16:27:46 args: {"file_path":"./delibera_0005_2026.txt","limit_bytes":4096}
-16:27:46 path: ./delibera_0005_2026.txt
-16:27:46 resolvedPath: C:\Users\pr30565\Desktop\python\flask_root\principale\pareri\delibere\testi\delibera_0005_2026.txt
-16:27:46 offsetBytes: 0
-16:27:46 limitBytes: 4096
-16:27:46 fileSize (raw): 9616
-16:27:46 no page marker found
-16:27:46 fileSize after offset: 9616
-16:27:46 final content length: 4126
-16:27:46 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
-16:27:46 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
-16:27:46 [PROXY] authHeader (provider name): llamacpp
-16:27:46 [PROXY] apiKey found: NO
-16:27:46 [PROXY] body (first 500 chars): {"model":"LFM2-2.5-1.2b-Instruct","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nCRITICAL JSON FORMATTING RULE — every parameter MUST have a value.\n  WRONG:  {\"file_path\": \"x.txt\", \"limit\":}\n  WRONG:  {\"file_path\": \"x.txt\", \"limit\": , \"fr
-16:27:58 Stream finished — closing browser connection
-16:28:20 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
-16:28:20 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
-16:28:20 [PROXY] authHeader (provider name): llamacpp
-16:28:20 [PROXY] apiKey found: NO
-16:28:20 [PROXY] body (first 500 chars): {"model":"LFM2-2.5-1.2b-Instruct","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nCRITICAL JSON FORMATTING RULE — every parameter MUST have a value.\n  WRONG:  {\"file_path\": \"x.txt\", \"limit\":}\n  WRONG:  {\"file_path\": \"x.txt\", \"limit\": , \"fr
-16:28:24 Stream finished — closing browser connection
-16:28:24 === getFileTool ===
-16:28:24 args: {"file_path":"./delibera_0005_2026.txt"}
-16:28:24 path: ./delibera_0005_2026.txt
-16:28:24 resolvedPath: C:\Users\pr30565\Desktop\python\flask_root\principale\pareri\delibere\testi\delibera_0005_2026.txt
-16:28:24 offsetBytes: 0
-16:28:24 limitBytes: 2048
-16:28:24 fileSize (raw): 9616
-16:28:24 no page marker found
-16:28:24 fileSize after offset: 9616
-16:28:24 final content length: 2078
-16:28:24 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
-16:28:24 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
-16:28:24 [PROXY] authHeader (provider name): llamacpp
-16:28:24 [PROXY] apiKey found: NO
-16:28:24 [PROXY] body (first 500 chars): {"model":"LFM2-2.5-1.2b-Instruct","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nCRITICAL JSON FORMATTING RULE — every parameter MUST have a value.\n  WRONG:  {\"file_path\": \"x.txt\", \"limit\":}\n  WRONG:  {\"file_path\": \"x.txt\", \"limit\": , \"fr
-16:28:35 Stream finished — closing browser connection
-16:28:53 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
-16:28:53 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
-16:28:53 [PROXY] authHeader (provider name): llamacpp
-16:28:53 [PROXY] apiKey found: NO
-16:28:53 [PROXY] body (first 500 chars): {"model":"LFM2-2.5-1.2b-Instruct","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nCRITICAL JSON FORMATTING RULE — every parameter MUST have a value.\n  WRONG:  {\"file_path\": \"x.txt\", \"limit\":}\n  WRONG:  {\"file_path\": \"x.txt\", \"limit\": , \"fr
-16:28:57 Stream finished — closing browser connection
-16:28:57 === getFileTool ===
-16:28:57 args: {"file_path":"./delibera_0005_2026.txt","limit_bytes":4096}
-16:28:57 path: ./delibera_0005_2026.txt
-16:28:57 resolvedPath: C:\Users\pr30565\Desktop\python\flask_root\principale\pareri\delibere\testi\delibera_0005_2026.txt
-16:28:58 offsetBytes: 0
-16:28:58 limitBytes: 4096
-16:28:58 fileSize (raw): 9616
-16:28:58 no page marker found
-16:28:58 fileSize after offset: 9616
-16:28:58 final content length: 4126
-16:28:58 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
-16:28:58 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
-16:28:58 [PROXY] authHeader (provider name): llamacpp
-16:28:58 [PROXY] apiKey found: NO
-16:28:58 [PROXY] body (first 500 chars): {"model":"LFM2-2.5-1.2b-Instruct","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nCRITICAL JSON FORMATTING RULE — every parameter MUST have a value.\n  WRONG:  {\"file_path\": \"x.txt\", \"limit\":}\n  WRONG:  {\"file_path\": \"x.txt\", \"limit\": , \"fr
+22:53:23 [CHAT-PROXY] ◀ first chunk (276 bytes): data: {"choices":[{"finish_reason":null,"index":0,"delta":{"role":"assistant","content":null}}],"created":1780347203,"id":"chatcmpl-TiHo0uuq6pIAUodPseZnNcZTl5gbJTk3","model":"LFM2.5-8B-A1B-Q4_K_M.gguf","system_fingerprint":"b9464-5dcb71166","object":"chat.completion.chunk"}
+
+
+22:53:45 Stream finished — closing browser connection
+23:00:54 === /api/models providerUrl=http://localhost:8080 providerName=
+23:00:54 /api/models port 8080 reachable, trying HTTP
+23:00:54 /api/models trying http://localhost:8080/v1/models
+23:00:56 /api/models SUCCESS 13009 bytes
+23:01:13 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
+23:01:13 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
+23:01:13 [PROXY] authHeader (provider name): llamacpp
+23:01:13 [PROXY] apiKey found: NO
+23:01:13 [PROXY] body (FULL, 4764 chars): {"model":"LFM2.5-8B-A1B-Q4_K_M.gguf","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nCRITICAL JSON FORMATTING RULE — every parameter MUST have a value.\n  WRONG:  {\"file_path\": \"x.txt\", \"limit\":}\n  WRONG:  {\"file_path\": \"x.txt\", \"limit\": , \"from_tail\": true}\n  WRONG:  {\"file_path\": \"x.txt\", \"limit\",}\n  RIGHT:  {\"file_path\": \"x.txt\", \"limit\": 4096}\n  RIGHT:  {\"file_path\": \"x.txt\"}    (omit the key entirely if no value)\nIf you don't know a value, OMIT the key — never emit an empty value.\n\nTool: read\nDescription: Read a file from the filesystem. Supports line-based pagination (offset/limit), byte cap (max_bytes), and tail-mode for logs. All parameters are JSON keys — use them exactly as shown.\nJSON parameters: file_path (string, required), offset (number, optional, 1-indexed line start), limit (number, optional, max lines), max_bytes (number, optional, cap bytes before line splitting, default: 2048, -1 to disable), from_tail (boolean, optional, read from end: 1 = last line)\nExamples:\n  - Read first 2048 bytes:          {\"file_path\": \"file.txt\"}\n  - Read 10 lines from offset 5:    {\"file_path\": \"file.txt\", \"offset\": 5, \"limit\": 10}\n  - Read with byte cap:             {\"file_path\": \"file.txt\", \"max_bytes\": 4096}\n  - Read last 20 lines of a log:    {\"file_path\": \"app.log\", \"from_tail\": true, \"limit\": 20}\nUsage: Always use the exact JSON key names above. Do NOT use plain-text parameter syntax.\n\nTool: get_file\nDescription: Read a text file with byte-based offset/limit for precise positioning. Unlike \"read\" which counts lines, this tool works in bytes.\nJSON parameters: file_path (string, required), offset_bytes (number, optional, default 0), limit_bytes (number, optional, max bytes to read, default 2048)\nExamples:\n  - First 2048 bytes:               {\"file_path\": \"file.txt\"}\n  - Read 4096 bytes at offset 1024: {\"file_path\": \"file.txt\", \"offset_bytes\": 1024, \"limit_bytes\": 4096}\nUsage: Increase offset_bytes to scroll forward. Use read tool for line-based navigation.\n\nTool: file_glob_search\nDescription: Search for files matching a glob pattern in a directory (non-recursive, top-level only). Returns up to 100 file names relative to the base directory.\nJSON parameters: path (string, required), exclude (string, optional, glob pattern to exclude)\nNote: This tool always searches ALL files (**). There is no extension filter.\nExamples:\n  - List all files:                 {\"path\": \".\"}\n  - Exclude .nim files:             {\"path\": \".\", \"exclude\": \"*.nim\"}\nUsage: Use this to discover files before reading them. Do NOT call read on every result — the file list is shown to the user.\nImportant: This tool searches ALL file types. Do NOT assume a specific extension.\n\n \n"},{"role":"user","content":"read \"./colosseo.txt\" max_bytes 4096"}],"stream":true,"tools":[{"type":"function","function":{"name":"read","description":"Read a file from the filesystem. Use this to read file contents.","parameters":{"type":"object","properties":{"file_path":{"type":"string","description":"Path to the file to read"},"offset":{"type":"number","description":"Line number to start reading from (1-indexed)"},"limit":{"type":"number","description":"Maximum number of lines to read"},"max_bytes":{"type":"number","description":"Maximum bytes to read before splitting into lines (default: 2048, -1 to disable)"},"from_tail":{"type":"boolean","description":"When true, offset is counted from the end of the file (1 = last line). Useful for reading log files tail-first."}},"required":["file_path"]}}},{"type":"function","function":{"name":"get_file","description":"Read a text file with byte-based offset/limit. Use this to read specific portions of a file when byte position is known.","parameters":{"type":"object","properties":{"file_path":{"type":"string","description":"Path to the file to read"},"offset_bytes":{"type":"number","description":"Byte offset to start reading from (default: 0)"},"limit_bytes":{"type":"number","description":"Maximum bytes to read (default: 2048)"}},"required":["file_path"]}}},{"type":"function","function":{"name":"file_glob_search","description":"Search for files matching a glob pattern in a directory (non-recursive, top-level only).","parameters":{"type":"object","properties":{"path":{"type":"string","description":"Base directory to search in"},"exclude":{"type":"string","description":"Glob pattern for files to exclude"}},"required":["path"]}}}]}
+23:01:29 [CHAT-PROXY] ◀ first chunk (276 bytes): data: {"choices":[{"finish_reason":null,"index":0,"delta":{"role":"assistant","content":null}}],"created":1780347689,"id":"chatcmpl-rq5slrFgwrrucUmW0IvkBbzLMoaCUlpS","model":"LFM2.5-8B-A1B-Q4_K_M.gguf","system_fingerprint":"b9464-5dcb71166","object":"chat.completion.chunk"}
+
+
+23:01:30 Stream finished — closing browser connection
+23:01:30 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
+23:01:30 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
+23:01:30 [PROXY] authHeader (provider name): llamacpp
+23:01:30 [PROXY] apiKey found: NO
+23:01:30 [PROXY] body (FULL, 6990 chars): {"model":"LFM2.5-8B-A1B-Q4_K_M.gguf","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nCRITICAL JSON FORMATTING RULE — every parameter MUST have a value.\n  WRONG:  {\"file_path\": \"x.txt\", \"limit\":}\n  WRONG:  {\"file_path\": \"x.txt\", \"limit\": , \"from_tail\": true}\n  WRONG:  {\"file_path\": \"x.txt\", \"limit\",}\n  RIGHT:  {\"file_path\": \"x.txt\", \"limit\": 4096}\n  RIGHT:  {\"file_path\": \"x.txt\"}    (omit the key entirely if no value)\nIf you don't know a value, OMIT the key — never emit an empty value.\n\nTool: read\nDescription: Read a file from the filesystem. Supports line-based pagination (offset/limit), byte cap (max_bytes), and tail-mode for logs. All parameters are JSON keys — use them exactly as shown.\nJSON parameters: file_path (string, required), offset (number, optional, 1-indexed line start), limit (number, optional, max lines), max_bytes (number, optional, cap bytes before line splitting, default: 2048, -1 to disable), from_tail (boolean, optional, read from end: 1 = last line)\nExamples:\n  - Read first 2048 bytes:          {\"file_path\": \"file.txt\"}\n  - Read 10 lines from offset 5:    {\"file_path\": \"file.txt\", \"offset\": 5, \"limit\": 10}\n  - Read with byte cap:             {\"file_path\": \"file.txt\", \"max_bytes\": 4096}\n  - Read last 20 lines of a log:    {\"file_path\": \"app.log\", \"from_tail\": true, \"limit\": 20}\nUsage: Always use the exact JSON key names above. Do NOT use plain-text parameter syntax.\n\nTool: get_file\nDescription: Read a text file with byte-based offset/limit for precise positioning. Unlike \"read\" which counts lines, this tool works in bytes.\nJSON parameters: file_path (string, required), offset_bytes (number, optional, default 0), limit_bytes (number, optional, max bytes to read, default 2048)\nExamples:\n  - First 2048 bytes:               {\"file_path\": \"file.txt\"}\n  - Read 4096 bytes at offset 1024: {\"file_path\": \"file.txt\", \"offset_bytes\": 1024, \"limit_bytes\": 4096}\nUsage: Increase offset_bytes to scroll forward. Use read tool for line-based navigation.\n\nTool: file_glob_search\nDescription: Search for files matching a glob pattern in a directory (non-recursive, top-level only). Returns up to 100 file names relative to the base directory.\nJSON parameters: path (string, required), exclude (string, optional, glob pattern to exclude)\nNote: This tool always searches ALL files (**). There is no extension filter.\nExamples:\n  - List all files:                 {\"path\": \".\"}\n  - Exclude .nim files:             {\"path\": \".\", \"exclude\": \"*.nim\"}\nUsage: Use this to discover files before reading them. Do NOT call read on every result — the file list is shown to the user.\nImportant: This tool searches ALL file types. Do NOT assume a specific extension.\n\n \n"},{"role":"user","content":"read \"./colosseo.txt\" max_bytes 4096"},{"role":"assistant","content":"\n","tool_calls":[{"id":"aQvN6Anp6RO0VYwDKKgWXG9qlxfmwUSn","type":"function","function":{"name":"read","arguments":"{\"file_path\":\"./colosseo.txt\",\"max_bytes\":4096}"}}]},{"role":"tool","tool_call_id":"aQvN6Anp6RO0VYwDKKgWXG9qlxfmwUSn","name":"read","content":"The Colosseum is located in Rome, Italy. \nIt is an iconic monument that the whole world knows. \nThe Colosseum has baffled many with its magnificent size and grandiose built. \nThe Colosseum today has become a must see for all who visit Rome.\nThe largest amphitheater ever built, the Rome Colosseum, also called the Flavian Ampitheater, is situated in the center of Rome. \nBuilt under the Flavian Dynasty, construction started in 72 AD and was completed in 80 AD. Built of concrete and sand, the Colosseum could hold up to 80,000 people, though it usually held 65,000. Spectators would come to watch gladiator contests and other spectacles for the public, such as simulated sea wars with props, public executions and mythological dramas. It wasn’t until the medieval era that the building was converted and used as a housing facility, a Christian shrine and a fortress.\nThe way it looks today is due to robbers stealing stones and earthquakes. \nIn the age when the Colosseum was built, theaters were usually located on hillsides. However, the Colosseum is a free standing structure built on flat ground. Its size is 189 meters long, 156 meters wide with a base area of 24,000 square meters. The outer wall height is 48 meters. The center arena is 87 meters long and 55 meters wide with a 5-meter high barrier wall, which kept the performers inside while the audience sat above.\n\n=== HISTORICAL CONTEXT ===\n\nBuilt under the Flavian Dynasty (72-96 AD), the Colosseum was commissioned by Vespasian and completed by his son Titus. It represents the pinnacle of Roman engineering and architecture.\n\n=== ARCHITECTURAL FEATURES ===\n\n- 3 levels of seating (80 gradini total)\n- 588 arches\n- 588 columns\n- 189m x 156m surface area\n- 48m height of outer wall\n- 87m x 55m central arena\n- 308 seats arranged by social class\n\n=== UNDERGROUND STRUCTURES ===\n\n[... truncated at 25 lines, use offset/limit to read more]"}],"stream":true,"tools":[{"type":"function","function":{"name":"read","description":"Read a file from the filesystem. Use this to read file contents.","parameters":{"type":"object","properties":{"file_path":{"type":"string","description":"Path to the file to read"},"offset":{"type":"number","description":"Line number to start reading from (1-indexed)"},"limit":{"type":"number","description":"Maximum number of lines to read"},"max_bytes":{"type":"number","description":"Maximum bytes to read before splitting into lines (default: 2048, -1 to disable)"},"from_tail":{"type":"boolean","description":"When true, offset is counted from the end of the file (1 = last line). Useful for reading log files tail-first."}},"required":["file_path"]}}},{"type":"function","function":{"name":"get_file","description":"Read a text file with byte-based offset/limit. Use this to read specific portions of a file when byte position is known.","parameters":{"type":"object","properties":{"file_path":{"type":"string","description":"Path to the file to read"},"offset_bytes":{"type":"number","description":"Byte offset to start reading from (default: 0)"},"limit_bytes":{"type":"number","description":"Maximum bytes to read (default: 2048)"}},"required":["file_path"]}}},{"type":"function","function":{"name":"file_glob_search","description":"Search for files matching a glob pattern in a directory (non-recursive, top-level only).","parameters":{"type":"object","properties":{"path":{"type":"string","description":"Base directory to search in"},"exclude":{"type":"string","description":"Glob pattern for files to exclude"}},"required":["path"]}}}]}

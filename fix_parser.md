@@ -173,3 +173,96 @@ httpdserver.nim    rc=0
 - `my_include/system_prompt.yaml` (+8 lines, formatting rule)
 - `webui/httpdserver.nim` (+15 lines, defensive re-parse)
 - `webui/static/index.html` (+120 lines, JS parser + integration)
+
+---
+
+## Additional fix: parameter name disambiguation (root cause)
+
+After deploying the multi-layer defense described above, the symptom
+(`"limit":` emitted with no value) reappeared for multi-parameter tool
+calls. The defensive layers masked the symptom but did not address the
+**root cause**: the LLM was getting confused between two similarly-named
+parameters in the same tool schema.
+
+### Root cause
+
+LFM2.5-8B-A1B is a sparse MoE model with **8.3B total parameters but only
+1.5B active per token**. When the tool schema contained two parameters
+with overlapping name prefixes:
+
+```json
+"limit":       <parameter A: max number of lines to return>
+"limit_bytes": <parameter B: max number of bytes to read>
+```
+
+the model consistently confused the two. Empirical observation from
+`nimlog.txt` (request `read "./colosseo.txt" limit_bytes 4096`):
+
+```json
+// BAD — model output
+{"name": "read", "arguments": "{\"file_path\":\"./colosseo.txt\",\"limit\":"}
+```
+
+The model selected `"limit"` (the wrong key) and started writing its
+value, but the stream was closed by `finish_reason: tool_calls` before
+the value could be emitted, producing the `"limit":` orphan documented
+in the problem statement above.
+
+### Fix: rename the parameter
+
+Rename the byte-cap parameter from `limit_bytes` to `max_bytes` so that
+the two parameter names in the `read` tool schema share **no lexical
+overlap**:
+
+```json
+"limit":     <parameter A: max number of lines to return>
+"max_bytes": <parameter B: max number of bytes to read>
+```
+
+After the rename, the same query produces:
+
+```json
+// GOOD — model output (confirmed in nimlog.txt)
+{"name": "read", "arguments": "{\"file_path\":\"./colosseo.txt\",\"max_bytes\":4096}"}
+```
+
+The value is present, the JSON is well-formed, no defensive layer needs
+to fire.
+
+### Why this works
+
+Small / MoE models with low active-parameter count are sensitive to
+**lexical similarity** between schema fields. When two field names share
+a prefix (`limit` / `limit_bytes`), the attention mechanism is more
+likely to confuse them during decoding. Picking **maximally distinct
+names** — even at the cost of mild verbosity — is the simplest,
+cheapest, and most robust preventive measure.
+
+General principle: when designing tool schemas for small function-calling
+models, prefer names that differ in **the first 3-4 characters**, not
+just the suffix. Examples:
+
+- `limit` vs `max_bytes` ✓ (distinct roots)
+- `limit` vs `limit_bytes` ✗ (prefix collision)
+- `path` vs `glob` ✓
+- `path` vs `path_filter` ✗
+
+### Scope of the rename
+
+The rename applies **only to the `read` tool**. The `get_file` tool
+keeps its `limit_bytes` and `offset_bytes` parameters because it has
+no `limit` field to collide with. The `file_glob_search` tool is
+unaffected.
+
+### Files changed in this follow-up
+
+- `my_include/tools.nim` — schema field `limit_bytes` → `max_bytes`,
+  internal variable `limitBytes` → `maxBytes`, all `args.hasKey` checks
+  and truncation messages updated. `safeParseToolArgs.knownKeys` array
+  reordered (`max_bytes` before `limit`). `get_file` tool untouched.
+- `my_include/system_prompt.yaml` — `Tool: read` description, JSON
+  parameter list, and the "Read with byte cap" example updated to use
+  `max_bytes`. `Tool: get_file` untouched.
+- `webui/static/index.html` — JS `knownKeys` array updated to look for
+  `max_bytes` in malformed-JSON fallback (must precede `limit` in the
+  array to avoid prefix-substring matches).

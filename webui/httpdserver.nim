@@ -607,7 +607,7 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
         debugLog("[PROXY] apiKey found: " & (if apiKeyCheck.len > 0: "YES (len=" & $apiKeyCheck.len & ")" else: "NO"))
       else:
         debugLog("[PROXY] apiKey found: NO (no authHeader)")
-      debugLog("[PROXY] body (first 500 chars): " & bodyStr[0 .. min(bodyStr.len - 1, 499)])
+      debugLog("[PROXY] body (FULL, " & $bodyStr.len & " chars): " & bodyStr)
     
       if isStreaming:
         var client = newAsyncHttpClient()
@@ -663,7 +663,11 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
               gotData = hasData
               if gotData and chunk.len > 0:
                 await req.client.send(chunk)
-                firstChunk = false
+                if firstChunk:
+                  debugLog("[CHAT-PROXY] ◀ first chunk (" & $chunk.len & " bytes): " & chunk)
+                  firstChunk = false
+                if chunk.contains("\"tool_calls\"") or chunk.contains("\"function\""):
+                  debugLog("[CHAT-PROXY] ◀ TC_CHUNK: " & chunk)
             else:
               # Subsequent chunks: 30s timeout to detect upstream keep-alive
               if await readFut.withTimeout(30000):
@@ -684,6 +688,7 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
           req.client.close()
         
         except CatchableError as e:
+          debugLog("[CHAT-PROXY] ❌ ERROR: " & e.msg)
           if not headersSent:
             let errorMsg = "{\"error\": \"Failed to connect to provider: " & targetUrl & " - " & e.msg & "\"}"
             let errorHeaders = newHttpHeaders([("Content-Type", "application/json"), ("Access-Control-Allow-Origin", "*")])

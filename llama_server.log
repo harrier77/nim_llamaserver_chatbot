@@ -1,30 +1,30 @@
-0.00.400.332 I log_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
-0.00.400.340 I device_info:
-0.00.403.330 I   - Vulkan0 : AMD Radeon (TM) Graphics (8359 MiB, 7941 MiB free)
-0.00.403.345 I   - CPU     : AMD Ryzen 3 7330U with Radeon Graphics          (15182 MiB, 10119 MiB free)
-0.00.403.406 I system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | 
-0.00.403.455 I srv          init: running without SSL
-0.00.403.479 I srv          init: using 7 threads for HTTP server
-0.00.403.610 W srv  llama_server: -----------------
-0.00.403.614 W srv  llama_server: Built-in tools are enabled, do not expose server to untrusted environments
-0.00.403.617 W srv  llama_server: This feature is EXPERIMENTAL and may be changed in the future
-0.00.403.617 W srv  llama_server: -----------------
-0.00.403.620 I srv         start: binding port with default address family
-0.00.430.135 I srv  llama_server: loading model
-0.00.430.204 I srv    load_model: loading model 'C:\down\modelli\LFM2.5-8B-A1B-Q4_K_M.gguf'
-0.00.430.342 I common_init_result: fitting params to device memory ...
-0.00.430.344 I common_init_result: (for bugs during this step try to reproduce them with -fit off, or provide --verbose logs if the bug only occurs with -fit on)
-0.10.323.650 W llama_context: n_ctx_seq (8192) < n_ctx_train (128000) -- the full capacity of the model will not be utilized
-0.10.372.880 I srv    load_model: initializing slots, n_slots = 1
-0.10.549.364 W srv    load_model: speculative decoding will use checkpoints
-0.10.549.399 W common_speculative_init: no implementations specified for speculative decoding
-0.10.549.403 I slot   load_model: id  0 | task -1 | new slot, n_ctx = 8192
-0.10.549.485 I srv    load_model: prompt cache is enabled, size limit: 8192 MiB
-0.10.549.491 I srv    load_model: use `--cache-ram 0` to disable the prompt cache
-0.10.549.493 I srv    load_model: for more info see https://github.com/ggml-org/llama.cpp/pull/16391
-0.10.549.494 I srv    load_model: context checkpoints enabled, max = 32, min spacing = 256
-0.10.549.526 W srv          init: --cache-idle-slots requires --kv-unified, disabling
-0.10.552.808 I init: chat template, example_format: '<|im_start|>system
+0.00.487.816 I log_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.487.828 I device_info:
+0.00.491.172 I   - Vulkan0 : AMD Radeon (TM) Graphics (8359 MiB, 7941 MiB free)
+0.00.491.208 I   - CPU     : AMD Ryzen 3 7330U with Radeon Graphics          (15182 MiB, 10392 MiB free)
+0.00.491.296 I system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | 
+0.00.491.414 I srv          init: running without SSL
+0.00.491.466 I srv          init: using 7 threads for HTTP server
+0.00.491.745 W srv  llama_server: -----------------
+0.00.491.753 W srv  llama_server: Built-in tools are enabled, do not expose server to untrusted environments
+0.00.491.759 W srv  llama_server: This feature is EXPERIMENTAL and may be changed in the future
+0.00.491.759 W srv  llama_server: -----------------
+0.00.491.765 I srv         start: binding port with default address family
+0.00.526.844 I srv  llama_server: loading model
+0.00.526.916 I srv    load_model: loading model 'C:\down\modelli\LFM2.5-8B-A1B-Q4_K_M.gguf'
+0.00.527.146 I common_init_result: fitting params to device memory ...
+0.00.527.155 I common_init_result: (for bugs during this step try to reproduce them with -fit off, or provide --verbose logs if the bug only occurs with -fit on)
+0.23.990.353 W llama_context: n_ctx_seq (8192) < n_ctx_train (128000) -- the full capacity of the model will not be utilized
+0.24.026.146 I srv    load_model: initializing slots, n_slots = 1
+0.24.239.752 W srv    load_model: speculative decoding will use checkpoints
+0.24.239.775 W common_speculative_init: no implementations specified for speculative decoding
+0.24.239.795 I slot   load_model: id  0 | task -1 | new slot, n_ctx = 8192
+0.24.239.897 I srv    load_model: prompt cache is enabled, size limit: 8192 MiB
+0.24.239.898 I srv    load_model: use `--cache-ram 0` to disable the prompt cache
+0.24.239.900 I srv    load_model: for more info see https://github.com/ggml-org/llama.cpp/pull/16391
+0.24.239.901 I srv    load_model: context checkpoints enabled, max = 32, min spacing = 256
+0.24.240.045 W srv          init: --cache-idle-slots requires --kv-unified, disabling
+0.24.244.057 I init: chat template, example_format: '<|im_start|>system
 You are a helpful assistant<|im_end|>
 <|im_start|>user
 Hello<|im_end|>
@@ -34,382 +34,406 @@ Hi there<|im_end|>
 How are you?<|im_end|>
 <|im_start|>assistant
 '
-0.10.553.395 I srv          init: init: chat template, thinking = 1
-0.10.553.450 I srv  llama_server: model loaded
-0.10.553.457 I srv  llama_server: server is listening on http://127.0.0.1:52344
-0.10.553.970 I srv  update_slots: all slots are idle
-0.10.554.155 I srv    operator(): child server monitoring thread started, waiting for EOF on stdin...
-0.10.561.680 I srv  params_from_: Chat format: peg-native
-0.10.562.957 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = -1
-0.10.562.965 I srv  get_availabl: updating prompt cache
-0.10.562.977 I srv          load:  - looking for better prompt, base f_keep = -1.000, sim = 0.000
-0.10.562.981 I srv        update:  - cache state: 0 prompts, 0.000 MiB (limits: 8192.000 MiB, 8192 tokens, 8589934592 est)
-0.10.562.985 I srv  get_availabl: prompt cache update took 0.02 ms
-0.10.563.306 I slot launch_slot_: id  0 | task 0 | processing task, is_child = 0
-0.15.480.003 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =    677, progress = 0.57, t =   4.92 s / 137.70 tokens per second
-0.18.196.759 I slot create_check: id  0 | task 0 | created context checkpoint 1 of 32 (pos_min = 676, pos_max = 676, n_tokens = 677, size = 0.282 MiB)
-0.18.433.763 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =   1189, progress = 1.00, t =   7.87 s / 151.07 tokens per second
-0.23.054.542 I slot create_check: id  0 | task 0 | created context checkpoint 2 of 32 (pos_min = 1188, pos_max = 1188, n_tokens = 1189, size = 0.282 MiB)
-0.23.211.897 I reasoning-budget: activated, budget=1 tokens
-0.23.271.684 I reasoning-budget: budget exhausted, forcing end sequence
-0.23.328.383 I reasoning-budget: forced sequence complete, done
-0.25.039.142 I slot print_timing: id  0 | task 0 | prompt eval time =   12648.60 ms /  1193 tokens (   10.60 ms per token,    94.32 tokens per second)
-0.25.039.169 I slot print_timing: id  0 | task 0 |        eval time =    1827.17 ms /    34 tokens (   53.74 ms per token,    18.61 tokens per second)
-0.25.039.175 I slot print_timing: id  0 | task 0 |       total time =   14475.77 ms /  1227 tokens
-0.25.039.183 I slot print_timing: id  0 | task 0 |    graphs reused =         32
-0.25.039.655 I slot      release: id  0 | task 0 | stop processing: n_tokens = 1226, truncated = 0
-0.25.039.694 I srv  update_slots: all slots are idle
-0.43.090.559 I srv  params_from_: Chat format: peg-native
-0.43.091.324 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.973
-0.43.091.768 I slot launch_slot_: id  0 | task 37 | processing task, is_child = 0
-0.43.091.786 I slot update_slots: id  0 | task 37 | Checking checkpoint with [1188, 1188] against 1192...
-0.43.093.317 W slot update_slots: id  0 | task 37 | restored context checkpoint (pos_min = 1188, pos_max = 1188, n_tokens = 1189, n_past = 1189, size = 0.282 MiB)
-0.43.235.321 I reasoning-budget: activated, budget=1 tokens
-0.43.288.358 I reasoning-budget: budget exhausted, forcing end sequence
-0.43.340.614 I reasoning-budget: forced sequence complete, done
-0.44.889.875 I slot print_timing: id  0 | task 37 | prompt eval time =     143.56 ms /     4 tokens (   35.89 ms per token,    27.86 tokens per second)
-0.44.889.900 I slot print_timing: id  0 | task 37 |        eval time =    1654.47 ms /    32 tokens (   51.70 ms per token,    19.34 tokens per second)
-0.44.889.906 I slot print_timing: id  0 | task 37 |       total time =    1798.02 ms /    36 tokens
-0.44.889.909 I slot print_timing: id  0 | task 37 |    graphs reused =         62
-0.44.890.502 I slot      release: id  0 | task 37 | stop processing: n_tokens = 1224, truncated = 0
-0.44.890.596 I srv  update_slots: all slots are idle
-0.53.022.443 I srv  params_from_: Chat format: peg-native
-0.53.023.223 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 0.981 (> 0.100 thold), f_keep = 0.968
-0.53.023.553 I slot launch_slot_: id  0 | task 70 | processing task, is_child = 0
-0.53.023.571 I slot update_slots: id  0 | task 70 | Checking checkpoint with [1188, 1188] against 1184...
-0.53.023.573 I slot update_slots: id  0 | task 70 | Checking checkpoint with [676, 676] against 1184...
-0.53.025.285 W slot update_slots: id  0 | task 70 | restored context checkpoint (pos_min = 676, pos_max = 676, n_tokens = 677, n_past = 677, size = 0.282 MiB)
-0.53.025.294 W slot update_slots: id  0 | task 70 | erased invalidated context checkpoint (pos_min = 1188, pos_max = 1188, n_tokens = 1189, n_swa = 0, pos_next = 677, size = 0.282 MiB)
-0.58.420.723 I slot create_check: id  0 | task 70 | created context checkpoint 2 of 32 (pos_min = 1203, pos_max = 1203, n_tokens = 1204, size = 0.282 MiB)
-0.58.573.686 I reasoning-budget: activated, budget=1 tokens
-0.58.631.985 I reasoning-budget: budget exhausted, forcing end sequence
-0.58.688.721 I reasoning-budget: forced sequence complete, done
-0.59.849.285 W srv          stop: cancel task, id_task = 70
-0.59.904.096 I slot      release: id  0 | task 70 | stop processing: n_tokens = 1232, truncated = 0
-0.59.904.205 I srv  update_slots: all slots are idle
-1.01.992.825 I srv  params_from_: Chat format: peg-native
-1.01.993.740 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 0.673 (> 0.100 thold), f_keep = 0.980
-1.01.994.118 I slot launch_slot_: id  0 | task 99 | processing task, is_child = 0
-1.01.994.136 I slot update_slots: id  0 | task 99 | Checking checkpoint with [1203, 1203] against 1206...
-1.01.995.563 W slot update_slots: id  0 | task 99 | restored context checkpoint (pos_min = 1203, pos_max = 1203, n_tokens = 1204, n_past = 1204, size = 0.282 MiB)
-1.08.938.281 I slot create_check: id  0 | task 99 | created context checkpoint 3 of 32 (pos_min = 1789, pos_max = 1789, n_tokens = 1790, size = 0.282 MiB)
-1.09.089.026 I reasoning-budget: activated, budget=1 tokens
-1.09.147.550 I reasoning-budget: budget exhausted, forcing end sequence
-1.09.202.989 I reasoning-budget: forced sequence complete, done
-1.14.677.950 I slot print_timing: id  0 | task 99 | n_decoded =    100, tg =  17.89 t/s
-1.17.686.527 I slot print_timing: id  0 | task 99 | n_decoded =    153, tg =  17.80 t/s
-1.17.974.150 I slot print_timing: id  0 | task 99 | prompt eval time =    7094.93 ms /   590 tokens (   12.03 ms per token,    83.16 tokens per second)
-1.17.974.170 I slot print_timing: id  0 | task 99 |        eval time =    8885.04 ms /   158 tokens (   56.23 ms per token,    17.78 tokens per second)
-1.17.974.174 I slot print_timing: id  0 | task 99 |       total time =   15979.97 ms /   748 tokens
-1.17.974.178 I slot print_timing: id  0 | task 99 |    graphs reused =        241
-1.17.974.640 I slot      release: id  0 | task 99 | stop processing: n_tokens = 1951, truncated = 0
-1.17.974.738 I srv  update_slots: all slots are idle
-1.58.329.690 I srv  params_from_: Chat format: peg-native
-1.58.330.601 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 0.910 (> 0.100 thold), f_keep = 0.919
-1.58.331.027 I slot launch_slot_: id  0 | task 260 | processing task, is_child = 0
-1.58.331.045 I slot update_slots: id  0 | task 260 | Checking checkpoint with [1789, 1789] against 1792...
-1.58.332.505 W slot update_slots: id  0 | task 260 | restored context checkpoint (pos_min = 1789, pos_max = 1789, n_tokens = 1790, n_past = 1790, size = 0.282 MiB)
-2.01.215.021 I reasoning-budget: activated, budget=1 tokens
-2.01.277.156 I reasoning-budget: budget exhausted, forcing end sequence
-2.01.334.594 I reasoning-budget: forced sequence complete, done
-2.02.400.146 W srv          stop: cancel task, id_task = 260
-2.02.459.517 I slot      release: id  0 | task 260 | stop processing: n_tokens = 1992, truncated = 0
-2.02.459.633 I srv  update_slots: all slots are idle
-2.04.532.788 I srv  params_from_: Chat format: peg-native
-2.04.533.578 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 0.768 (> 0.100 thold), f_keep = 0.989
-2.04.533.967 I slot launch_slot_: id  0 | task 286 | processing task, is_child = 0
-2.04.533.986 I slot update_slots: id  0 | task 286 | Checking checkpoint with [1789, 1789] against 1969...
-2.04.535.409 W slot update_slots: id  0 | task 286 | restored context checkpoint (pos_min = 1789, pos_max = 1789, n_tokens = 1790, n_past = 1790, size = 0.282 MiB)
-2.07.686.229 I slot create_check: id  0 | task 286 | created context checkpoint 4 of 32 (pos_min = 2048, pos_max = 2048, n_tokens = 2049, size = 0.282 MiB)
-2.07.923.457 I slot print_timing: id  0 | task 286 | prompt processing, n_tokens =    771, progress = 1.00, t =   3.39 s / 227.47 tokens per second
-2.12.671.922 I slot create_check: id  0 | task 286 | created context checkpoint 5 of 32 (pos_min = 2560, pos_max = 2560, n_tokens = 2561, size = 0.282 MiB)
-2.12.826.271 I reasoning-budget: activated, budget=1 tokens
-2.12.886.322 I reasoning-budget: budget exhausted, forcing end sequence
-2.12.943.780 I reasoning-budget: forced sequence complete, done
-2.18.513.493 I slot print_timing: id  0 | task 286 | n_decoded =    100, tg =  17.58 t/s
-2.20.516.915 I slot print_timing: id  0 | task 286 | prompt eval time =    8292.32 ms /   775 tokens (   10.70 ms per token,    93.46 tokens per second)
-2.20.516.943 I slot print_timing: id  0 | task 286 |        eval time =    7690.56 ms /   135 tokens (   56.97 ms per token,    17.55 tokens per second)
-2.20.516.949 I slot print_timing: id  0 | task 286 |       total time =   15982.88 ms /   910 tokens
-2.20.516.952 I slot print_timing: id  0 | task 286 |    graphs reused =        395
-2.20.517.451 I slot      release: id  0 | task 286 | stop processing: n_tokens = 2699, truncated = 0
-2.20.517.548 I srv  update_slots: all slots are idle
-2.27.960.032 I srv  params_from_: Chat format: peg-native
-2.27.960.799 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 0.972 (> 0.100 thold), f_keep = 0.439
-2.27.960.804 I srv  get_availabl: updating prompt cache
-2.27.961.005 W srv   prompt_save:  - saving prompt with length 2699, total state size = 31.942 MiB (draft: 0.000 MiB)
-2.27.974.943 I srv          load:  - looking for better prompt, base f_keep = 0.439, sim = 0.972
-2.27.974.957 I srv        update:  - cache state: 1 prompts, 33.350 MiB (limits: 8192.000 MiB, 8192 tokens, 662973 est)
-2.27.974.959 I srv        update:    - prompt 000001DDD84D5820:    2699 tokens, checkpoints:  5,    33.350 MiB
-2.27.974.963 I srv  get_availabl: prompt cache update took 14.16 ms
-2.27.975.412 I slot launch_slot_: id  0 | task 424 | processing task, is_child = 0
-2.27.975.434 I slot update_slots: id  0 | task 424 | Checking checkpoint with [2560, 2560] against 1184...
-2.27.975.436 I slot update_slots: id  0 | task 424 | Checking checkpoint with [2048, 2048] against 1184...
-2.27.975.437 I slot update_slots: id  0 | task 424 | Checking checkpoint with [1789, 1789] against 1184...
-2.27.975.438 I slot update_slots: id  0 | task 424 | Checking checkpoint with [1203, 1203] against 1184...
-2.27.975.439 I slot update_slots: id  0 | task 424 | Checking checkpoint with [676, 676] against 1184...
-2.27.976.620 W slot update_slots: id  0 | task 424 | restored context checkpoint (pos_min = 676, pos_max = 676, n_tokens = 677, n_past = 677, size = 0.282 MiB)
-2.27.976.627 W slot update_slots: id  0 | task 424 | erased invalidated context checkpoint (pos_min = 1203, pos_max = 1203, n_tokens = 1204, n_swa = 0, pos_next = 677, size = 0.282 MiB)
-2.27.976.631 W slot update_slots: id  0 | task 424 | erased invalidated context checkpoint (pos_min = 1789, pos_max = 1789, n_tokens = 1790, n_swa = 0, pos_next = 677, size = 0.282 MiB)
-2.27.976.635 W slot update_slots: id  0 | task 424 | erased invalidated context checkpoint (pos_min = 2048, pos_max = 2048, n_tokens = 2049, n_swa = 0, pos_next = 677, size = 0.282 MiB)
-2.27.976.638 W slot update_slots: id  0 | task 424 | erased invalidated context checkpoint (pos_min = 2560, pos_max = 2560, n_tokens = 2561, n_swa = 0, pos_next = 677, size = 0.282 MiB)
-2.33.565.210 I slot create_check: id  0 | task 424 | created context checkpoint 2 of 32 (pos_min = 1214, pos_max = 1214, n_tokens = 1215, size = 0.282 MiB)
-2.33.715.180 I reasoning-budget: activated, budget=1 tokens
-2.33.774.559 I reasoning-budget: budget exhausted, forcing end sequence
-2.33.830.065 I reasoning-budget: forced sequence complete, done
-2.39.261.063 I slot print_timing: id  0 | task 424 | n_decoded =    100, tg =  18.03 t/s
-2.42.298.436 I slot print_timing: id  0 | task 424 | n_decoded =    154, tg =  17.94 t/s
-2.45.330.374 I slot print_timing: id  0 | task 424 | n_decoded =    208, tg =  17.91 t/s
-2.48.367.738 I slot print_timing: id  0 | task 424 | n_decoded =    262, tg =  17.88 t/s
-2.51.376.211 I slot print_timing: id  0 | task 424 | n_decoded =    314, tg =  17.78 t/s
-2.54.379.481 I slot print_timing: id  0 | task 424 | n_decoded =    366, tg =  17.71 t/s
-2.57.411.276 I slot print_timing: id  0 | task 424 | n_decoded =    420, tg =  17.72 t/s
-2.57.964.536 I slot print_timing: id  0 | task 424 | prompt eval time =    5739.78 ms /   542 tokens (   10.59 ms per token,    94.43 tokens per second)
-2.57.964.560 I slot print_timing: id  0 | task 424 |        eval time =   24249.26 ms /   430 tokens (   56.39 ms per token,    17.73 tokens per second)
-2.57.964.566 I slot print_timing: id  0 | task 424 |       total time =   29989.05 ms /   972 tokens
-2.57.964.570 I slot print_timing: id  0 | task 424 |    graphs reused =        821
-2.57.964.999 I slot      release: id  0 | task 424 | stop processing: n_tokens = 1648, truncated = 0
-2.57.965.187 I srv  update_slots: all slots are idle
-3.00.113.271 I srv  params_from_: Chat format: peg-native
-3.00.114.046 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 0.440 (> 0.100 thold), f_keep = 0.739
-3.00.114.437 I slot launch_slot_: id  0 | task 857 | processing task, is_child = 0
-3.00.114.456 I slot update_slots: id  0 | task 857 | Checking checkpoint with [1214, 1214] against 1217...
-3.00.115.895 W slot update_slots: id  0 | task 857 | restored context checkpoint (pos_min = 1214, pos_max = 1214, n_tokens = 1215, n_past = 1215, size = 0.282 MiB)
-3.04.869.431 I slot print_timing: id  0 | task 857 | prompt processing, n_tokens =   1024, progress = 0.81, t =   4.75 s / 215.35 tokens per second
-3.09.705.456 I slot print_timing: id  0 | task 857 | prompt processing, n_tokens =   1038, progress = 0.81, t =   9.59 s / 108.23 tokens per second
-3.10.275.003 I slot create_check: id  0 | task 857 | created context checkpoint 3 of 32 (pos_min = 2252, pos_max = 2252, n_tokens = 2253, size = 0.282 MiB)
-3.10.292.629 I slot print_timing: id  0 | task 857 | prompt processing, n_tokens =   1550, progress = 1.00, t =  10.18 s / 152.29 tokens per second
-3.15.227.720 I slot create_check: id  0 | task 857 | created context checkpoint 4 of 32 (pos_min = 2764, pos_max = 2764, n_tokens = 2765, size = 0.282 MiB)
-3.15.380.729 I reasoning-budget: activated, budget=1 tokens
-3.15.439.380 I reasoning-budget: budget exhausted, forcing end sequence
-3.15.496.184 I reasoning-budget: forced sequence complete, done
-3.21.075.048 I slot print_timing: id  0 | task 857 | n_decoded =    100, tg =  17.56 t/s
-3.24.076.430 I slot print_timing: id  0 | task 857 | n_decoded =    152, tg =  17.48 t/s
-3.27.118.479 I slot print_timing: id  0 | task 857 | n_decoded =    205, tg =  17.47 t/s
-3.30.136.419 I slot print_timing: id  0 | task 857 | n_decoded =    257, tg =  17.42 t/s
-3.33.139.929 I slot print_timing: id  0 | task 857 | n_decoded =    309, tg =  17.40 t/s
-3.36.144.812 I slot print_timing: id  0 | task 857 | n_decoded =    361, tg =  17.39 t/s
-3.39.154.559 I slot print_timing: id  0 | task 857 | n_decoded =    413, tg =  17.37 t/s
-3.42.166.631 I slot print_timing: id  0 | task 857 | n_decoded =    465, tg =  17.36 t/s
-3.45.189.730 I slot print_timing: id  0 | task 857 | n_decoded =    517, tg =  17.34 t/s
-3.48.210.601 I slot print_timing: id  0 | task 857 | n_decoded =    569, tg =  17.33 t/s
-3.51.256.950 I slot print_timing: id  0 | task 857 | n_decoded =    622, tg =  17.34 t/s
-3.51.315.542 I slot print_timing: id  0 | task 857 | prompt eval time =   15266.31 ms /  1554 tokens (    9.82 ms per token,   101.79 tokens per second)
-3.51.315.563 I slot print_timing: id  0 | task 857 |        eval time =   35934.73 ms /   623 tokens (   57.68 ms per token,    17.34 tokens per second)
-3.51.315.567 I slot print_timing: id  0 | task 857 |       total time =   51201.04 ms /  2177 tokens
-3.51.315.570 I slot print_timing: id  0 | task 857 |    graphs reused =       1439
-3.51.316.230 I slot      release: id  0 | task 857 | stop processing: n_tokens = 3391, truncated = 0
-3.51.316.370 I srv  update_slots: all slots are idle
-4.09.912.452 I srv    operator(): EOF on stdin detected, forcing shutdown...
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    [52344] 0.00.400.332 I log_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
-[52344] 0.00.400.340 I device_info:
-[52344] 0.00.403.330 I   - Vulkan0 : AMD Radeon (TM) Graphics (8359 MiB, 7941 MiB free)
-[52344] 0.00.403.345 I   - CPU     : AMD Ryzen 3 7330U with Radeon Graphics          (15182 MiB, 10119 MiB free)
-[52344] 0.00.403.406 I system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | 
-[52344] 0.00.403.455 I srv          init: running without SSL
-[52344] 0.00.403.479 I srv          init: using 7 threads for HTTP server
-[52344] 0.00.403.610 W srv  llama_server: -----------------
-[52344] 0.00.403.614 W srv  llama_server: Built-in tools are enabled, do not expose server to untrusted environments
-[52344] 0.00.403.617 W srv  llama_server: This feature is EXPERIMENTAL and may be changed in the future
-[52344] 0.00.403.617 W srv  llama_server: -----------------
-[52344] 0.00.403.620 I srv         start: binding port with default address family
-[52344] 0.00.430.135 I srv  llama_server: loading model
-[52344] 0.00.430.204 I srv    load_model: loading model 'C:\down\modelli\LFM2.5-8B-A1B-Q4_K_M.gguf'
-[52344] 0.00.430.342 I common_init_result: fitting params to device memory ...
-[52344] 0.00.430.344 I common_init_result: (for bugs during this step try to reproduce them with -fit off, or provide --verbose logs if the bug only occurs with -fit on)
-[34m2.48.453.704[0m [32mI [0msrv  ensure_model: waiting until model name=LFM2.5-8B-A1B-Q4_K_M.gguf is fully loaded...
-[52344] 0.10.323.650 W llama_context: n_ctx_seq (8192) < n_ctx_train (128000) -- the full capacity of the model will not be utilized
-[52344] 0.10.372.880 I srv    load_model: initializing slots, n_slots = 1
-[52344] 0.10.549.364 W srv    load_model: speculative decoding will use checkpoints
-[52344] 0.10.549.399 W common_speculative_init: no implementations specified for speculative decoding
-[52344] 0.10.549.403 I slot   load_model: id  0 | task -1 | new slot, n_ctx = 8192
-[52344] 0.10.549.485 I srv    load_model: prompt cache is enabled, size limit: 8192 MiB
-[52344] 0.10.549.491 I srv    load_model: use `--cache-ram 0` to disable the prompt cache
-[52344] 0.10.549.493 I srv    load_model: for more info see https://github.com/ggml-org/llama.cpp/pull/16391
-[52344] 0.10.549.494 I srv    load_model: context checkpoints enabled, max = 32, min spacing = 256
-[52344] 0.10.549.526 W srv          init: --cache-idle-slots requires --kv-unified, disabling
-[52344] 0.10.552.808 I init: chat template, example_format: '<|im_start|>system
-[52344] You are a helpful assistant<|im_end|>
-[52344] <|im_start|>user
-[52344] Hello<|im_end|>
-[52344] <|im_start|>assistant
-[52344] Hi there<|im_end|>
-[52344] <|im_start|>user
-[52344] How are you?<|im_end|>
-[52344] <|im_start|>assistant
-[52344] '
-[52344] 0.10.553.395 I srv          init: init: chat template, thinking = 1
-[52344] 0.10.553.450 I srv  llama_server: model loaded
-[52344] 0.10.553.457 I srv  llama_server: server is listening on http://127.0.0.1:52344
-[52344] cmd_child_to_router:ready
-[52344] cmd_child_to_router:info:{"id":"LFM2.5-8B-A1B-Q4_K_M.gguf","aliases":["LFM2.5-8B-A1B-Q4_K_M.gguf"],"tags":[],"object":"model","created":1780324209,"owned_by":"llamacpp","meta":{"vocab_type":2,"n_vocab":128000,"n_ctx":8192,"n_ctx_train":128000,"n_embd":2048,"n_params":8467856832,"size":5147326208}}
-[34m2.51.814.974[0m [32mI [0msrv  proxy_reques: proxying request to model LFM2.5-8B-A1B-Q4_K_M.gguf on port 52344
-[34m2.51.815.057[0m [32mI [0msrv  proxy_reques: proxying request to model LFM2.5-8B-A1B-Q4_K_M.gguf on port 52344
-[52344] 0.10.553.970 I srv  update_slots: all slots are idle
-[52344] 0.10.554.155 I srv    operator(): child server monitoring thread started, waiting for EOF on stdin...
-[52344] 0.10.561.680 I srv  params_from_: Chat format: peg-native
-[52344] 0.10.562.957 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = -1
-[52344] 0.10.562.965 I srv  get_availabl: updating prompt cache
-[52344] 0.10.562.977 I srv          load:  - looking for better prompt, base f_keep = -1.000, sim = 0.000
-[52344] 0.10.562.981 I srv        update:  - cache state: 0 prompts, 0.000 MiB (limits: 8192.000 MiB, 8192 tokens, 8589934592 est)
-[52344] 0.10.562.985 I srv  get_availabl: prompt cache update took 0.02 ms
-[52344] 0.10.563.306 I slot launch_slot_: id  0 | task 0 | processing task, is_child = 0
-[52344] 0.15.480.003 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =    677, progress = 0.57, t =   4.92 s / 137.70 tokens per second
-[52344] 0.18.196.759 I slot create_check: id  0 | task 0 | created context checkpoint 1 of 32 (pos_min = 676, pos_max = 676, n_tokens = 677, size = 0.282 MiB)
-[52344] 0.18.433.763 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =   1189, progress = 1.00, t =   7.87 s / 151.07 tokens per second
-[52344] 0.23.054.542 I slot create_check: id  0 | task 0 | created context checkpoint 2 of 32 (pos_min = 1188, pos_max = 1188, n_tokens = 1189, size = 0.282 MiB)
-[52344] 0.23.211.897 I reasoning-budget: activated, budget=1 tokens
-[52344] 0.23.271.684 I reasoning-budget: budget exhausted, forcing end sequence
-[52344] 0.23.328.383 I reasoning-budget: forced sequence complete, done
-[52344] 0.25.039.142 I slot print_timing: id  0 | task 0 | prompt eval time =   12648.60 ms /  1193 tokens (   10.60 ms per token,    94.32 tokens per second)
-[52344] 0.25.039.169 I slot print_timing: id  0 | task 0 |        eval time =    1827.17 ms /    34 tokens (   53.74 ms per token,    18.61 tokens per second)
-[52344] 0.25.039.175 I slot print_timing: id  0 | task 0 |       total time =   14475.77 ms /  1227 tokens
-[52344] 0.25.039.183 I slot print_timing: id  0 | task 0 |    graphs reused =         32
-[52344] 0.25.039.655 I slot      release: id  0 | task 0 | stop processing: n_tokens = 1226, truncated = 0
-[52344] 0.25.039.694 I srv  update_slots: all slots are idle
-[34m3.24.332.038[0m [32mI [0msrv  proxy_reques: proxying request to model LFM2.5-8B-A1B-Q4_K_M.gguf on port 52344
-[52344] 0.43.090.559 I srv  params_from_: Chat format: peg-native
-[52344] 0.43.091.324 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.973
-[52344] 0.43.091.768 I slot launch_slot_: id  0 | task 37 | processing task, is_child = 0
-[52344] 0.43.091.786 I slot update_slots: id  0 | task 37 | Checking checkpoint with [1188, 1188] against 1192...
-[52344] 0.43.093.317 W slot update_slots: id  0 | task 37 | restored context checkpoint (pos_min = 1188, pos_max = 1188, n_tokens = 1189, n_past = 1189, size = 0.282 MiB)
-[52344] 0.43.235.321 I reasoning-budget: activated, budget=1 tokens
-[52344] 0.43.288.358 I reasoning-budget: budget exhausted, forcing end sequence
-[52344] 0.43.340.614 I reasoning-budget: forced sequence complete, done
-[52344] 0.44.889.875 I slot print_timing: id  0 | task 37 | prompt eval time =     143.56 ms /     4 tokens (   35.89 ms per token,    27.86 tokens per second)
-[52344] 0.44.889.900 I slot print_timing: id  0 | task 37 |        eval time =    1654.47 ms /    32 tokens (   51.70 ms per token,    19.34 tokens per second)
-[52344] 0.44.889.906 I slot print_timing: id  0 | task 37 |       total time =    1798.02 ms /    36 tokens
-[52344] 0.44.889.909 I slot print_timing: id  0 | task 37 |    graphs reused =         62
-[52344] 0.44.890.502 I slot      release: id  0 | task 37 | stop processing: n_tokens = 1224, truncated = 0
-[52344] 0.44.890.596 I srv  update_slots: all slots are idle
-[34m3.34.264.546[0m [32mI [0msrv  proxy_reques: proxying request to model LFM2.5-8B-A1B-Q4_K_M.gguf on port 52344
-[52344] 0.53.022.443 I srv  params_from_: Chat format: peg-native
-[52344] 0.53.023.223 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 0.981 (> 0.100 thold), f_keep = 0.968
-[52344] 0.53.023.553 I slot launch_slot_: id  0 | task 70 | processing task, is_child = 0
-[52344] 0.53.023.571 I slot update_slots: id  0 | task 70 | Checking checkpoint with [1188, 1188] against 1184...
-[52344] 0.53.023.573 I slot update_slots: id  0 | task 70 | Checking checkpoint with [676, 676] against 1184...
-[52344] 0.53.025.285 W slot update_slots: id  0 | task 70 | restored context checkpoint (pos_min = 676, pos_max = 676, n_tokens = 677, n_past = 677, size = 0.282 MiB)
-[52344] 0.53.025.294 W slot update_slots: id  0 | task 70 | erased invalidated context checkpoint (pos_min = 1188, pos_max = 1188, n_tokens = 1189, n_swa = 0, pos_next = 677, size = 0.282 MiB)
-[52344] 0.58.420.723 I slot create_check: id  0 | task 70 | created context checkpoint 2 of 32 (pos_min = 1203, pos_max = 1203, n_tokens = 1204, size = 0.282 MiB)
-[52344] 0.58.573.686 I reasoning-budget: activated, budget=1 tokens
-[52344] 0.58.631.985 I reasoning-budget: budget exhausted, forcing end sequence
-[52344] 0.58.688.721 I reasoning-budget: forced sequence complete, done
-[52344] 0.59.849.285 W srv          stop: cancel task, id_task = 70
-[52344] 0.59.904.096 I slot      release: id  0 | task 70 | stop processing: n_tokens = 1232, truncated = 0
-[52344] 0.59.904.205 I srv  update_slots: all slots are idle
-[34m3.43.233.306[0m [32mI [0msrv  proxy_reques: proxying request to model LFM2.5-8B-A1B-Q4_K_M.gguf on port 52344
-[52344] 1.01.992.825 I srv  params_from_: Chat format: peg-native
-[52344] 1.01.993.740 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 0.673 (> 0.100 thold), f_keep = 0.980
-[52344] 1.01.994.118 I slot launch_slot_: id  0 | task 99 | processing task, is_child = 0
-[52344] 1.01.994.136 I slot update_slots: id  0 | task 99 | Checking checkpoint with [1203, 1203] against 1206...
-[52344] 1.01.995.563 W slot update_slots: id  0 | task 99 | restored context checkpoint (pos_min = 1203, pos_max = 1203, n_tokens = 1204, n_past = 1204, size = 0.282 MiB)
-[52344] 1.08.938.281 I slot create_check: id  0 | task 99 | created context checkpoint 3 of 32 (pos_min = 1789, pos_max = 1789, n_tokens = 1790, size = 0.282 MiB)
-[52344] 1.09.089.026 I reasoning-budget: activated, budget=1 tokens
-[52344] 1.09.147.550 I reasoning-budget: budget exhausted, forcing end sequence
-[52344] 1.09.202.989 I reasoning-budget: forced sequence complete, done
-[52344] 1.14.677.950 I slot print_timing: id  0 | task 99 | n_decoded =    100, tg =  17.89 t/s
-[52344] 1.17.686.527 I slot print_timing: id  0 | task 99 | n_decoded =    153, tg =  17.80 t/s
-[52344] 1.17.974.150 I slot print_timing: id  0 | task 99 | prompt eval time =    7094.93 ms /   590 tokens (   12.03 ms per token,    83.16 tokens per second)
-[52344] 1.17.974.170 I slot print_timing: id  0 | task 99 |        eval time =    8885.04 ms /   158 tokens (   56.23 ms per token,    17.78 tokens per second)
-[52344] 1.17.974.174 I slot print_timing: id  0 | task 99 |       total time =   15979.97 ms /   748 tokens
-[52344] 1.17.974.178 I slot print_timing: id  0 | task 99 |    graphs reused =        241
-[52344] 1.17.974.640 I slot      release: id  0 | task 99 | stop processing: n_tokens = 1951, truncated = 0
-[52344] 1.17.974.738 I srv  update_slots: all slots are idle
-[34m4.39.583.920[0m [32mI [0msrv  proxy_reques: proxying request to model LFM2.5-8B-A1B-Q4_K_M.gguf on port 52344
-[52344] 1.58.329.690 I srv  params_from_: Chat format: peg-native
-[52344] 1.58.330.601 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 0.910 (> 0.100 thold), f_keep = 0.919
-[52344] 1.58.331.027 I slot launch_slot_: id  0 | task 260 | processing task, is_child = 0
-[52344] 1.58.331.045 I slot update_slots: id  0 | task 260 | Checking checkpoint with [1789, 1789] against 1792...
-[52344] 1.58.332.505 W slot update_slots: id  0 | task 260 | restored context checkpoint (pos_min = 1789, pos_max = 1789, n_tokens = 1790, n_past = 1790, size = 0.282 MiB)
-[52344] 2.01.215.021 I reasoning-budget: activated, budget=1 tokens
-[52344] 2.01.277.156 I reasoning-budget: budget exhausted, forcing end sequence
-[52344] 2.01.334.594 I reasoning-budget: forced sequence complete, done
-[52344] 2.02.400.146 W srv          stop: cancel task, id_task = 260
-[52344] 2.02.459.517 I slot      release: id  0 | task 260 | stop processing: n_tokens = 1992, truncated = 0
-[52344] 2.02.459.633 I srv  update_slots: all slots are idle
-[34m4.45.772.964[0m [32mI [0msrv  proxy_reques: proxying request to model LFM2.5-8B-A1B-Q4_K_M.gguf on port 52344
-[52344] 2.04.532.788 I srv  params_from_: Chat format: peg-native
-[52344] 2.04.533.578 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 0.768 (> 0.100 thold), f_keep = 0.989
-[52344] 2.04.533.967 I slot launch_slot_: id  0 | task 286 | processing task, is_child = 0
-[52344] 2.04.533.986 I slot update_slots: id  0 | task 286 | Checking checkpoint with [1789, 1789] against 1969...
-[52344] 2.04.535.409 W slot update_slots: id  0 | task 286 | restored context checkpoint (pos_min = 1789, pos_max = 1789, n_tokens = 1790, n_past = 1790, size = 0.282 MiB)
-[52344] 2.07.686.229 I slot create_check: id  0 | task 286 | created context checkpoint 4 of 32 (pos_min = 2048, pos_max = 2048, n_tokens = 2049, size = 0.282 MiB)
-[52344] 2.07.923.457 I slot print_timing: id  0 | task 286 | prompt processing, n_tokens =    771, progress = 1.00, t =   3.39 s / 227.47 tokens per second
-[52344] 2.12.671.922 I slot create_check: id  0 | task 286 | created context checkpoint 5 of 32 (pos_min = 2560, pos_max = 2560, n_tokens = 2561, size = 0.282 MiB)
-[52344] 2.12.826.271 I reasoning-budget: activated, budget=1 tokens
-[52344] 2.12.886.322 I reasoning-budget: budget exhausted, forcing end sequence
-[52344] 2.12.943.780 I reasoning-budget: forced sequence complete, done
-[52344] 2.18.513.493 I slot print_timing: id  0 | task 286 | n_decoded =    100, tg =  17.58 t/s
-[52344] 2.20.516.915 I slot print_timing: id  0 | task 286 | prompt eval time =    8292.32 ms /   775 tokens (   10.70 ms per token,    93.46 tokens per second)
-[52344] 2.20.516.943 I slot print_timing: id  0 | task 286 |        eval time =    7690.56 ms /   135 tokens (   56.97 ms per token,    17.55 tokens per second)
-[52344] 2.20.516.949 I slot print_timing: id  0 | task 286 |       total time =   15982.88 ms /   910 tokens
-[52344] 2.20.516.952 I slot print_timing: id  0 | task 286 |    graphs reused =        395
-[52344] 2.20.517.451 I slot      release: id  0 | task 286 | stop processing: n_tokens = 2699, truncated = 0
-[52344] 2.20.517.548 I srv  update_slots: all slots are idle
-[34m5.09.202.997[0m [32mI [0msrv  proxy_reques: proxying request to model LFM2.5-8B-A1B-Q4_K_M.gguf on port 52344
-[52344] 2.27.960.032 I srv  params_from_: Chat format: peg-native
-[52344] 2.27.960.799 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 0.972 (> 0.100 thold), f_keep = 0.439
-[52344] 2.27.960.804 I srv  get_availabl: updating prompt cache
-[52344] 2.27.961.005 W srv   prompt_save:  - saving prompt with length 2699, total state size = 31.942 MiB (draft: 0.000 MiB)
-[52344] 2.27.974.943 I srv          load:  - looking for better prompt, base f_keep = 0.439, sim = 0.972
-[52344] 2.27.974.957 I srv        update:  - cache state: 1 prompts, 33.350 MiB (limits: 8192.000 MiB, 8192 tokens, 662973 est)
-[52344] 2.27.974.959 I srv        update:    - prompt 000001DDD84D5820:    2699 tokens, checkpoints:  5,    33.350 MiB
-[52344] 2.27.974.963 I srv  get_availabl: prompt cache update took 14.16 ms
-[52344] 2.27.975.412 I slot launch_slot_: id  0 | task 424 | processing task, is_child = 0
-[52344] 2.27.975.434 I slot update_slots: id  0 | task 424 | Checking checkpoint with [2560, 2560] against 1184...
-[52344] 2.27.975.436 I slot update_slots: id  0 | task 424 | Checking checkpoint with [2048, 2048] against 1184...
-[52344] 2.27.975.437 I slot update_slots: id  0 | task 424 | Checking checkpoint with [1789, 1789] against 1184...
-[52344] 2.27.975.438 I slot update_slots: id  0 | task 424 | Checking checkpoint with [1203, 1203] against 1184...
-[52344] 2.27.975.439 I slot update_slots: id  0 | task 424 | Checking checkpoint with [676, 676] against 1184...
-[52344] 2.27.976.620 W slot update_slots: id  0 | task 424 | restored context checkpoint (pos_min = 676, pos_max = 676, n_tokens = 677, n_past = 677, size = 0.282 MiB)
-[52344] 2.27.976.627 W slot update_slots: id  0 | task 424 | erased invalidated context checkpoint (pos_min = 1203, pos_max = 1203, n_tokens = 1204, n_swa = 0, pos_next = 677, size = 0.282 MiB)
-[52344] 2.27.976.631 W slot update_slots: id  0 | task 424 | erased invalidated context checkpoint (pos_min = 1789, pos_max = 1789, n_tokens = 1790, n_swa = 0, pos_next = 677, size = 0.282 MiB)
-[52344] 2.27.976.635 W slot update_slots: id  0 | task 424 | erased invalidated context checkpoint (pos_min = 2048, pos_max = 2048, n_tokens = 2049, n_swa = 0, pos_next = 677, size = 0.282 MiB)
-[52344] 2.27.976.638 W slot update_slots: id  0 | task 424 | erased invalidated context checkpoint (pos_min = 2560, pos_max = 2560, n_tokens = 2561, n_swa = 0, pos_next = 677, size = 0.282 MiB)
-[52344] 2.33.565.210 I slot create_check: id  0 | task 424 | created context checkpoint 2 of 32 (pos_min = 1214, pos_max = 1214, n_tokens = 1215, size = 0.282 MiB)
-[52344] 2.33.715.180 I reasoning-budget: activated, budget=1 tokens
-[52344] 2.33.774.559 I reasoning-budget: budget exhausted, forcing end sequence
-[52344] 2.33.830.065 I reasoning-budget: forced sequence complete, done
-[52344] 2.39.261.063 I slot print_timing: id  0 | task 424 | n_decoded =    100, tg =  18.03 t/s
-[52344] 2.42.298.436 I slot print_timing: id  0 | task 424 | n_decoded =    154, tg =  17.94 t/s
-[52344] 2.45.330.374 I slot print_timing: id  0 | task 424 | n_decoded =    208, tg =  17.91 t/s
-[52344] 2.48.367.738 I slot print_timing: id  0 | task 424 | n_decoded =    262, tg =  17.88 t/s
-[52344] 2.51.376.211 I slot print_timing: id  0 | task 424 | n_decoded =    314, tg =  17.78 t/s
-[52344] 2.54.379.481 I slot print_timing: id  0 | task 424 | n_decoded =    366, tg =  17.71 t/s
-[52344] 2.57.411.276 I slot print_timing: id  0 | task 424 | n_decoded =    420, tg =  17.72 t/s
-[52344] 2.57.964.536 I slot print_timing: id  0 | task 424 | prompt eval time =    5739.78 ms /   542 tokens (   10.59 ms per token,    94.43 tokens per second)
-[52344] 2.57.964.560 I slot print_timing: id  0 | task 424 |        eval time =   24249.26 ms /   430 tokens (   56.39 ms per token,    17.73 tokens per second)
-[52344] 2.57.964.566 I slot print_timing: id  0 | task 424 |       total time =   29989.05 ms /   972 tokens
-[52344] 2.57.964.570 I slot print_timing: id  0 | task 424 |    graphs reused =        821
-[52344] 2.57.964.999 I slot      release: id  0 | task 424 | stop processing: n_tokens = 1648, truncated = 0
-[52344] 2.57.965.187 I srv  update_slots: all slots are idle
-[34m5.41.352.982[0m [32mI [0msrv  proxy_reques: proxying request to model LFM2.5-8B-A1B-Q4_K_M.gguf on port 52344
-[52344] 3.00.113.271 I srv  params_from_: Chat format: peg-native
-[52344] 3.00.114.046 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 0.440 (> 0.100 thold), f_keep = 0.739
-[52344] 3.00.114.437 I slot launch_slot_: id  0 | task 857 | processing task, is_child = 0
-[52344] 3.00.114.456 I slot update_slots: id  0 | task 857 | Checking checkpoint with [1214, 1214] against 1217...
-[52344] 3.00.115.895 W slot update_slots: id  0 | task 857 | restored context checkpoint (pos_min = 1214, pos_max = 1214, n_tokens = 1215, n_past = 1215, size = 0.282 MiB)
-[52344] 3.04.869.431 I slot print_timing: id  0 | task 857 | prompt processing, n_tokens =   1024, progress = 0.81, t =   4.75 s / 215.35 tokens per second
-[52344] 3.09.705.456 I slot print_timing: id  0 | task 857 | prompt processing, n_tokens =   1038, progress = 0.81, t =   9.59 s / 108.23 tokens per second
-[52344] 3.10.275.003 I slot create_check: id  0 | task 857 | created context checkpoint 3 of 32 (pos_min = 2252, pos_max = 2252, n_tokens = 2253, size = 0.282 MiB)
-[52344] 3.10.292.629 I slot print_timing: id  0 | task 857 | prompt processing, n_tokens =   1550, progress = 1.00, t =  10.18 s / 152.29 tokens per second
-[52344] 3.15.227.720 I slot create_check: id  0 | task 857 | created context checkpoint 4 of 32 (pos_min = 2764, pos_max = 2764, n_tokens = 2765, size = 0.282 MiB)
-[52344] 3.15.380.729 I reasoning-budget: activated, budget=1 tokens
-[52344] 3.15.439.380 I reasoning-budget: budget exhausted, forcing end sequence
-[52344] 3.15.496.184 I reasoning-budget: forced sequence complete, done
-[52344] 3.21.075.048 I slot print_timing: id  0 | task 857 | n_decoded =    100, tg =  17.56 t/s
-[52344] 3.24.076.430 I slot print_timing: id  0 | task 857 | n_decoded =    152, tg =  17.48 t/s
-[52344] 3.27.118.479 I slot print_timing: id  0 | task 857 | n_decoded =    205, tg =  17.47 t/s
-[52344] 3.30.136.419 I slot print_timing: id  0 | task 857 | n_decoded =    257, tg =  17.42 t/s
-[52344] 3.33.139.929 I slot print_timing: id  0 | task 857 | n_decoded =    309, tg =  17.40 t/s
-[52344] 3.36.144.812 I slot print_timing: id  0 | task 857 | n_decoded =    361, tg =  17.39 t/s
-[52344] 3.39.154.559 I slot print_timing: id  0 | task 857 | n_decoded =    413, tg =  17.37 t/s
-[52344] 3.42.166.631 I slot print_timing: id  0 | task 857 | n_decoded =    465, tg =  17.36 t/s
-[52344] 3.45.189.730 I slot print_timing: id  0 | task 857 | n_decoded =    517, tg =  17.34 t/s
-[52344] 3.48.210.601 I slot print_timing: id  0 | task 857 | n_decoded =    569, tg =  17.33 t/s
-[52344] 3.51.256.950 I slot print_timing: id  0 | task 857 | n_decoded =    622, tg =  17.34 t/s
-[52344] 3.51.315.542 I slot print_timing: id  0 | task 857 | prompt eval time =   15266.31 ms /  1554 tokens (    9.82 ms per token,   101.79 tokens per second)
-[52344] 3.51.315.563 I slot print_timing: id  0 | task 857 |        eval time =   35934.73 ms /   623 tokens (   57.68 ms per token,    17.34 tokens per second)
-[52344] 3.51.315.567 I slot print_timing: id  0 | task 857 |       total time =   51201.04 ms /  2177 tokens
-[52344] 3.51.315.570 I slot print_timing: id  0 | task 857 |    graphs reused =       1439
-[52344] 3.51.316.230 I slot      release: id  0 | task 857 | stop processing: n_tokens = 3391, truncated = 0
-[52344] 3.51.316.370 I srv  update_slots: all slots are idle
+0.24.244.463 I srv          init: init: chat template, thinking = 1
+0.24.244.542 I srv  llama_server: model loaded
+0.24.244.551 I srv  llama_server: server is listening on http://127.0.0.1:63631
+0.24.245.135 I srv  update_slots: all slots are idle
+0.24.245.301 I srv    operator(): child server monitoring thread started, waiting for EOF on stdin...
+0.24.260.150 I srv  params_from_: Chat format: peg-native
+0.24.261.678 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = -1
+0.24.261.684 I srv  get_availabl: updating prompt cache
+0.24.261.695 I srv          load:  - looking for better prompt, base f_keep = -1.000, sim = 0.000
+0.24.261.700 I srv        update:  - cache state: 0 prompts, 0.000 MiB (limits: 8192.000 MiB, 8192 tokens, 8589934592 est)
+0.24.261.703 I srv  get_availabl: prompt cache update took 0.01 ms
+0.24.262.086 I slot launch_slot_: id  0 | task 0 | processing task, is_child = 0
+0.31.170.181 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =    681, progress = 0.57, t =   6.91 s / 98.58 tokens per second
+0.33.807.106 I slot create_check: id  0 | task 0 | created context checkpoint 1 of 32 (pos_min = 680, pos_max = 680, n_tokens = 681, size = 0.282 MiB)
+0.34.004.304 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =   1193, progress = 1.00, t =   9.74 s / 122.46 tokens per second
+0.38.468.823 I slot create_check: id  0 | task 0 | created context checkpoint 2 of 32 (pos_min = 1192, pos_max = 1192, n_tokens = 1193, size = 0.282 MiB)
+0.38.610.056 I reasoning-budget: activated, budget=1 tokens
+0.38.664.638 I reasoning-budget: budget exhausted, forcing end sequence
+0.38.717.300 I reasoning-budget: forced sequence complete, done
+0.39.527.781 I slot print_timing: id  0 | task 0 | prompt eval time =   14347.96 ms /  1197 tokens (   11.99 ms per token,    83.43 tokens per second)
+0.39.527.793 I slot print_timing: id  0 | task 0 |        eval time =     917.67 ms /    19 tokens (   48.30 ms per token,    20.70 tokens per second)
+0.39.527.795 I slot print_timing: id  0 | task 0 |       total time =   15265.64 ms /  1216 tokens
+0.39.527.796 I slot print_timing: id  0 | task 0 |    graphs reused =         17
+0.39.530.988 I slot      release: id  0 | task 0 | stop processing: n_tokens = 1215, truncated = 0
+0.39.531.010 I srv  update_slots: all slots are idle
+0.41.639.471 I srv  params_from_: Chat format: peg-native
+0.41.641.775 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 0.699 (> 0.100 thold), f_keep = 0.984
+0.41.642.458 I slot launch_slot_: id  0 | task 22 | processing task, is_child = 0
+0.41.642.494 I slot update_slots: id  0 | task 22 | Checking checkpoint with [1192, 1192] against 1195...
+0.41.645.045 W slot update_slots: id  0 | task 22 | restored context checkpoint (pos_min = 1192, pos_max = 1192, n_tokens = 1193, n_past = 1193, size = 0.282 MiB)
+0.47.517.459 I slot create_check: id  0 | task 22 | created context checkpoint 3 of 32 (pos_min = 1706, pos_max = 1706, n_tokens = 1707, size = 0.282 MiB)
+0.47.658.190 I reasoning-budget: activated, budget=1 tokens
+0.47.712.853 I reasoning-budget: budget exhausted, forcing end sequence
+0.47.766.631 I reasoning-budget: forced sequence complete, done
+0.52.761.450 I slot print_timing: id  0 | task 22 | n_decoded =    100, tg =  19.60 t/s
+0.55.776.031 I slot print_timing: id  0 | task 22 | n_decoded =    157, tg =  19.34 t/s
+0.58.808.414 I slot print_timing: id  0 | task 22 | n_decoded =    215, tg =  19.28 t/s
+1.01.858.463 I slot print_timing: id  0 | task 22 | n_decoded =    274, tg =  19.30 t/s
+1.04.868.804 I slot print_timing: id  0 | task 22 | n_decoded =    332, tg =  19.29 t/s
+1.07.883.023 I slot print_timing: id  0 | task 22 | n_decoded =    390, tg =  19.28 t/s
+1.09.446.404 I slot print_timing: id  0 | task 22 | prompt eval time =    6015.73 ms /   518 tokens (   11.61 ms per token,    86.11 tokens per second)
+1.09.446.415 I slot print_timing: id  0 | task 22 |        eval time =   21788.17 ms /   420 tokens (   51.88 ms per token,    19.28 tokens per second)
+1.09.446.416 I slot print_timing: id  0 | task 22 |       total time =   27803.90 ms /   938 tokens
+1.09.446.418 I slot print_timing: id  0 | task 22 |    graphs reused =        433
+1.09.447.121 I slot      release: id  0 | task 22 | stop processing: n_tokens = 2130, truncated = 0
+1.09.447.168 I srv  update_slots: all slots are idle
+1.46.237.055 I srv  params_from_: Chat format: peg-native
+1.46.237.881 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 0.992 (> 0.100 thold), f_keep = 0.560
+1.46.238.531 I slot launch_slot_: id  0 | task 445 | processing task, is_child = 0
+1.46.238.552 I slot update_slots: id  0 | task 445 | Checking checkpoint with [1706, 1706] against 1191...
+1.46.238.553 I slot update_slots: id  0 | task 445 | Checking checkpoint with [1192, 1192] against 1191...
+1.46.238.555 I slot update_slots: id  0 | task 445 | Checking checkpoint with [680, 680] against 1191...
+1.46.241.779 W slot update_slots: id  0 | task 445 | restored context checkpoint (pos_min = 680, pos_max = 680, n_tokens = 681, n_past = 681, size = 0.282 MiB)
+1.46.241.788 W slot update_slots: id  0 | task 445 | erased invalidated context checkpoint (pos_min = 1192, pos_max = 1192, n_tokens = 1193, n_swa = 0, pos_next = 681, size = 0.282 MiB)
+1.46.241.795 W slot update_slots: id  0 | task 445 | erased invalidated context checkpoint (pos_min = 1706, pos_max = 1706, n_tokens = 1707, n_swa = 0, pos_next = 681, size = 0.282 MiB)
+1.53.568.894 I slot create_check: id  0 | task 445 | created context checkpoint 2 of 32 (pos_min = 1197, pos_max = 1197, n_tokens = 1198, size = 0.282 MiB)
+1.53.707.997 I reasoning-budget: activated, budget=1 tokens
+1.53.761.325 I reasoning-budget: budget exhausted, forcing end sequence
+1.53.814.012 I reasoning-budget: forced sequence complete, done
+1.54.581.519 W srv          stop: cancel task, id_task = 445
+1.54.633.020 I slot      release: id  0 | task 445 | stop processing: n_tokens = 1220, truncated = 0
+1.54.633.080 I srv  update_slots: all slots are idle
+1.56.713.017 I srv  params_from_: Chat format: peg-native
+1.56.713.939 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 0.700 (> 0.100 thold), f_keep = 0.984
+1.56.714.508 I slot launch_slot_: id  0 | task 468 | processing task, is_child = 0
+1.56.714.530 I slot update_slots: id  0 | task 468 | Checking checkpoint with [1197, 1197] against 1200...
+1.56.717.947 W slot update_slots: id  0 | task 468 | restored context checkpoint (pos_min = 1197, pos_max = 1197, n_tokens = 1198, n_past = 1198, size = 0.282 MiB)
+2.02.854.852 I slot create_check: id  0 | task 468 | created context checkpoint 3 of 32 (pos_min = 1711, pos_max = 1711, n_tokens = 1712, size = 0.282 MiB)
+2.03.007.799 I reasoning-budget: activated, budget=1 tokens
+2.03.063.787 I reasoning-budget: budget exhausted, forcing end sequence
+2.03.119.591 I reasoning-budget: forced sequence complete, done
+2.08.108.280 I slot print_timing: id  0 | task 468 | n_decoded =    100, tg =  19.61 t/s
+2.11.127.770 I slot print_timing: id  0 | task 468 | n_decoded =    159, tg =  19.58 t/s
+2.14.157.433 I slot print_timing: id  0 | task 468 | n_decoded =    218, tg =  19.55 t/s
+2.17.193.780 I slot print_timing: id  0 | task 468 | n_decoded =    277, tg =  19.53 t/s
+2.20.234.406 I slot print_timing: id  0 | task 468 | n_decoded =    336, tg =  19.50 t/s
+2.23.274.247 I slot print_timing: id  0 | task 468 | n_decoded =    395, tg =  19.49 t/s
+2.24.593.972 I slot print_timing: id  0 | task 468 | prompt eval time =    6293.30 ms /   518 tokens (   12.15 ms per token,    82.31 tokens per second)
+2.24.593.981 I slot print_timing: id  0 | task 468 |        eval time =   21586.13 ms /   420 tokens (   51.40 ms per token,    19.46 tokens per second)
+2.24.593.983 I slot print_timing: id  0 | task 468 |       total time =   27879.42 ms /   938 tokens
+2.24.593.984 I slot print_timing: id  0 | task 468 |    graphs reused =        866
+2.24.594.172 I slot      release: id  0 | task 468 | stop processing: n_tokens = 2135, truncated = 0
+2.24.594.231 I srv  update_slots: all slots are idle
+11.36.183.943 I srv  params_from_: Chat format: peg-native
+11.36.184.839 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 0.999 (> 0.100 thold), f_keep = 0.563
+11.36.185.373 I slot launch_slot_: id  0 | task 891 | processing task, is_child = 0
+11.36.185.403 I slot update_slots: id  0 | task 891 | Checking checkpoint with [1711, 1711] against 1200...
+11.36.185.404 I slot update_slots: id  0 | task 891 | Checking checkpoint with [1197, 1197] against 1200...
+11.36.188.097 W slot update_slots: id  0 | task 891 | restored context checkpoint (pos_min = 1197, pos_max = 1197, n_tokens = 1198, n_past = 1198, size = 0.282 MiB)
+11.36.188.104 W slot update_slots: id  0 | task 891 | erased invalidated context checkpoint (pos_min = 1711, pos_max = 1711, n_tokens = 1712, n_swa = 0, pos_next = 1198, size = 0.282 MiB)
+11.36.484.204 I reasoning-budget: activated, budget=1 tokens
+11.36.593.530 I reasoning-budget: budget exhausted, forcing end sequence
+11.36.701.850 I reasoning-budget: forced sequence complete, done
+11.38.217.831 W srv          stop: cancel task, id_task = 891
+11.38.331.030 I slot      release: id  0 | task 891 | stop processing: n_tokens = 1220, truncated = 0
+11.38.331.098 I srv  update_slots: all slots are idle
+11.40.349.937 I srv  params_from_: Chat format: peg-native
+11.40.350.784 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 0.700 (> 0.100 thold), f_keep = 0.984
+11.40.351.144 I slot launch_slot_: id  0 | task 912 | processing task, is_child = 0
+11.40.351.209 I slot update_slots: id  0 | task 912 | Checking checkpoint with [1197, 1197] against 1200...
+11.40.354.080 W slot update_slots: id  0 | task 912 | restored context checkpoint (pos_min = 1197, pos_max = 1197, n_tokens = 1198, n_past = 1198, size = 0.282 MiB)
+11.47.033.360 I slot create_check: id  0 | task 912 | created context checkpoint 3 of 32 (pos_min = 1711, pos_max = 1711, n_tokens = 1712, size = 0.282 MiB)
+11.47.181.103 I reasoning-budget: activated, budget=1 tokens
+11.47.238.598 I reasoning-budget: budget exhausted, forcing end sequence
+11.47.293.442 I reasoning-budget: forced sequence complete, done
+11.52.298.821 I slot print_timing: id  0 | task 912 | n_decoded =    100, tg =  19.54 t/s
+11.55.315.411 I slot print_timing: id  0 | task 912 | n_decoded =    159, tg =  19.55 t/s
+11.58.352.096 I slot print_timing: id  0 | task 912 | n_decoded =    218, tg =  19.51 t/s
+12.01.391.363 I slot print_timing: id  0 | task 912 | n_decoded =    277, tg =  19.49 t/s
+12.04.418.171 I slot print_timing: id  0 | task 912 | n_decoded =    336, tg =  19.49 t/s
+12.07.438.247 I slot print_timing: id  0 | task 912 | n_decoded =    394, tg =  19.45 t/s
+12.08.776.628 I slot print_timing: id  0 | task 912 | prompt eval time =    6829.96 ms /   518 tokens (   13.19 ms per token,    75.84 tokens per second)
+12.08.776.637 I slot print_timing: id  0 | task 912 |        eval time =   21595.48 ms /   420 tokens (   51.42 ms per token,    19.45 tokens per second)
+12.08.776.649 I slot print_timing: id  0 | task 912 |       total time =   28425.44 ms /   938 tokens
+12.08.776.651 I slot print_timing: id  0 | task 912 |    graphs reused =       1299
+12.08.776.877 I slot      release: id  0 | task 912 | stop processing: n_tokens = 2135, truncated = 0
+12.08.776.930 I srv  update_slots: all slots are idle
+19.38.509.683 I srv  params_from_: Chat format: peg-native
+19.38.510.467 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 0.178 (> 0.100 thold), f_keep = 0.100
+19.38.510.472 I srv  get_availabl: updating prompt cache
+19.38.511.161 W srv   prompt_save:  - saving prompt with length 2135, total state size = 25.326 MiB (draft: 0.000 MiB)
+19.38.533.154 I srv          load:  - looking for better prompt, base f_keep = 0.100, sim = 0.178
+19.38.533.174 I srv        update:  - cache state: 1 prompts, 26.171 MiB (limits: 8192.000 MiB, 8192 tokens, 668297 est)
+19.38.533.178 I srv        update:    - prompt 0000019FFF914950:    2135 tokens, checkpoints:  3,    26.171 MiB
+19.38.533.185 I srv  get_availabl: prompt cache update took 22.71 ms
+19.38.533.866 I slot launch_slot_: id  0 | task 1335 | processing task, is_child = 0
+19.38.533.912 I slot update_slots: id  0 | task 1335 | Checking checkpoint with [1711, 1711] against 213...
+19.38.533.914 I slot update_slots: id  0 | task 1335 | Checking checkpoint with [1197, 1197] against 213...
+19.38.533.916 I slot update_slots: id  0 | task 1335 | Checking checkpoint with [680, 680] against 213...
+19.38.533.919 W slot update_slots: id  0 | task 1335 | forcing full prompt re-processing due to lack of cache data (likely due to SWA or hybrid/recurrent memory, see https://github.com/ggml-org/llama.cpp/pull/13194#issuecomment-2868343055)
+19.38.533.924 W slot update_slots: id  0 | task 1335 | erased invalidated context checkpoint (pos_min = 680, pos_max = 680, n_tokens = 681, n_swa = 0, pos_next = 0, size = 0.282 MiB)
+19.38.533.930 W slot update_slots: id  0 | task 1335 | erased invalidated context checkpoint (pos_min = 1197, pos_max = 1197, n_tokens = 1198, n_swa = 0, pos_next = 0, size = 0.282 MiB)
+19.38.533.933 W slot update_slots: id  0 | task 1335 | erased invalidated context checkpoint (pos_min = 1711, pos_max = 1711, n_tokens = 1712, n_swa = 0, pos_next = 0, size = 0.282 MiB)
+19.45.542.930 I slot print_timing: id  0 | task 1335 | prompt processing, n_tokens =    686, progress = 0.57, t =   7.01 s / 97.87 tokens per second
+19.48.195.425 I slot create_check: id  0 | task 1335 | created context checkpoint 1 of 32 (pos_min = 685, pos_max = 685, n_tokens = 686, size = 0.282 MiB)
+19.48.202.394 I slot print_timing: id  0 | task 1335 | prompt processing, n_tokens =   1198, progress = 1.00, t =   9.67 s / 123.91 tokens per second
+19.52.845.207 I slot create_check: id  0 | task 1335 | created context checkpoint 2 of 32 (pos_min = 1197, pos_max = 1197, n_tokens = 1198, size = 0.282 MiB)
+19.52.987.015 I reasoning-budget: activated, budget=1 tokens
+19.53.038.205 I reasoning-budget: budget exhausted, forcing end sequence
+19.53.092.005 I reasoning-budget: forced sequence complete, done
+19.54.153.035 I slot print_timing: id  0 | task 1335 | prompt eval time =   14453.13 ms /  1202 tokens (   12.02 ms per token,    83.17 tokens per second)
+19.54.153.046 I slot print_timing: id  0 | task 1335 |        eval time =    1165.98 ms /    24 tokens (   48.58 ms per token,    20.58 tokens per second)
+19.54.153.048 I slot print_timing: id  0 | task 1335 |       total time =   15619.11 ms /  1226 tokens
+19.54.153.050 I slot print_timing: id  0 | task 1335 |    graphs reused =       1321
+19.54.153.301 I slot      release: id  0 | task 1335 | stop processing: n_tokens = 1225, truncated = 0
+19.54.153.364 I srv  update_slots: all slots are idle
+19.56.238.070 I srv  params_from_: Chat format: peg-native
+19.56.239.051 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 0.706 (> 0.100 thold), f_keep = 0.980
+19.56.239.476 I slot launch_slot_: id  0 | task 1362 | processing task, is_child = 0
+19.56.239.507 I slot update_slots: id  0 | task 1362 | Checking checkpoint with [1197, 1197] against 1200...
+19.56.242.885 W slot update_slots: id  0 | task 1362 | restored context checkpoint (pos_min = 1197, pos_max = 1197, n_tokens = 1198, n_past = 1198, size = 0.282 MiB)
+20.01.981.868 I slot create_check: id  0 | task 1362 | created context checkpoint 3 of 32 (pos_min = 1695, pos_max = 1695, n_tokens = 1696, size = 0.282 MiB)
+20.02.123.950 I reasoning-budget: activated, budget=1 tokens
+20.02.181.356 I reasoning-budget: budget exhausted, forcing end sequence
+20.02.235.761 I reasoning-budget: forced sequence complete, done
+20.05.711.714 I slot print_timing: id  0 | task 1362 | prompt eval time =    5884.47 ms /   502 tokens (   11.72 ms per token,    85.31 tokens per second)
+20.05.711.723 I slot print_timing: id  0 | task 1362 |        eval time =    3587.72 ms /    70 tokens (   51.25 ms per token,    19.51 tokens per second)
+20.05.711.733 I slot print_timing: id  0 | task 1362 |       total time =    9472.20 ms /   572 tokens
+20.05.711.734 I slot print_timing: id  0 | task 1362 |    graphs reused =       1389
+20.05.711.940 I slot      release: id  0 | task 1362 | stop processing: n_tokens = 1769, truncated = 0
+20.05.711.991 I srv  update_slots: all slots are idle
+20.21.840.181 I srv  params_from_: Chat format: peg-native
+20.21.841.633 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 0.953 (> 0.100 thold), f_keep = 0.960
+20.21.842.065 I slot launch_slot_: id  0 | task 1434 | processing task, is_child = 0
+20.21.842.092 I slot update_slots: id  0 | task 1434 | Checking checkpoint with [1695, 1695] against 1698...
+20.21.843.912 W slot update_slots: id  0 | task 1434 | restored context checkpoint (pos_min = 1695, pos_max = 1695, n_tokens = 1696, n_past = 1696, size = 0.282 MiB)
+20.26.727.545 I reasoning-budget: activated, budget=1 tokens
+20.26.783.244 I reasoning-budget: budget exhausted, forcing end sequence
+20.26.837.320 I reasoning-budget: forced sequence complete, done
+20.31.891.372 I slot print_timing: id  0 | task 1434 | n_decoded =    100, tg =  19.37 t/s
+20.34.926.248 I slot print_timing: id  0 | task 1434 | n_decoded =    158, tg =  19.27 t/s
+20.37.846.382 I slot print_timing: id  0 | task 1434 | prompt eval time =    4885.48 ms /    87 tokens (   56.15 ms per token,    17.81 tokens per second)
+20.37.846.393 I slot print_timing: id  0 | task 1434 |        eval time =   11118.78 ms /   214 tokens (   51.96 ms per token,    19.25 tokens per second)
+20.37.846.395 I slot print_timing: id  0 | task 1434 |       total time =   16004.26 ms /   301 tokens
+20.37.846.396 I slot print_timing: id  0 | task 1434 |    graphs reused =       1600
+20.37.846.775 I slot      release: id  0 | task 1434 | stop processing: n_tokens = 1996, truncated = 0
+20.37.846.822 I srv  update_slots: all slots are idle
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           [63631] 0.00.487.816 I log_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+[63631] 0.00.487.828 I device_info:
+[63631] 0.00.491.172 I   - Vulkan0 : AMD Radeon (TM) Graphics (8359 MiB, 7941 MiB free)
+[63631] 0.00.491.208 I   - CPU     : AMD Ryzen 3 7330U with Radeon Graphics          (15182 MiB, 10392 MiB free)
+[63631] 0.00.491.296 I system_info: n_threads = 4 (n_threads_batch = 4) / 8 | CPU : SSE3 = 1 | SSSE3 = 1 | AVX = 1 | AVX2 = 1 | F16C = 1 | FMA = 1 | BMI2 = 1 | LLAMAFILE = 1 | OPENMP = 1 | REPACK = 1 | 
+[63631] 0.00.491.414 I srv          init: running without SSL
+[63631] 0.00.491.466 I srv          init: using 7 threads for HTTP server
+[63631] 0.00.491.745 W srv  llama_server: -----------------
+[63631] 0.00.491.753 W srv  llama_server: Built-in tools are enabled, do not expose server to untrusted environments
+[63631] 0.00.491.759 W srv  llama_server: This feature is EXPERIMENTAL and may be changed in the future
+[63631] 0.00.491.759 W srv  llama_server: -----------------
+[63631] 0.00.491.765 I srv         start: binding port with default address family
+[63631] 0.00.526.844 I srv  llama_server: loading model
+[63631] 0.00.526.916 I srv    load_model: loading model 'C:\down\modelli\LFM2.5-8B-A1B-Q4_K_M.gguf'
+[63631] 0.00.527.146 I common_init_result: fitting params to device memory ...
+[63631] 0.00.527.155 I common_init_result: (for bugs during this step try to reproduce them with -fit off, or provide --verbose logs if the bug only occurs with -fit on)
+[34m21.34.622.500[0m [32mI [0msrv  ensure_model: waiting until model name=LFM2.5-8B-A1B-Q4_K_M.gguf is fully loaded...
+[63631] 0.23.990.353 W llama_context: n_ctx_seq (8192) < n_ctx_train (128000) -- the full capacity of the model will not be utilized
+[63631] 0.24.026.146 I srv    load_model: initializing slots, n_slots = 1
+[63631] 0.24.239.752 W srv    load_model: speculative decoding will use checkpoints
+[63631] 0.24.239.775 W common_speculative_init: no implementations specified for speculative decoding
+[63631] 0.24.239.795 I slot   load_model: id  0 | task -1 | new slot, n_ctx = 8192
+[63631] 0.24.239.897 I srv    load_model: prompt cache is enabled, size limit: 8192 MiB
+[63631] 0.24.239.898 I srv    load_model: use `--cache-ram 0` to disable the prompt cache
+[63631] 0.24.239.900 I srv    load_model: for more info see https://github.com/ggml-org/llama.cpp/pull/16391
+[63631] 0.24.239.901 I srv    load_model: context checkpoints enabled, max = 32, min spacing = 256
+[63631] 0.24.240.045 W srv          init: --cache-idle-slots requires --kv-unified, disabling
+[63631] 0.24.244.057 I init: chat template, example_format: '<|im_start|>system
+[63631] You are a helpful assistant<|im_end|>
+[63631] <|im_start|>user
+[63631] Hello<|im_end|>
+[63631] <|im_start|>assistant
+[63631] Hi there<|im_end|>
+[63631] <|im_start|>user
+[63631] How are you?<|im_end|>
+[63631] <|im_start|>assistant
+[63631] '
+[63631] 0.24.244.463 I srv          init: init: chat template, thinking = 1
+[63631] 0.24.244.542 I srv  llama_server: model loaded
+[63631] 0.24.244.551 I srv  llama_server: server is listening on http://127.0.0.1:63631
+[63631] cmd_child_to_router:ready
+[63631] cmd_child_to_router:info:{"id":"LFM2.5-8B-A1B-Q4_K_M.gguf","aliases":["LFM2.5-8B-A1B-Q4_K_M.gguf"],"tags":[],"object":"model","created":1780346520,"owned_by":"llamacpp","meta":{"vocab_type":2,"n_vocab":128000,"n_ctx":8192,"n_ctx_train":128000,"n_embd":2048,"n_params":8467856832,"size":5147326208}}
+[34m21.45.714.864[0m [32mI [0msrv  proxy_reques: proxying request to model LFM2.5-8B-A1B-Q4_K_M.gguf on port 63631
+[34m21.45.714.882[0m [32mI [0msrv  proxy_reques: proxying request to model LFM2.5-8B-A1B-Q4_K_M.gguf on port 63631
+[63631] 0.24.245.135 I srv  update_slots: all slots are idle
+[63631] 0.24.245.301 I srv    operator(): child server monitoring thread started, waiting for EOF on stdin...
+[63631] 0.24.260.150 I srv  params_from_: Chat format: peg-native
+[63631] 0.24.261.678 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = -1
+[63631] 0.24.261.684 I srv  get_availabl: updating prompt cache
+[63631] 0.24.261.695 I srv          load:  - looking for better prompt, base f_keep = -1.000, sim = 0.000
+[63631] 0.24.261.700 I srv        update:  - cache state: 0 prompts, 0.000 MiB (limits: 8192.000 MiB, 8192 tokens, 8589934592 est)
+[63631] 0.24.261.703 I srv  get_availabl: prompt cache update took 0.01 ms
+[63631] 0.24.262.086 I slot launch_slot_: id  0 | task 0 | processing task, is_child = 0
+[63631] 0.31.170.181 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =    681, progress = 0.57, t =   6.91 s / 98.58 tokens per second
+[63631] 0.33.807.106 I slot create_check: id  0 | task 0 | created context checkpoint 1 of 32 (pos_min = 680, pos_max = 680, n_tokens = 681, size = 0.282 MiB)
+[63631] 0.34.004.304 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =   1193, progress = 1.00, t =   9.74 s / 122.46 tokens per second
+[63631] 0.38.468.823 I slot create_check: id  0 | task 0 | created context checkpoint 2 of 32 (pos_min = 1192, pos_max = 1192, n_tokens = 1193, size = 0.282 MiB)
+[63631] 0.38.610.056 I reasoning-budget: activated, budget=1 tokens
+[63631] 0.38.664.638 I reasoning-budget: budget exhausted, forcing end sequence
+[63631] 0.38.717.300 I reasoning-budget: forced sequence complete, done
+[63631] 0.39.527.781 I slot print_timing: id  0 | task 0 | prompt eval time =   14347.96 ms /  1197 tokens (   11.99 ms per token,    83.43 tokens per second)
+[63631] 0.39.527.793 I slot print_timing: id  0 | task 0 |        eval time =     917.67 ms /    19 tokens (   48.30 ms per token,    20.70 tokens per second)
+[63631] 0.39.527.795 I slot print_timing: id  0 | task 0 |       total time =   15265.64 ms /  1216 tokens
+[63631] 0.39.527.796 I slot print_timing: id  0 | task 0 |    graphs reused =         17
+[63631] 0.39.530.988 I slot      release: id  0 | task 0 | stop processing: n_tokens = 1215, truncated = 0
+[63631] 0.39.531.010 I srv  update_slots: all slots are idle
+[34m22.03.079.794[0m [32mI [0msrv  proxy_reques: proxying request to model LFM2.5-8B-A1B-Q4_K_M.gguf on port 63631
+[63631] 0.41.639.471 I srv  params_from_: Chat format: peg-native
+[63631] 0.41.641.775 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 0.699 (> 0.100 thold), f_keep = 0.984
+[63631] 0.41.642.458 I slot launch_slot_: id  0 | task 22 | processing task, is_child = 0
+[63631] 0.41.642.494 I slot update_slots: id  0 | task 22 | Checking checkpoint with [1192, 1192] against 1195...
+[63631] 0.41.645.045 W slot update_slots: id  0 | task 22 | restored context checkpoint (pos_min = 1192, pos_max = 1192, n_tokens = 1193, n_past = 1193, size = 0.282 MiB)
+[63631] 0.47.517.459 I slot create_check: id  0 | task 22 | created context checkpoint 3 of 32 (pos_min = 1706, pos_max = 1706, n_tokens = 1707, size = 0.282 MiB)
+[63631] 0.47.658.190 I reasoning-budget: activated, budget=1 tokens
+[63631] 0.47.712.853 I reasoning-budget: budget exhausted, forcing end sequence
+[63631] 0.47.766.631 I reasoning-budget: forced sequence complete, done
+[63631] 0.52.761.450 I slot print_timing: id  0 | task 22 | n_decoded =    100, tg =  19.60 t/s
+[63631] 0.55.776.031 I slot print_timing: id  0 | task 22 | n_decoded =    157, tg =  19.34 t/s
+[63631] 0.58.808.414 I slot print_timing: id  0 | task 22 | n_decoded =    215, tg =  19.28 t/s
+[63631] 1.01.858.463 I slot print_timing: id  0 | task 22 | n_decoded =    274, tg =  19.30 t/s
+[63631] 1.04.868.804 I slot print_timing: id  0 | task 22 | n_decoded =    332, tg =  19.29 t/s
+[63631] 1.07.883.023 I slot print_timing: id  0 | task 22 | n_decoded =    390, tg =  19.28 t/s
+[63631] 1.09.446.404 I slot print_timing: id  0 | task 22 | prompt eval time =    6015.73 ms /   518 tokens (   11.61 ms per token,    86.11 tokens per second)
+[63631] 1.09.446.415 I slot print_timing: id  0 | task 22 |        eval time =   21788.17 ms /   420 tokens (   51.88 ms per token,    19.28 tokens per second)
+[63631] 1.09.446.416 I slot print_timing: id  0 | task 22 |       total time =   27803.90 ms /   938 tokens
+[63631] 1.09.446.418 I slot print_timing: id  0 | task 22 |    graphs reused =        433
+[63631] 1.09.447.121 I slot      release: id  0 | task 22 | stop processing: n_tokens = 2130, truncated = 0
+[63631] 1.09.447.168 I srv  update_slots: all slots are idle
+[34m23.07.687.163[0m [32mI [0msrv  proxy_reques: proxying request to model LFM2.5-8B-A1B-Q4_K_M.gguf on port 63631
+[63631] 1.46.237.055 I srv  params_from_: Chat format: peg-native
+[63631] 1.46.237.881 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 0.992 (> 0.100 thold), f_keep = 0.560
+[63631] 1.46.238.531 I slot launch_slot_: id  0 | task 445 | processing task, is_child = 0
+[63631] 1.46.238.552 I slot update_slots: id  0 | task 445 | Checking checkpoint with [1706, 1706] against 1191...
+[63631] 1.46.238.553 I slot update_slots: id  0 | task 445 | Checking checkpoint with [1192, 1192] against 1191...
+[63631] 1.46.238.555 I slot update_slots: id  0 | task 445 | Checking checkpoint with [680, 680] against 1191...
+[63631] 1.46.241.779 W slot update_slots: id  0 | task 445 | restored context checkpoint (pos_min = 680, pos_max = 680, n_tokens = 681, n_past = 681, size = 0.282 MiB)
+[63631] 1.46.241.788 W slot update_slots: id  0 | task 445 | erased invalidated context checkpoint (pos_min = 1192, pos_max = 1192, n_tokens = 1193, n_swa = 0, pos_next = 681, size = 0.282 MiB)
+[63631] 1.46.241.795 W slot update_slots: id  0 | task 445 | erased invalidated context checkpoint (pos_min = 1706, pos_max = 1706, n_tokens = 1707, n_swa = 0, pos_next = 681, size = 0.282 MiB)
+[63631] 1.53.568.894 I slot create_check: id  0 | task 445 | created context checkpoint 2 of 32 (pos_min = 1197, pos_max = 1197, n_tokens = 1198, size = 0.282 MiB)
+[63631] 1.53.707.997 I reasoning-budget: activated, budget=1 tokens
+[63631] 1.53.761.325 I reasoning-budget: budget exhausted, forcing end sequence
+[63631] 1.53.814.012 I reasoning-budget: forced sequence complete, done
+[63631] 1.54.581.519 W srv          stop: cancel task, id_task = 445
+[63631] 1.54.633.020 I slot      release: id  0 | task 445 | stop processing: n_tokens = 1220, truncated = 0
+[63631] 1.54.633.080 I srv  update_slots: all slots are idle
+[34m23.18.161.649[0m [32mI [0msrv  proxy_reques: proxying request to model LFM2.5-8B-A1B-Q4_K_M.gguf on port 63631
+[63631] 1.56.713.017 I srv  params_from_: Chat format: peg-native
+[63631] 1.56.713.939 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 0.700 (> 0.100 thold), f_keep = 0.984
+[63631] 1.56.714.508 I slot launch_slot_: id  0 | task 468 | processing task, is_child = 0
+[63631] 1.56.714.530 I slot update_slots: id  0 | task 468 | Checking checkpoint with [1197, 1197] against 1200...
+[63631] 1.56.717.947 W slot update_slots: id  0 | task 468 | restored context checkpoint (pos_min = 1197, pos_max = 1197, n_tokens = 1198, n_past = 1198, size = 0.282 MiB)
+[63631] 2.02.854.852 I slot create_check: id  0 | task 468 | created context checkpoint 3 of 32 (pos_min = 1711, pos_max = 1711, n_tokens = 1712, size = 0.282 MiB)
+[63631] 2.03.007.799 I reasoning-budget: activated, budget=1 tokens
+[63631] 2.03.063.787 I reasoning-budget: budget exhausted, forcing end sequence
+[63631] 2.03.119.591 I reasoning-budget: forced sequence complete, done
+[63631] 2.08.108.280 I slot print_timing: id  0 | task 468 | n_decoded =    100, tg =  19.61 t/s
+[63631] 2.11.127.770 I slot print_timing: id  0 | task 468 | n_decoded =    159, tg =  19.58 t/s
+[63631] 2.14.157.433 I slot print_timing: id  0 | task 468 | n_decoded =    218, tg =  19.55 t/s
+[63631] 2.17.193.780 I slot print_timing: id  0 | task 468 | n_decoded =    277, tg =  19.53 t/s
+[63631] 2.20.234.406 I slot print_timing: id  0 | task 468 | n_decoded =    336, tg =  19.50 t/s
+[63631] 2.23.274.247 I slot print_timing: id  0 | task 468 | n_decoded =    395, tg =  19.49 t/s
+[63631] 2.24.593.972 I slot print_timing: id  0 | task 468 | prompt eval time =    6293.30 ms /   518 tokens (   12.15 ms per token,    82.31 tokens per second)
+[63631] 2.24.593.981 I slot print_timing: id  0 | task 468 |        eval time =   21586.13 ms /   420 tokens (   51.40 ms per token,    19.46 tokens per second)
+[63631] 2.24.593.983 I slot print_timing: id  0 | task 468 |       total time =   27879.42 ms /   938 tokens
+[63631] 2.24.593.984 I slot print_timing: id  0 | task 468 |    graphs reused =        866
+[63631] 2.24.594.172 I slot      release: id  0 | task 468 | stop processing: n_tokens = 2135, truncated = 0
+[63631] 2.24.594.231 I srv  update_slots: all slots are idle
+[34m32.57.647.231[0m [32mI [0msrv  proxy_reques: proxying request to model LFM2.5-8B-A1B-Q4_K_M.gguf on port 63631
+[63631] 11.36.183.943 I srv  params_from_: Chat format: peg-native
+[63631] 11.36.184.839 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 0.999 (> 0.100 thold), f_keep = 0.563
+[63631] 11.36.185.373 I slot launch_slot_: id  0 | task 891 | processing task, is_child = 0
+[63631] 11.36.185.403 I slot update_slots: id  0 | task 891 | Checking checkpoint with [1711, 1711] against 1200...
+[63631] 11.36.185.404 I slot update_slots: id  0 | task 891 | Checking checkpoint with [1197, 1197] against 1200...
+[63631] 11.36.188.097 W slot update_slots: id  0 | task 891 | restored context checkpoint (pos_min = 1197, pos_max = 1197, n_tokens = 1198, n_past = 1198, size = 0.282 MiB)
+[63631] 11.36.188.104 W slot update_slots: id  0 | task 891 | erased invalidated context checkpoint (pos_min = 1711, pos_max = 1711, n_tokens = 1712, n_swa = 0, pos_next = 1198, size = 0.282 MiB)
+[63631] 11.36.484.204 I reasoning-budget: activated, budget=1 tokens
+[63631] 11.36.593.530 I reasoning-budget: budget exhausted, forcing end sequence
+[63631] 11.36.701.850 I reasoning-budget: forced sequence complete, done
+[63631] 11.38.217.831 W srv          stop: cancel task, id_task = 891
+[63631] 11.38.331.030 I slot      release: id  0 | task 891 | stop processing: n_tokens = 1220, truncated = 0
+[63631] 11.38.331.098 I srv  update_slots: all slots are idle
+[34m33.01.798.372[0m [32mI [0msrv  proxy_reques: proxying request to model LFM2.5-8B-A1B-Q4_K_M.gguf on port 63631
+[63631] 11.40.349.937 I srv  params_from_: Chat format: peg-native
+[63631] 11.40.350.784 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 0.700 (> 0.100 thold), f_keep = 0.984
+[63631] 11.40.351.144 I slot launch_slot_: id  0 | task 912 | processing task, is_child = 0
+[63631] 11.40.351.209 I slot update_slots: id  0 | task 912 | Checking checkpoint with [1197, 1197] against 1200...
+[63631] 11.40.354.080 W slot update_slots: id  0 | task 912 | restored context checkpoint (pos_min = 1197, pos_max = 1197, n_tokens = 1198, n_past = 1198, size = 0.282 MiB)
+[63631] 11.47.033.360 I slot create_check: id  0 | task 912 | created context checkpoint 3 of 32 (pos_min = 1711, pos_max = 1711, n_tokens = 1712, size = 0.282 MiB)
+[63631] 11.47.181.103 I reasoning-budget: activated, budget=1 tokens
+[63631] 11.47.238.598 I reasoning-budget: budget exhausted, forcing end sequence
+[63631] 11.47.293.442 I reasoning-budget: forced sequence complete, done
+[63631] 11.52.298.821 I slot print_timing: id  0 | task 912 | n_decoded =    100, tg =  19.54 t/s
+[63631] 11.55.315.411 I slot print_timing: id  0 | task 912 | n_decoded =    159, tg =  19.55 t/s
+[63631] 11.58.352.096 I slot print_timing: id  0 | task 912 | n_decoded =    218, tg =  19.51 t/s
+[63631] 12.01.391.363 I slot print_timing: id  0 | task 912 | n_decoded =    277, tg =  19.49 t/s
+[63631] 12.04.418.171 I slot print_timing: id  0 | task 912 | n_decoded =    336, tg =  19.49 t/s
+[63631] 12.07.438.247 I slot print_timing: id  0 | task 912 | n_decoded =    394, tg =  19.45 t/s
+[63631] 12.08.776.628 I slot print_timing: id  0 | task 912 | prompt eval time =    6829.96 ms /   518 tokens (   13.19 ms per token,    75.84 tokens per second)
+[63631] 12.08.776.637 I slot print_timing: id  0 | task 912 |        eval time =   21595.48 ms /   420 tokens (   51.42 ms per token,    19.45 tokens per second)
+[63631] 12.08.776.649 I slot print_timing: id  0 | task 912 |       total time =   28425.44 ms /   938 tokens
+[63631] 12.08.776.651 I slot print_timing: id  0 | task 912 |    graphs reused =       1299
+[63631] 12.08.776.877 I slot      release: id  0 | task 912 | stop processing: n_tokens = 2135, truncated = 0
+[63631] 12.08.776.930 I srv  update_slots: all slots are idle
+[34m40.59.973.392[0m [32mI [0msrv  proxy_reques: proxying request to model LFM2.5-8B-A1B-Q4_K_M.gguf on port 63631
+[63631] 19.38.509.683 I srv  params_from_: Chat format: peg-native
+[63631] 19.38.510.467 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 0.178 (> 0.100 thold), f_keep = 0.100
+[63631] 19.38.510.472 I srv  get_availabl: updating prompt cache
+[63631] 19.38.511.161 W srv   prompt_save:  - saving prompt with length 2135, total state size = 25.326 MiB (draft: 0.000 MiB)
+[63631] 19.38.533.154 I srv          load:  - looking for better prompt, base f_keep = 0.100, sim = 0.178
+[63631] 19.38.533.174 I srv        update:  - cache state: 1 prompts, 26.171 MiB (limits: 8192.000 MiB, 8192 tokens, 668297 est)
+[63631] 19.38.533.178 I srv        update:    - prompt 0000019FFF914950:    2135 tokens, checkpoints:  3,    26.171 MiB
+[63631] 19.38.533.185 I srv  get_availabl: prompt cache update took 22.71 ms
+[63631] 19.38.533.866 I slot launch_slot_: id  0 | task 1335 | processing task, is_child = 0
+[63631] 19.38.533.912 I slot update_slots: id  0 | task 1335 | Checking checkpoint with [1711, 1711] against 213...
+[63631] 19.38.533.914 I slot update_slots: id  0 | task 1335 | Checking checkpoint with [1197, 1197] against 213...
+[63631] 19.38.533.916 I slot update_slots: id  0 | task 1335 | Checking checkpoint with [680, 680] against 213...
+[63631] 19.38.533.919 W slot update_slots: id  0 | task 1335 | forcing full prompt re-processing due to lack of cache data (likely due to SWA or hybrid/recurrent memory, see https://github.com/ggml-org/llama.cpp/pull/13194#issuecomment-2868343055)
+[63631] 19.38.533.924 W slot update_slots: id  0 | task 1335 | erased invalidated context checkpoint (pos_min = 680, pos_max = 680, n_tokens = 681, n_swa = 0, pos_next = 0, size = 0.282 MiB)
+[63631] 19.38.533.930 W slot update_slots: id  0 | task 1335 | erased invalidated context checkpoint (pos_min = 1197, pos_max = 1197, n_tokens = 1198, n_swa = 0, pos_next = 0, size = 0.282 MiB)
+[63631] 19.38.533.933 W slot update_slots: id  0 | task 1335 | erased invalidated context checkpoint (pos_min = 1711, pos_max = 1711, n_tokens = 1712, n_swa = 0, pos_next = 0, size = 0.282 MiB)
+[63631] 19.45.542.930 I slot print_timing: id  0 | task 1335 | prompt processing, n_tokens =    686, progress = 0.57, t =   7.01 s / 97.87 tokens per second
+[63631] 19.48.195.425 I slot create_check: id  0 | task 1335 | created context checkpoint 1 of 32 (pos_min = 685, pos_max = 685, n_tokens = 686, size = 0.282 MiB)
+[63631] 19.48.202.394 I slot print_timing: id  0 | task 1335 | prompt processing, n_tokens =   1198, progress = 1.00, t =   9.67 s / 123.91 tokens per second
+[63631] 19.52.845.207 I slot create_check: id  0 | task 1335 | created context checkpoint 2 of 32 (pos_min = 1197, pos_max = 1197, n_tokens = 1198, size = 0.282 MiB)
+[63631] 19.52.987.015 I reasoning-budget: activated, budget=1 tokens
+[63631] 19.53.038.205 I reasoning-budget: budget exhausted, forcing end sequence
+[63631] 19.53.092.005 I reasoning-budget: forced sequence complete, done
+[63631] 19.54.153.035 I slot print_timing: id  0 | task 1335 | prompt eval time =   14453.13 ms /  1202 tokens (   12.02 ms per token,    83.17 tokens per second)
+[63631] 19.54.153.046 I slot print_timing: id  0 | task 1335 |        eval time =    1165.98 ms /    24 tokens (   48.58 ms per token,    20.58 tokens per second)
+[63631] 19.54.153.048 I slot print_timing: id  0 | task 1335 |       total time =   15619.11 ms /  1226 tokens
+[63631] 19.54.153.050 I slot print_timing: id  0 | task 1335 |    graphs reused =       1321
+[63631] 19.54.153.301 I slot      release: id  0 | task 1335 | stop processing: n_tokens = 1225, truncated = 0
+[63631] 19.54.153.364 I srv  update_slots: all slots are idle
+[34m41.17.700.213[0m [32mI [0msrv  proxy_reques: proxying request to model LFM2.5-8B-A1B-Q4_K_M.gguf on port 63631
+[63631] 19.56.238.070 I srv  params_from_: Chat format: peg-native
+[63631] 19.56.239.051 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 0.706 (> 0.100 thold), f_keep = 0.980
+[63631] 19.56.239.476 I slot launch_slot_: id  0 | task 1362 | processing task, is_child = 0
+[63631] 19.56.239.507 I slot update_slots: id  0 | task 1362 | Checking checkpoint with [1197, 1197] against 1200...
+[63631] 19.56.242.885 W slot update_slots: id  0 | task 1362 | restored context checkpoint (pos_min = 1197, pos_max = 1197, n_tokens = 1198, n_past = 1198, size = 0.282 MiB)
+[63631] 20.01.981.868 I slot create_check: id  0 | task 1362 | created context checkpoint 3 of 32 (pos_min = 1695, pos_max = 1695, n_tokens = 1696, size = 0.282 MiB)
+[63631] 20.02.123.950 I reasoning-budget: activated, budget=1 tokens
+[63631] 20.02.181.356 I reasoning-budget: budget exhausted, forcing end sequence
+[63631] 20.02.235.761 I reasoning-budget: forced sequence complete, done
+[63631] 20.05.711.714 I slot print_timing: id  0 | task 1362 | prompt eval time =    5884.47 ms /   502 tokens (   11.72 ms per token,    85.31 tokens per second)
+[63631] 20.05.711.723 I slot print_timing: id  0 | task 1362 |        eval time =    3587.72 ms /    70 tokens (   51.25 ms per token,    19.51 tokens per second)
+[63631] 20.05.711.733 I slot print_timing: id  0 | task 1362 |       total time =    9472.20 ms /   572 tokens
+[63631] 20.05.711.734 I slot print_timing: id  0 | task 1362 |    graphs reused =       1389
+[63631] 20.05.711.940 I slot      release: id  0 | task 1362 | stop processing: n_tokens = 1769, truncated = 0
+[63631] 20.05.711.991 I srv  update_slots: all slots are idle
+[34m41.43.280.077[0m [32mI [0msrv  proxy_reques: proxying request to model LFM2.5-8B-A1B-Q4_K_M.gguf on port 63631
+[63631] 20.21.840.181 I srv  params_from_: Chat format: peg-native
+[63631] 20.21.841.633 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 0.953 (> 0.100 thold), f_keep = 0.960
+[63631] 20.21.842.065 I slot launch_slot_: id  0 | task 1434 | processing task, is_child = 0
+[63631] 20.21.842.092 I slot update_slots: id  0 | task 1434 | Checking checkpoint with [1695, 1695] against 1698...
+[63631] 20.21.843.912 W slot update_slots: id  0 | task 1434 | restored context checkpoint (pos_min = 1695, pos_max = 1695, n_tokens = 1696, n_past = 1696, size = 0.282 MiB)
+[63631] 20.26.727.545 I reasoning-budget: activated, budget=1 tokens
+[63631] 20.26.783.244 I reasoning-budget: budget exhausted, forcing end sequence
+[63631] 20.26.837.320 I reasoning-budget: forced sequence complete, done
+[63631] 20.31.891.372 I slot print_timing: id  0 | task 1434 | n_decoded =    100, tg =  19.37 t/s
+[63631] 20.34.926.248 I slot print_timing: id  0 | task 1434 | n_decoded =    158, tg =  19.27 t/s
+[63631] 20.37.846.382 I slot print_timing: id  0 | task 1434 | prompt eval time =    4885.48 ms /    87 tokens (   56.15 ms per token,    17.81 tokens per second)
+[63631] 20.37.846.393 I slot print_timing: id  0 | task 1434 |        eval time =   11118.78 ms /   214 tokens (   51.96 ms per token,    19.25 tokens per second)
+[63631] 20.37.846.395 I slot print_timing: id  0 | task 1434 |       total time =   16004.26 ms /   301 tokens
+[63631] 20.37.846.396 I slot print_timing: id  0 | task 1434 |    graphs reused =       1600
+[63631] 20.37.846.775 I slot      release: id  0 | task 1434 | stop processing: n_tokens = 1996, truncated = 0
+[63631] 20.37.846.822 I srv  update_slots: all slots are idle
