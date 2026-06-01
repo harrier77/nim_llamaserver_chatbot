@@ -10,11 +10,106 @@
 # IMPORTANT: do not import input.nim, ui.nim, main.nim
 # ============================================================
 
-import asyncdispatch, httpclient, json, strutils
+import asyncdispatch, httpclient, json, re, strutils
 import config
 import tools
 
 # ============================================================
+
+# ============================================================
+# Tool call args parsing with fallback for malformed JSON
+# (small models often output truncated or slightly malformed JSON)
+# ============================================================
+
+proc safeParseToolArgs*(raw: string): JsonNode =
+  ## Parse tool call arguments with multi-level fallback.
+  ## 1. Try parseJson directly
+  ## 2. Try repair (missing closing brace/bracket/quote)
+  ## 3. Try regex extraction of known parameter keys
+
+  # --- Level 1: direct parse ---
+  try:
+    return parseJson(raw)
+  except JsonParsingError:
+    discard
+
+  # --- Level 2: repair truncated JSON ---
+  block repair:
+    var fixed = raw.strip()
+    # Strip leading/trailing garbage
+    let braceStart = fixed.find('{')
+    if braceStart < 0: break repair  # no JSON object at all
+    if braceStart > 0: fixed = fixed[braceStart..^1]
+
+    # Remove trailing comma before closing
+    fixed = fixed.replace(",}", "}").replace(",]", "]")
+
+    # Remove trailing incomplete value after last colon
+    let lastColon = fixed.rfind(':')
+    if lastColon >= 0:
+      let afterColon = fixed[lastColon+1..^1].strip()
+      if afterColon.len == 0 or afterColon == "\"" or afterColon == "'":
+        fixed = fixed[0..<lastColon]
+
+    # Count brace depth and close any unclosed braces
+    var depth = 0
+    var inStr = false
+    for c in fixed:
+      if c == '"' and (depth == 0 or fixed[depth-1] != '\\'):
+        inStr = not inStr
+      elif not inStr:
+        if c == '{': inc depth
+        elif c == '}': dec depth
+    if fixed.len > 0 and fixed[^1] != '}':
+      for _ in 1..depth:
+        fixed &= "}"
+    # Also close unclosed strings (replace last unterminated quoted value)
+    if raw.count('"') mod 2 != 0:
+      fixed &= "\""
+
+    try:
+      return parseJson(fixed)
+    except JsonParsingError:
+      discard
+
+  # --- Level 3: regex extraction from raw text ---
+  result = %*{}
+
+  # Try to extract known keys (both JSON-style "key": val and plain-text key: val)
+  # Order matters: more specific keys first (limit_bytes before limit)
+  let knownKeys = @["limit_bytes", "offset_bytes", "limit", "offset",
+                    "file_path", "from_tail", "path", "exclude"]
+
+  for key in knownKeys:
+    # Pattern 1: "key": "string value"
+    var matches: seq[string] = @[]
+    if raw.find(re("\"" & key & "\"\\s*:\\s*\"([^\"]*)\""), matches) != -1:
+      result[key] = %matches[0]
+      continue
+
+    # Pattern 2: "key": number
+    matches = @[]
+    if raw.find(re("\"" & key & "\"\\s*:\\s*(-?\\d+\\.?\\d*)"), matches) != -1:
+      try:
+        result[key] = %parseInt(matches[0])
+      except:
+        try:
+          result[key] = %parseFloat(matches[0])
+        except:
+          result[key] = %matches[0]
+      continue
+
+    # Pattern 3: "key": true/false
+    matches = @[]
+    if raw.find(re("\"" & key & "\"\\s*:\\s*(true|false)"), matches) != -1:
+      result[key] = %(matches[0] == "true")
+      continue
+
+    # Pattern 4: plain-text key=value
+    matches = @[]
+    if raw.find(re(key & "\\s*[=:]\\s*\"?([^\\s,\"]+)\"?"), matches) != -1:
+      result[key] = %matches[0]
+      continue
 
 # ============================================================
 # Conversation history management (sliding window)
@@ -314,7 +409,7 @@ proc sendToLLM*(prompt: string = "") {.async.} =
         let toolId = tc["id"].getStr()
 
         outputLines.add("System: Tool Call -> " & toolName & "(" & toolArgs & ")")
-        let result = tools.executeTool(toolName, parseJson(toolArgs))
+        let result = tools.executeTool(toolName, safeParseToolArgs(toolArgs))
 
         # Extract content and summary from the tool's JSON result
         # The tool returns: {"content": "...", "summary": "...", "exit_code": X}

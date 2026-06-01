@@ -1,72 +1,86 @@
-17:08:49 Stream finished — closing browser connection
-17:08:49 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
-17:08:49 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
-17:08:49 [PROXY] authHeader (provider name): llamacpp
-17:08:49 [PROXY] apiKey found: NO
-17:08:49 [PROXY] body (first 500 chars): {"model":"LFM2.5-8B-A1B-Q4_K_M.gguf","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read the content of a file. Supports offset/limit for pagination, and from_tail for reading log files from the end.\nParameters: file_path (requir
-17:09:00 Stream finished — closing browser connection
-17:09:00 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
-17:09:00 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
-17:09:00 [PROXY] authHeader (provider name): llamacpp
-17:09:00 [PROXY] apiKey found: NO
-17:09:00 [PROXY] body (first 500 chars): {"model":"LFM2.5-8B-A1B-Q4_K_M.gguf","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read the content of a file. Supports offset/limit for pagination, and from_tail for reading log files from the end.\nParameters: file_path (requir
-17:09:13 Stream finished — closing browser connection
-17:09:25 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
-17:09:25 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
-17:09:25 [PROXY] authHeader (provider name): llamacpp
-17:09:25 [PROXY] apiKey found: NO
-17:09:25 [PROXY] body (first 500 chars): {"model":"LFM2.5-8B-A1B-Q4_K_M.gguf","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read the content of a file. Supports offset/limit for pagination, and from_tail for reading log files from the end.\nParameters: file_path (requir
-17:09:33 Stream finished — closing browser connection
-17:09:33 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
-17:09:33 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
-17:09:33 [PROXY] authHeader (provider name): llamacpp
-17:09:33 [PROXY] apiKey found: NO
-17:09:33 [PROXY] body (first 500 chars): {"model":"LFM2.5-8B-A1B-Q4_K_M.gguf","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read the content of a file. Supports offset/limit for pagination, and from_tail for reading log files from the end.\nParameters: file_path (requir
-17:09:42 Stream finished — closing browser connection
-17:09:58 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
-17:09:58 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
-17:09:58 [PROXY] authHeader (provider name): llamacpp
-17:09:58 [PROXY] apiKey found: NO
-17:09:58 [PROXY] body (first 500 chars): {"model":"LFM2.5-8B-A1B-Q4_K_M.gguf","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read the content of a file. Supports offset/limit for pagination, and from_tail for reading log files from the end.\nParameters: file_path (requir
-17:10:06 Stream finished — closing browser connection
-17:10:06 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
-17:10:06 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
-17:10:06 [PROXY] authHeader (provider name): llamacpp
-17:10:06 [PROXY] apiKey found: NO
-17:10:06 [PROXY] body (first 500 chars): {"model":"LFM2.5-8B-A1B-Q4_K_M.gguf","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read the content of a file. Supports offset/limit for pagination, and from_tail for reading log files from the end.\nParameters: file_path (requir
-17:10:11 Stream finished — closing browser connection
-17:10:11 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
-17:10:11 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
-17:10:11 [PROXY] authHeader (provider name): llamacpp
-17:10:11 [PROXY] apiKey found: NO
-17:10:11 [PROXY] body (first 500 chars): {"model":"LFM2.5-8B-A1B-Q4_K_M.gguf","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read the content of a file. Supports offset/limit for pagination, and from_tail for reading log files from the end.\nParameters: file_path (requir
-17:10:18 Stream finished — closing browser connection
-17:11:06 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
-17:11:06 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
-17:11:06 [PROXY] authHeader (provider name): llamacpp
-17:11:06 [PROXY] apiKey found: NO
-17:11:06 [PROXY] body (first 500 chars): {"model":"LFM2.5-8B-A1B-Q4_K_M.gguf","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read the content of a file. Supports offset/limit for pagination, and from_tail for reading log files from the end.\nParameters: file_path (requir
-17:11:13 Stream finished — closing browser connection
-17:11:13 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
-17:11:13 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
-17:11:13 [PROXY] authHeader (provider name): llamacpp
-17:11:13 [PROXY] apiKey found: NO
-17:11:13 [PROXY] body (first 500 chars): {"model":"LFM2.5-8B-A1B-Q4_K_M.gguf","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read the content of a file. Supports offset/limit for pagination, and from_tail for reading log files from the end.\nParameters: file_path (requir
-17:11:44 Stream finished — closing browser connection
-17:12:14 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
-17:12:14 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
-17:12:14 [PROXY] authHeader (provider name): llamacpp
-17:12:14 [PROXY] apiKey found: NO
-17:12:14 [PROXY] body (first 500 chars): {"model":"LFM2.5-8B-A1B-Q4_K_M.gguf","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read the content of a file. Supports offset/limit for pagination, and from_tail for reading log files from the end.\nParameters: file_path (requir
-17:12:21 Stream finished — closing browser connection
-17:12:21 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
-17:12:21 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
-17:12:21 [PROXY] authHeader (provider name): llamacpp
-17:12:21 [PROXY] apiKey found: NO
-17:12:21 [PROXY] body (first 500 chars): {"model":"LFM2.5-8B-A1B-Q4_K_M.gguf","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read the content of a file. Supports offset/limit for pagination, and from_tail for reading log files from the end.\nParameters: file_path (requir
-17:12:35 Stream finished — closing browser connection
-17:12:49 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
-17:12:49 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
-17:12:49 [PROXY] authHeader (provider name): llamacpp
-17:12:49 [PROXY] apiKey found: NO
-17:12:49 [PROXY] body (first 500 chars): {"model":"LFM2.5-8B-A1B-Q4_K_M.gguf","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read the content of a file. Supports offset/limit for pagination, and from_tail for reading log files from the end.\nParameters: file_path (requir
+21:53:54 Stream finished — closing browser connection
+21:53:54 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
+21:53:54 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
+21:53:54 [PROXY] authHeader (provider name): llamacpp
+21:53:54 [PROXY] apiKey found: NO
+21:53:54 [PROXY] body (first 500 chars): {"model":"LFM2.5-8B-A1B-Q4_K_M.gguf","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read a file from the filesystem. Supports line-based pagination (offset/limit), byte cap (limit_bytes), and tail-mode for logs. All parameters are
+21:54:25 === /api/models providerUrl=http://localhost:8080 providerName=
+21:54:25 /api/models port 8080 reachable, trying HTTP
+21:54:25 /api/models trying http://localhost:8080/v1/models
+21:54:27 /api/models SUCCESS 12767 bytes
+21:54:39 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
+21:54:39 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
+21:54:39 [PROXY] authHeader (provider name): llamacpp
+21:54:39 [PROXY] apiKey found: NO
+21:54:39 [PROXY] body (first 500 chars): {"model":"LFM2.5-8B-A1B-Q4_K_M.gguf","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read a file from the filesystem. Supports line-based pagination (offset/limit), byte cap (limit_bytes), and tail-mode for logs. All parameters are
+21:54:47 Stream finished — closing browser connection
+21:54:47 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
+21:54:47 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
+21:54:47 [PROXY] authHeader (provider name): llamacpp
+21:54:47 [PROXY] apiKey found: NO
+21:54:47 [PROXY] body (first 500 chars): {"model":"LFM2.5-8B-A1B-Q4_K_M.gguf","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read a file from the filesystem. Supports line-based pagination (offset/limit), byte cap (limit_bytes), and tail-mode for logs. All parameters are
+21:54:56 === /api/models providerUrl=http://localhost:8080 providerName=
+21:54:56 /api/models port 8080 reachable, trying HTTP
+21:54:56 /api/models trying http://localhost:8080/v1/models
+21:54:58 /api/models SUCCESS 12767 bytes
+21:55:12 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
+21:55:12 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
+21:55:12 [PROXY] authHeader (provider name): llamacpp
+21:55:12 [PROXY] apiKey found: NO
+21:55:12 [PROXY] body (first 500 chars): {"model":"Qwen3.5_2b-text","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read a file from the filesystem. Supports line-based pagination (offset/limit), byte cap (limit_bytes), and tail-mode for logs. All parameters are JSON keys
+21:55:16 === /api/models providerUrl=http://localhost:8080 providerName=
+21:55:16 /api/models port 8080 reachable, trying HTTP
+21:55:16 /api/models trying http://localhost:8080/v1/models
+21:55:18 /api/models SUCCESS 12773 bytes
+21:55:26 Stream finished — closing browser connection
+21:55:51 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
+21:55:51 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
+21:55:51 [PROXY] authHeader (provider name): llamacpp
+21:55:51 [PROXY] apiKey found: NO
+21:55:51 [PROXY] body (first 500 chars): {"model":"Qwen3.5_2b-text","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read a file from the filesystem. Supports line-based pagination (offset/limit), byte cap (limit_bytes), and tail-mode for logs. All parameters are JSON keys
+21:55:56 Stream finished — closing browser connection
+21:55:56 === getFileTool ===
+21:55:56 args: {"file_path":"./colosseo.txt","limit_bytes":4096}
+21:55:56 path: ./colosseo.txt
+21:55:56 resolvedPath: C:\Users\pr30565\Nim_code\nim_llamaserver_chatbot\colosseo.txt
+21:55:56 offsetBytes: 0
+21:55:56 limitBytes: 4096
+21:55:56 fileSize (raw): 2414
+21:55:56 no page marker found
+21:55:56 fileSize after offset: 2414
+21:55:56 final content length: 2414
+21:55:56 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
+21:55:56 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
+21:55:56 [PROXY] authHeader (provider name): llamacpp
+21:55:56 [PROXY] apiKey found: NO
+21:55:56 [PROXY] body (first 500 chars): {"model":"Qwen3.5_2b-text","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read a file from the filesystem. Supports line-based pagination (offset/limit), byte cap (limit_bytes), and tail-mode for logs. All parameters are JSON keys
+21:56:22 Stream finished — closing browser connection
+21:56:54 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
+21:56:54 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
+21:56:54 [PROXY] authHeader (provider name): llamacpp
+21:56:54 [PROXY] apiKey found: NO
+21:56:54 [PROXY] body (first 500 chars): {"model":"Qwen3.5_2b-text","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read a file from the filesystem. Supports line-based pagination (offset/limit), byte cap (limit_bytes), and tail-mode for logs. All parameters are JSON keys
+21:57:01 Stream finished — closing browser connection
+21:57:01 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
+21:57:01 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
+21:57:01 [PROXY] authHeader (provider name): llamacpp
+21:57:01 [PROXY] apiKey found: NO
+21:57:01 [PROXY] body (first 500 chars): {"model":"Qwen3.5_2b-text","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read a file from the filesystem. Supports line-based pagination (offset/limit), byte cap (limit_bytes), and tail-mode for logs. All parameters are JSON keys
+21:57:28 Stream finished — closing browser connection
+21:57:53 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
+21:57:53 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
+21:57:53 [PROXY] authHeader (provider name): llamacpp
+21:57:53 [PROXY] apiKey found: NO
+21:57:53 [PROXY] body (first 500 chars): {"model":"Qwen3.5_2b-text","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read a file from the filesystem. Supports line-based pagination (offset/limit), byte cap (limit_bytes), and tail-mode for logs. All parameters are JSON keys
+21:58:00 Stream finished — closing browser connection
+21:58:00 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
+21:58:00 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
+21:58:00 [PROXY] authHeader (provider name): llamacpp
+21:58:00 [PROXY] apiKey found: NO
+21:58:00 [PROXY] body (first 500 chars): {"model":"Qwen3.5_2b-text","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read a file from the filesystem. Supports line-based pagination (offset/limit), byte cap (limit_bytes), and tail-mode for logs. All parameters are JSON keys
+21:58:32 Stream finished — closing browser connection
+21:59:15 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
+21:59:15 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
+21:59:15 [PROXY] authHeader (provider name): llamacpp
+21:59:15 [PROXY] apiKey found: NO
+21:59:15 [PROXY] body (first 500 chars): {"model":"Qwen3.5_2b-text","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read a file from the filesystem. Supports line-based pagination (offset/limit), byte cap (limit_bytes), and tail-mode for logs. All parameters are JSON keys

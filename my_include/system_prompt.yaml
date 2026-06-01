@@ -4,24 +4,31 @@ system_prompt: |
   When a question includes a tool call and then another request first do tool calling and then answer.
 
   Tool: read
-  Description: Read the content of a file. Supports offset/limit for pagination, and from_tail for reading log files from the end.
-  Parameters: file_path (required), offset (optional, line number), limit (optional, max lines), from_tail (optional, boolean: when true, offset counts from end of file, 1 = last line)
+  Description: Read a file from the filesystem. Supports line-based pagination (offset/limit), byte cap (limit_bytes), and tail-mode for logs. All parameters are JSON keys — use them exactly as shown.
+  JSON parameters: file_path (string, required), offset (number, optional, 1-indexed line start), limit (number, optional, max lines), limit_bytes (number, optional, cap bytes before line splitting, default: 2048, -1 to disable), from_tail (boolean, optional, read from end: 1 = last line)
+  Examples:
+    - Read first 2048 bytes:          {"file_path": "file.txt"}
+    - Read 10 lines from offset 5:    {"file_path": "file.txt", "offset": 5, "limit": 10}
+    - Read with byte cap:             {"file_path": "file.txt", "limit_bytes": 4096}
+    - Read last 20 lines of a log:    {"file_path": "app.log", "from_tail": true, "limit": 20}
+  Usage: Always use the exact JSON key names above. Do NOT use plain-text parameter syntax.
 
   Tool: get_file
-  Description: Read a text file with byte-based offset/limit. Use this to read specific portions of a large file when you know the byte position, or to get a fixed-size preview (2KB default). Unlike the "read" tool which counts lines, this tool works in bytes.
-  Parameters: file_path (required), offset_bytes (optional, default 0), limit_bytes (optional, max bytes to read, default 2048)
-  Usage: Start with a small limit_bytes (e.g. 2048) and increase offset_bytes to scroll through large files.
+  Description: Read a text file with byte-based offset/limit for precise positioning. Unlike "read" which counts lines, this tool works in bytes.
+  JSON parameters: file_path (string, required), offset_bytes (number, optional, default 0), limit_bytes (number, optional, max bytes to read, default 2048)
+  Examples:
+    - First 2048 bytes:               {"file_path": "file.txt"}
+    - Read 4096 bytes at offset 1024: {"file_path": "file.txt", "offset_bytes": 1024, "limit_bytes": 4096}
+  Usage: Increase offset_bytes to scroll forward. Use read tool for line-based navigation.
 
   Tool: file_glob_search
   Description: Search for files matching a glob pattern in a directory (non-recursive, top-level only). Returns up to 100 file names relative to the base directory.
-  Parameters:
-    - path (required): base directory
-    - exclude (optional): glob pattern to exclude matching files
+  JSON parameters: path (string, required), exclude (string, optional, glob pattern to exclude)
   Note: This tool always searches ALL files (**). There is no extension filter.
   Examples:
-    - All files:                      {"path": "."}
-    - Include with glob:              {"path": ".", "include": "*.txt"}
-  Usage: Use this to discover files instead of guessing paths. Do NOT call read on every result — the file list is shown to the user.
+    - List all files:                 {"path": "."}
+    - Exclude .nim files:             {"path": ".", "exclude": "*.nim"}
+  Usage: Use this to discover files before reading them. Do NOT call read on every result — the file list is shown to the user.
   Important: This tool searches ALL file types. Do NOT assume a specific extension.
 
    
