@@ -614,6 +614,111 @@
       }
     }
 
+    // ============ SAFE TOOL ARGS PARSER ============
+    // Mirrors the Nim `safeParseToolArgs` in my_include/tools.nim.
+    // 3-level fallback for malformed JSON emitted by small models
+    // (LFM2.5 commonly emits `"limit":` with no value).
+    //   1. Direct JSON.parse
+    //   2. Repair: strip Python booleans, drop trailing empty value after ":"
+    //   3. Regex extraction of known parameter keys
+    function safeParseToolArgs(raw) {
+      if (raw == null || raw === undefined) return {};
+      if (typeof raw === 'object') return raw;  // already an object
+      if (typeof raw !== 'string') return {};
+
+      // --- Level 1: direct parse ---
+      try { return JSON.parse(raw); } catch(e) {}
+
+      // --- Level 2: repair ---
+      let fixed = raw;
+
+      // Normalize Python-style booleans
+      fixed = fixed.replace(/:\s*True\b/g, ': true')
+                   .replace(/:\s*False\b/g, ': false')
+                   .replace(/:\s*None\b/g, ': null');
+
+      // Find JSON object start
+      const braceStart = fixed.indexOf('{');
+      if (braceStart < 0) {
+        // No JSON object — try regex extraction below
+        fixed = raw;
+      } else {
+        fixed = fixed.slice(braceStart);
+        // Strip trailing comma
+        fixed = fixed.replace(/,(\s*[}\]])/g, '$1');
+
+        // ★ KEY FIX: drop "key": with no value (LFM2.5 case).
+        // Loop because the LLM may emit multiple orphan keys in sequence
+        // (e.g. {"file_path":"x","limit":, "offset":}).
+        let changed = true;
+        while (changed) {
+          changed = false;
+          const lastColon = fixed.lastIndexOf(':');
+          if (lastColon >= 0) {
+            const after = fixed.slice(lastColon + 1).trim();
+            if (after === '' || after === '"' || after === "'" ||
+                after === '}' || after === ']' || after === ',') {
+              // Drop from the last colon, then walk back through the key
+              // and the leading separator.
+              fixed = fixed.slice(0, lastColon);
+              // strip trailing whitespace
+              fixed = fixed.replace(/\s+$/, '');
+              // walk back through the key (quoted string)
+              if (fixed.length > 0 && fixed[fixed.length - 1] === '"') {
+                fixed = fixed.slice(0, -1);
+                while (fixed.length > 0 && fixed[fixed.length - 1] !== '"') {
+                  fixed = fixed.slice(0, -1);
+                }
+                if (fixed.length > 0 && fixed[fixed.length - 1] === '"') {
+                  fixed = fixed.slice(0, -1);
+                }
+              }
+              // strip trailing whitespace + optional leading comma
+              fixed = fixed.replace(/[\s,]+$/, '');
+              changed = true;
+            }
+          }
+        }
+
+        // Close unclosed braces (with proper string handling)
+        let depth = 0, inStr = false, esc = false;
+        for (let i = 0; i < fixed.length; i++) {
+          const c = fixed[i];
+          if (esc) { esc = false; continue; }
+          if (c === '\\') { esc = true; continue; }
+          if (c === '"') inStr = !inStr;
+          else if (!inStr) { if (c === '{') depth++; else if (c === '}') depth--; }
+        }
+        if (fixed.length === 0 || fixed[fixed.length - 1] !== '}') {
+          for (let i = 0; i < depth; i++) fixed += '}';
+        }
+        // Close unclosed string
+        const quoteCount = (fixed.match(/"/g) || []).length;
+        if (quoteCount % 2 !== 0) fixed += '"';
+
+        try { return JSON.parse(fixed); } catch(e) {}
+      }
+
+      // --- Level 3: regex extraction of known keys ---
+      const out = {};
+      const knownKeys = ['limit_bytes', 'offset_bytes', 'limit', 'offset',
+                         'file_path', 'from_tail', 'path', 'exclude'];
+      const source = fixed;
+      for (const key of knownKeys) {
+        let m = source.match(new RegExp('"' + key + '"\\s*:\\s*"([^"]*)"'));
+        if (m) { out[key] = m[1]; continue; }
+        m = source.match(new RegExp('"' + key + '"\\s*:\\s*(-?\\d+\\.?\\d*)'));
+        if (m) {
+          const v = parseFloat(m[1]);
+          out[key] = Number.isFinite(v) ? v : m[1];
+          continue;
+        }
+        m = source.match(new RegExp('"' + key + '"\\s*:\\s*(true|false)'));
+        if (m) { out[key] = (m[1] === 'true'); continue; }
+      }
+      return out;
+    }
+
     // ============ SEND MESSAGE (with tool calling) ============
     async function sendMessage(message) {
       if (isProcessing) return;
@@ -766,16 +871,9 @@
             // Execute each tool and add results to history
             for (const tc of toolCallsCollected) {
               const toolName = tc.function.name;
-              let toolArgs = {};
-              try {
-                // Fix: llama.cpp models sometimes emit Python-style booleans (True/False/None)
-                // which break JSON.parse. Normalize before parsing.
-                const normalizedArgs = tc.function.arguments
-                  .replace(/:\s*True\b/g, ': true')
-                  .replace(/:\s*False\b/g, ': false')
-                  .replace(/:\s*None\b/g, ': null');
-                toolArgs = JSON.parse(normalizedArgs);
-              } catch(e) { toolArgs = {}; }
+              // Use safeParseToolArgs (3-level fallback) instead of fragile JSON.parse.
+              // LFM2.5 models commonly emit "limit": with no value → JSON.parse fails.
+              const toolArgs = safeParseToolArgs(tc.function.arguments);
               const toolId = tc.id;
 
               addChatMessage('system', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon lucide lucide-wrench h-4 w-4" style="display:inline-block;vertical-align:middle;margin-right:8px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg> Tool Call -> ' + toolName + '(' + tc.function.arguments + ')');
@@ -1305,7 +1403,7 @@
           chatInput.value = 'read "' + filePath + '" from_tail limit 3 and show user_email, included path and new value';
         } else {
           var toolName = currentDir.includes('delibere') ? 'get_file' : 'read';
-          chatInput.value = toolName + ' "' + filePath + '"' + (toolName === 'get_file' ? 'limit 4096 and summarize in 200 words italian discoursive' : '');
+          chatInput.value = toolName + ' "' + filePath + '"' + (toolName === 'get_file' ? ' limit 4096 and summarize in 200 words italian discoursive' : '');
         }
         chatInput.dispatchEvent(new Event('input', { bubbles: true }));
         chatInput.focus();

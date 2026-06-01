@@ -1,4 +1,4 @@
-import json, os, osproc, strutils
+import json, os, osproc, re, strutils
 import config_web
 
 # ============================================================
@@ -94,6 +94,151 @@ const ToolsSchemaJson* = """[
 let ToolsSchema* = parseJson(ToolsSchemaJson)
 
 
+# ============================================================
+# Tool call args parsing with fallback for malformed JSON
+# (small models often output truncated or slightly malformed JSON,
+#  e.g. LFM2.5 emits `"limit":` with no value → JSON.parse fails)
+# ============================================================
+
+proc safeParseToolArgs*(raw: string): JsonNode =
+  ## Parse tool call arguments with multi-level fallback.
+  ## 1. Try parseJson directly
+  ## 2. Try repair (missing closing brace/bracket/quote, trailing colon)
+  ## 3. Try regex extraction of known parameter keys
+
+  # --- Level 1: direct parse ---
+  try:
+    return parseJson(raw)
+  except JsonParsingError:
+    discard
+
+  # --- Level 2: repair truncated JSON ---
+  block repair:
+    var fixed = raw.strip()
+    # Strip leading/trailing garbage
+    let braceStart = fixed.find('{')
+    if braceStart < 0: break repair  # no JSON object at all
+    if braceStart > 0: fixed = fixed[braceStart..^1]
+
+    # Normalize Python-style booleans (common with llama.cpp/python-finetuned models)
+    fixed = fixed.replace(": True", ": true")
+    fixed = fixed.replace(": False", ": false")
+    fixed = fixed.replace(": None", ": null")
+
+    # Remove trailing comma before closing
+    fixed = fixed.replace(",}", "}").replace(",]", "]")
+
+    # Remove trailing incomplete value(s) after last colon.
+    # Handles LFM2.5 cases:
+    #   {"file_path":"x","limit":}
+    #   {"file_path":"x","limit":, "offset":}
+    # If after the last colon we only have a closing brace/bracket/comma
+    # (or nothing), the model emitted an empty value — drop the value AND
+    # the key that owned it, otherwise the JSON is still invalid
+    # (e.g. {"file_path":"x","limit"} — key without value).
+    # Loop because multiple orphan keys can appear in sequence.
+    var changed = true
+    while changed:
+      changed = false
+      let lastColon = fixed.rfind(':')
+      if lastColon >= 0:
+        let afterColon = fixed[lastColon+1..^1].strip()
+        if afterColon.len == 0 or afterColon == "\"" or afterColon == "'" or
+           afterColon == "}" or afterColon == "]" or afterColon == ",":
+          # Drop from the last colon, then walk back through whitespace and
+          # the key identifier (and optional leading comma) to fully remove
+          # the orphan entry.
+          fixed = fixed[0..<lastColon]
+          # Strip trailing whitespace
+          while fixed.len > 0 and fixed[^1] in {' ', '\t', '\n'}:
+            fixed.setLen(fixed.len - 1)
+          # Walk back through the key (which is a quoted string)
+          if fixed.len > 0 and fixed[^1] == '"':
+            fixed.setLen(fixed.len - 1)
+            # Walk back through the key body
+            while fixed.len > 0 and fixed[^1] != '"':
+              fixed.setLen(fixed.len - 1)
+            if fixed.len > 0 and fixed[^1] == '"':
+              fixed.setLen(fixed.len - 1)
+          # Strip whitespace and optional leading comma
+          while fixed.len > 0 and fixed[^1] in {' ', '\t', '\n'}:
+            fixed.setLen(fixed.len - 1)
+          if fixed.len > 0 and fixed[^1] == ',':
+            fixed.setLen(fixed.len - 1)
+          changed = true
+
+    # Count brace depth and close any unclosed braces
+    var depth = 0
+    var inStr = false
+    var esc = false
+    for c in fixed:
+      if esc:
+        esc = false
+        continue
+      if c == '\\':
+        esc = true
+        continue
+      if c == '"' :
+        inStr = not inStr
+      elif not inStr:
+        if c == '{': inc depth
+        elif c == '}': dec depth
+    if fixed.len > 0 and fixed[^1] != '}':
+      for _ in 1..depth:
+        fixed &= "}"
+    # Also close unclosed strings (replace last unterminated quoted value)
+    if raw.count('"') mod 2 != 0:
+      fixed &= "\""
+
+    try:
+      return parseJson(fixed)
+    except JsonParsingError:
+      discard
+
+  # --- Level 3: regex extraction from raw text ---
+  result = %*{}
+
+  # Try to extract known keys (JSON-style "key": val)
+  # Order matters: more specific keys first (limit_bytes before limit)
+  let knownKeys = @["limit_bytes", "offset_bytes", "limit", "offset",
+                    "file_path", "from_tail", "path", "exclude"]
+
+  for key in knownKeys:
+    # Pattern 1: "key": "string value"
+    var captures: seq[string] = @[]
+    if re.match(raw, re("\"" & key & "\"\\s*:\\s*\"([^\"]*)\""), captures):
+      if captures.len > 0:
+        result[key] = %captures[0]
+        continue
+
+    # Pattern 2: "key": number
+    captures = @[]
+    if re.match(raw, re("\"" & key & "\"\\s*:\\s*(-?\\d+\\.?\\d*)"), captures):
+      if captures.len > 0:
+        try:
+          result[key] = %parseInt(captures[0])
+        except:
+          try:
+            result[key] = %parseFloat(captures[0])
+          except:
+            result[key] = %captures[0]
+        continue
+
+    # Pattern 3: "key": true/false
+    captures = @[]
+    if re.match(raw, re("\"" & key & "\"\\s*:\\s*(true|false)"), captures):
+      if captures.len > 0:
+        result[key] = %(captures[0] == "true")
+        continue
+
+    # Pattern 4: plain-text key=value
+    captures = @[]
+    if re.match(raw, re(key & "\\s*[=:]\\s*\"?([^\\s,\"]+)\"?"), captures):
+      if captures.len > 0:
+        result[key] = %captures[0]
+        continue
+
+
 proc globMatch(pattern: string, str: string): bool =
   ## Simple glob matching.
   ## - * matches any characters except /
@@ -181,8 +326,15 @@ proc readTool*(args: JsonNode): string =
   const MaxReadBytes = 2048
   const MaxReadBytesTail = 4096
 
-  let path = if args.hasKey("file_path"): args["file_path"].getStr() else: ""
-  if path == "": return $(%*{"error": "Missing file_path parameter"})
+  let path = if args.hasKey("file_path") and args["file_path"].kind == JString:
+               args["file_path"].getStr()
+             else: ""
+  if path == "":
+    if args.kind != JObject or args.len == 0:
+      return $(%*{"error": "Tool arguments could not be parsed. " &
+                       "The model emitted malformed JSON. " &
+                       "Please retry the request. (raw args: " & $args & ")"})
+    return $(%*{"error": "Missing file_path parameter"})
 
   let offset = if args.hasKey("offset"): args["offset"].getInt() else: 1
   let limit = if args.hasKey("limit"): args["limit"].getInt() else: -1
@@ -306,8 +458,15 @@ proc getFileTool*(args: JsonNode): string =
   ## Default limit is 2048 bytes, offset defaults to 0 (start of file).
   const MaxReadBytes = 2048
 
-  let path = if args.hasKey("file_path"): args["file_path"].getStr() else: ""
-  if path == "": return $(%*{"error": "Missing file_path parameter"})
+  let path = if args.hasKey("file_path") and args["file_path"].kind == JString:
+               args["file_path"].getStr()
+             else: ""
+  if path == "":
+    if args.kind != JObject or args.len == 0:
+      return $(%*{"error": "Tool arguments could not be parsed. " &
+                       "The model emitted malformed JSON. " &
+                       "Please retry the request. (raw args: " & $args & ")"})
+    return $(%*{"error": "Missing file_path parameter"})
 
   # Resolve path relative to cwd (same logic as readTool)
   var resolvedPath = path.replace("\\", "/")

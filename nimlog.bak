@@ -1,86 +1,113 @@
-21:53:54 Stream finished — closing browser connection
-21:53:54 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
-21:53:54 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
-21:53:54 [PROXY] authHeader (provider name): llamacpp
-21:53:54 [PROXY] apiKey found: NO
-21:53:54 [PROXY] body (first 500 chars): {"model":"LFM2.5-8B-A1B-Q4_K_M.gguf","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read a file from the filesystem. Supports line-based pagination (offset/limit), byte cap (limit_bytes), and tail-mode for logs. All parameters are
-21:54:25 === /api/models providerUrl=http://localhost:8080 providerName=
-21:54:25 /api/models port 8080 reachable, trying HTTP
-21:54:25 /api/models trying http://localhost:8080/v1/models
-21:54:27 /api/models SUCCESS 12767 bytes
-21:54:39 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
-21:54:39 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
-21:54:39 [PROXY] authHeader (provider name): llamacpp
-21:54:39 [PROXY] apiKey found: NO
-21:54:39 [PROXY] body (first 500 chars): {"model":"LFM2.5-8B-A1B-Q4_K_M.gguf","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read a file from the filesystem. Supports line-based pagination (offset/limit), byte cap (limit_bytes), and tail-mode for logs. All parameters are
-21:54:47 Stream finished — closing browser connection
-21:54:47 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
-21:54:47 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
-21:54:47 [PROXY] authHeader (provider name): llamacpp
-21:54:47 [PROXY] apiKey found: NO
-21:54:47 [PROXY] body (first 500 chars): {"model":"LFM2.5-8B-A1B-Q4_K_M.gguf","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read a file from the filesystem. Supports line-based pagination (offset/limit), byte cap (limit_bytes), and tail-mode for logs. All parameters are
-21:54:56 === /api/models providerUrl=http://localhost:8080 providerName=
-21:54:56 /api/models port 8080 reachable, trying HTTP
-21:54:56 /api/models trying http://localhost:8080/v1/models
-21:54:58 /api/models SUCCESS 12767 bytes
-21:55:12 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
-21:55:12 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
-21:55:12 [PROXY] authHeader (provider name): llamacpp
-21:55:12 [PROXY] apiKey found: NO
-21:55:12 [PROXY] body (first 500 chars): {"model":"Qwen3.5_2b-text","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read a file from the filesystem. Supports line-based pagination (offset/limit), byte cap (limit_bytes), and tail-mode for logs. All parameters are JSON keys
-21:55:16 === /api/models providerUrl=http://localhost:8080 providerName=
-21:55:16 /api/models port 8080 reachable, trying HTTP
-21:55:16 /api/models trying http://localhost:8080/v1/models
-21:55:18 /api/models SUCCESS 12773 bytes
-21:55:26 Stream finished — closing browser connection
-21:55:51 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
-21:55:51 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
-21:55:51 [PROXY] authHeader (provider name): llamacpp
-21:55:51 [PROXY] apiKey found: NO
-21:55:51 [PROXY] body (first 500 chars): {"model":"Qwen3.5_2b-text","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read a file from the filesystem. Supports line-based pagination (offset/limit), byte cap (limit_bytes), and tail-mode for logs. All parameters are JSON keys
-21:55:56 Stream finished — closing browser connection
-21:55:56 === getFileTool ===
-21:55:56 args: {"file_path":"./colosseo.txt","limit_bytes":4096}
-21:55:56 path: ./colosseo.txt
-21:55:56 resolvedPath: C:\Users\pr30565\Nim_code\nim_llamaserver_chatbot\colosseo.txt
-21:55:56 offsetBytes: 0
-21:55:56 limitBytes: 4096
-21:55:56 fileSize (raw): 2414
-21:55:56 no page marker found
-21:55:56 fileSize after offset: 2414
-21:55:56 final content length: 2414
-21:55:56 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
-21:55:56 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
-21:55:56 [PROXY] authHeader (provider name): llamacpp
-21:55:56 [PROXY] apiKey found: NO
-21:55:56 [PROXY] body (first 500 chars): {"model":"Qwen3.5_2b-text","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read a file from the filesystem. Supports line-based pagination (offset/limit), byte cap (limit_bytes), and tail-mode for logs. All parameters are JSON keys
-21:56:22 Stream finished — closing browser connection
-21:56:54 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
-21:56:54 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
-21:56:54 [PROXY] authHeader (provider name): llamacpp
-21:56:54 [PROXY] apiKey found: NO
-21:56:54 [PROXY] body (first 500 chars): {"model":"Qwen3.5_2b-text","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read a file from the filesystem. Supports line-based pagination (offset/limit), byte cap (limit_bytes), and tail-mode for logs. All parameters are JSON keys
-21:57:01 Stream finished — closing browser connection
-21:57:01 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
-21:57:01 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
-21:57:01 [PROXY] authHeader (provider name): llamacpp
-21:57:01 [PROXY] apiKey found: NO
-21:57:01 [PROXY] body (first 500 chars): {"model":"Qwen3.5_2b-text","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read a file from the filesystem. Supports line-based pagination (offset/limit), byte cap (limit_bytes), and tail-mode for logs. All parameters are JSON keys
-21:57:28 Stream finished — closing browser connection
-21:57:53 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
-21:57:53 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
-21:57:53 [PROXY] authHeader (provider name): llamacpp
-21:57:53 [PROXY] apiKey found: NO
-21:57:53 [PROXY] body (first 500 chars): {"model":"Qwen3.5_2b-text","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read a file from the filesystem. Supports line-based pagination (offset/limit), byte cap (limit_bytes), and tail-mode for logs. All parameters are JSON keys
-21:58:00 Stream finished — closing browser connection
-21:58:00 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
-21:58:00 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
-21:58:00 [PROXY] authHeader (provider name): llamacpp
-21:58:00 [PROXY] apiKey found: NO
-21:58:00 [PROXY] body (first 500 chars): {"model":"Qwen3.5_2b-text","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read a file from the filesystem. Supports line-based pagination (offset/limit), byte cap (limit_bytes), and tail-mode for logs. All parameters are JSON keys
-21:58:32 Stream finished — closing browser connection
-21:59:15 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
-21:59:15 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
-21:59:15 [PROXY] authHeader (provider name): llamacpp
-21:59:15 [PROXY] apiKey found: NO
-21:59:15 [PROXY] body (first 500 chars): {"model":"Qwen3.5_2b-text","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read a file from the filesystem. Supports line-based pagination (offset/limit), byte cap (limit_bytes), and tail-mode for logs. All parameters are JSON keys
+15:36:38 path: delibera_0005_2026.txt
+15:36:38 resolvedPath: C:\Users\pr30565\Desktop\python\flask_root\principale\pareri\delibere\testi\delibera_0005_2026.txt
+15:36:38 offsetBytes: 0
+15:36:38 limitBytes: 4096
+15:36:38 fileSize (raw): 9616
+15:36:38 no page marker found
+15:36:38 fileSize after offset: 9616
+15:36:38 final content length: 4126
+15:36:38 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
+15:36:38 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
+15:36:38 [PROXY] authHeader (provider name): llamacpp
+15:36:38 [PROXY] apiKey found: NO
+15:36:38 [PROXY] body (first 500 chars): {"model":"Qwen3.5_2b-text","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read a file from the filesystem. Supports line-based pagination (offset/limit), byte cap (limit_bytes), and tail-mode for logs. All parameters are JSON keys
+15:37:08 Stream finished — closing browser connection
+15:37:20 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
+15:37:20 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
+15:37:20 [PROXY] authHeader (provider name): llamacpp
+15:37:20 [PROXY] apiKey found: NO
+15:37:20 [PROXY] body (first 500 chars): {"model":"Qwen3.5_2b-text","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read a file from the filesystem. Supports line-based pagination (offset/limit), byte cap (limit_bytes), and tail-mode for logs. All parameters are JSON keys
+15:37:28 Stream finished — closing browser connection
+15:37:28 === getFileTool ===
+15:37:28 args: {"file_path":"./delibera_0005_2026.txt","offset_bytes":0,"limit_bytes":4096}
+15:37:28 path: ./delibera_0005_2026.txt
+15:37:28 resolvedPath: C:\Users\pr30565\Desktop\python\flask_root\principale\pareri\delibere\testi\delibera_0005_2026.txt
+15:37:28 offsetBytes: 0
+15:37:28 limitBytes: 4096
+15:37:28 fileSize (raw): 9616
+15:37:28 no page marker found
+15:37:28 fileSize after offset: 9616
+15:37:28 final content length: 4126
+15:37:28 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
+15:37:28 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
+15:37:28 [PROXY] authHeader (provider name): llamacpp
+15:37:28 [PROXY] apiKey found: NO
+15:37:28 [PROXY] body (first 500 chars): {"model":"Qwen3.5_2b-text","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nTool: read\nDescription: Read a file from the filesystem. Supports line-based pagination (offset/limit), byte cap (limit_bytes), and tail-mode for logs. All parameters are JSON keys
+15:38:07 Stream finished — closing browser connection
+16:27:11 === /api/models providerUrl=http://localhost:8080 providerName=
+16:27:12 /api/models port 8080 not reachable
+16:27:12 /api/models port unreachable for localhost:8080, reporting llamaserver missing
+16:27:17 Launching llama server via /api/launch-llama endpoint
+16:27:22 === /api/models providerUrl=http://localhost:8080 providerName=
+16:27:22 /api/models port 8080 reachable, trying HTTP
+16:27:22 /api/models trying http://localhost:8080/v1/models
+16:27:24 /api/models SUCCESS 12599 bytes
+16:27:34 === /api/models providerUrl=http://localhost:8080 providerName=
+16:27:34 /api/models port 8080 reachable, trying HTTP
+16:27:34 /api/models trying http://localhost:8080/v1/models
+16:27:37 /api/models SUCCESS 12730 bytes
+16:27:39 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
+16:27:39 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
+16:27:39 [PROXY] authHeader (provider name): llamacpp
+16:27:39 [PROXY] apiKey found: NO
+16:27:39 [PROXY] body (first 500 chars): {"model":"LFM2-2.5-1.2b-Instruct","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nCRITICAL JSON FORMATTING RULE — every parameter MUST have a value.\n  WRONG:  {\"file_path\": \"x.txt\", \"limit\":}\n  WRONG:  {\"file_path\": \"x.txt\", \"limit\": , \"fr
+16:27:46 Stream finished — closing browser connection
+16:27:46 === getFileTool ===
+16:27:46 args: {"file_path":"./delibera_0005_2026.txt","limit_bytes":4096}
+16:27:46 path: ./delibera_0005_2026.txt
+16:27:46 resolvedPath: C:\Users\pr30565\Desktop\python\flask_root\principale\pareri\delibere\testi\delibera_0005_2026.txt
+16:27:46 offsetBytes: 0
+16:27:46 limitBytes: 4096
+16:27:46 fileSize (raw): 9616
+16:27:46 no page marker found
+16:27:46 fileSize after offset: 9616
+16:27:46 final content length: 4126
+16:27:46 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
+16:27:46 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
+16:27:46 [PROXY] authHeader (provider name): llamacpp
+16:27:46 [PROXY] apiKey found: NO
+16:27:46 [PROXY] body (first 500 chars): {"model":"LFM2-2.5-1.2b-Instruct","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nCRITICAL JSON FORMATTING RULE — every parameter MUST have a value.\n  WRONG:  {\"file_path\": \"x.txt\", \"limit\":}\n  WRONG:  {\"file_path\": \"x.txt\", \"limit\": , \"fr
+16:27:58 Stream finished — closing browser connection
+16:28:20 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
+16:28:20 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
+16:28:20 [PROXY] authHeader (provider name): llamacpp
+16:28:20 [PROXY] apiKey found: NO
+16:28:20 [PROXY] body (first 500 chars): {"model":"LFM2-2.5-1.2b-Instruct","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nCRITICAL JSON FORMATTING RULE — every parameter MUST have a value.\n  WRONG:  {\"file_path\": \"x.txt\", \"limit\":}\n  WRONG:  {\"file_path\": \"x.txt\", \"limit\": , \"fr
+16:28:24 Stream finished — closing browser connection
+16:28:24 === getFileTool ===
+16:28:24 args: {"file_path":"./delibera_0005_2026.txt"}
+16:28:24 path: ./delibera_0005_2026.txt
+16:28:24 resolvedPath: C:\Users\pr30565\Desktop\python\flask_root\principale\pareri\delibere\testi\delibera_0005_2026.txt
+16:28:24 offsetBytes: 0
+16:28:24 limitBytes: 2048
+16:28:24 fileSize (raw): 9616
+16:28:24 no page marker found
+16:28:24 fileSize after offset: 9616
+16:28:24 final content length: 2078
+16:28:24 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
+16:28:24 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
+16:28:24 [PROXY] authHeader (provider name): llamacpp
+16:28:24 [PROXY] apiKey found: NO
+16:28:24 [PROXY] body (first 500 chars): {"model":"LFM2-2.5-1.2b-Instruct","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nCRITICAL JSON FORMATTING RULE — every parameter MUST have a value.\n  WRONG:  {\"file_path\": \"x.txt\", \"limit\":}\n  WRONG:  {\"file_path\": \"x.txt\", \"limit\": , \"fr
+16:28:35 Stream finished — closing browser connection
+16:28:53 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
+16:28:53 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
+16:28:53 [PROXY] authHeader (provider name): llamacpp
+16:28:53 [PROXY] apiKey found: NO
+16:28:53 [PROXY] body (first 500 chars): {"model":"LFM2-2.5-1.2b-Instruct","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nCRITICAL JSON FORMATTING RULE — every parameter MUST have a value.\n  WRONG:  {\"file_path\": \"x.txt\", \"limit\":}\n  WRONG:  {\"file_path\": \"x.txt\", \"limit\": , \"fr
+16:28:57 Stream finished — closing browser connection
+16:28:57 === getFileTool ===
+16:28:57 args: {"file_path":"./delibera_0005_2026.txt","limit_bytes":4096}
+16:28:57 path: ./delibera_0005_2026.txt
+16:28:57 resolvedPath: C:\Users\pr30565\Desktop\python\flask_root\principale\pareri\delibere\testi\delibera_0005_2026.txt
+16:28:58 offsetBytes: 0
+16:28:58 limitBytes: 4096
+16:28:58 fileSize (raw): 9616
+16:28:58 no page marker found
+16:28:58 fileSize after offset: 9616
+16:28:58 final content length: 4126
+16:28:58 [PROXY] providerUrl from query: provider=http%3A%2F%2Flocalhost%3A8080
+16:28:58 [PROXY] targetUrl: http://localhost:8080/v1/chat/completions
+16:28:58 [PROXY] authHeader (provider name): llamacpp
+16:28:58 [PROXY] apiKey found: NO
+16:28:58 [PROXY] body (first 500 chars): {"model":"LFM2-2.5-1.2b-Instruct","messages":[{"role":"system","content":"You are a helpful assistant. Answer the user's questions using your own knowledge.\nWhen you need information from files, use the available tool. \nWhen a question includes a tool call and then another request first do tool calling and then answer.\n\nCRITICAL JSON FORMATTING RULE — every parameter MUST have a value.\n  WRONG:  {\"file_path\": \"x.txt\", \"limit\":}\n  WRONG:  {\"file_path\": \"x.txt\", \"limit\": , \"fr

@@ -3,6 +3,14 @@ system_prompt: |
   When you need information from files, use the available tool. 
   When a question includes a tool call and then another request first do tool calling and then answer.
 
+  CRITICAL JSON FORMATTING RULE — every parameter MUST have a value.
+    WRONG:  {"file_path": "x.txt", "limit":}
+    WRONG:  {"file_path": "x.txt", "limit": , "from_tail": true}
+    WRONG:  {"file_path": "x.txt", "limit",}
+    RIGHT:  {"file_path": "x.txt", "limit": 4096}
+    RIGHT:  {"file_path": "x.txt"}    (omit the key entirely if no value)
+  If you don't know a value, OMIT the key — never emit an empty value.
+
   Tool: read
   Description: Read a file from the filesystem. Supports line-based pagination (offset/limit), byte cap (limit_bytes), and tail-mode for logs. All parameters are JSON keys — use them exactly as shown.
   JSON parameters: file_path (string, required), offset (number, optional, 1-indexed line start), limit (number, optional, max lines), limit_bytes (number, optional, cap bytes before line splitting, default: 2048, -1 to disable), from_tail (boolean, optional, read from end: 1 = last line)

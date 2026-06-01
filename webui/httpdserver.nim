@@ -731,13 +731,26 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
       let bodyStr = req.body
       let args = parseJson(bodyStr)
       let toolName = if args.hasKey("name"): args["name"].getStr() else: ""
-      let toolArgs = if args.hasKey("arguments"): args["arguments"] else: %*{}
       let headers = newHttpHeaders([("Content-Type", "application/json")])
 
       if toolName == "":
         let response = %*{"error": "Missing name parameter"}
         await req.respond(Http200, $response, headers)
         return
+
+      # Defensive: arguments may arrive either as a JSON object (browser already
+      # parsed) or as a raw JSON STRING (LLM streamed it). If string, run the
+      # multi-level safe parser so malformed tool calls (LFM2.5 emits
+      # {"file_path":"x","limit":}) don't fall through to "Missing file_path".
+      var toolArgs: JsonNode
+      if args.hasKey("arguments"):
+        let rawArgs = args["arguments"]
+        if rawArgs.kind == JString:
+          toolArgs = tools.safeParseToolArgs(rawArgs.getStr())
+        else:
+          toolArgs = rawArgs
+      else:
+        toolArgs = %*{}
 
       let toolResult = tools.executeTool(toolName, toolArgs)
       await req.respond(Http200, toolResult, headers)
