@@ -294,7 +294,15 @@ proc drawChatScreen*(tb: var TerminalBuffer, w, h: int) =
     tb.write(buttonsX, 0, newTag)
     tb.setBackgroundColor(bgBlack)
   else:
-    tb.setForegroundColor(fgWhite, bright = true)
+    # NOTE: bright=true removed for Linux compatibility.
+    # On Linux, illwill's displayDiff uses terminal-wide ANSI escape codes.
+    # When any cell with style={} is updated, resetAttributes() sends \e[0m,
+    # which clears the global bold attribute. Unchanged cells (buttons) are
+    # NOT re-emitted by displayDiff, so their bold is lost and text becomes
+    # near-invisible (dim white on black). Windows uses per-cell console API
+    # so this is not an issue there.
+    # To restore bright text on Windows, add ", bright = true" back.
+    tb.setForegroundColor(fgWhite)
     tb.write(buttonsX, 0, newTag)
 
   # [Modelli] button
@@ -304,7 +312,7 @@ proc drawChatScreen*(tb: var TerminalBuffer, w, h: int) =
     tb.write(buttonsX + newTag.len, 0, modelliTag)
     tb.setBackgroundColor(bgBlack)
   else:
-    tb.setForegroundColor(fgWhite, bright = true)
+    tb.setForegroundColor(fgWhite)
     tb.write(buttonsX + newTag.len, 0, modelliTag)
 
   # [WebUI] button
@@ -314,7 +322,7 @@ proc drawChatScreen*(tb: var TerminalBuffer, w, h: int) =
     tb.write(buttonsX + newTag.len + modelliTag.len, 0, webuiTag)
     tb.setBackgroundColor(bgBlack)
   else:
-    tb.setForegroundColor(fgWhite, bright = true)
+    tb.setForegroundColor(fgWhite)
     tb.write(buttonsX + newTag.len + modelliTag.len, 0, webuiTag)
 
   # [Llama] button
@@ -324,7 +332,7 @@ proc drawChatScreen*(tb: var TerminalBuffer, w, h: int) =
     tb.write(buttonsX + newTag.len + modelliTag.len + webuiTag.len, 0, llamaTag)
     tb.setBackgroundColor(bgBlack)
   else:
-    tb.setForegroundColor(fgWhite, bright = true)
+    tb.setForegroundColor(fgWhite)
     tb.write(buttonsX + newTag.len + modelliTag.len + webuiTag.len, 0, llamaTag)
 
   # [Esc/Q=quit] button
@@ -334,7 +342,7 @@ proc drawChatScreen*(tb: var TerminalBuffer, w, h: int) =
     tb.write(buttonsX + newTag.len + modelliTag.len + webuiTag.len + llamaTag.len, 0, quitText)
     tb.setBackgroundColor(bgBlack)
   else:
-    tb.setForegroundColor(fgWhite, bright = true)
+    tb.setForegroundColor(fgWhite)
     tb.write(buttonsX + newTag.len + modelliTag.len + webuiTag.len + llamaTag.len, 0, quitText)
 
   # --- Server unavailable banner ---
