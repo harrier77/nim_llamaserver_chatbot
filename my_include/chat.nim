@@ -10,7 +10,7 @@
 # IMPORTANT: do not import input.nim, ui.nim, main.nim
 # ============================================================
 
-import asyncdispatch, httpclient, json, strutils
+import asyncdispatch, httpclient, json, strutils, os
 import config
 import tools
 import config_web
