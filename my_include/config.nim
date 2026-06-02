@@ -11,7 +11,7 @@
 # - New slash command? → add to SlashCommands AND handle in input.nim
 # ============================================================
 
-import os, strutils, json, unicode, random
+import os, strutils, json, unicode, random, osproc
 import system_prompt
 import editor
 export editor

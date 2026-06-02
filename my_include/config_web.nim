@@ -5,7 +5,7 @@
 # from config.nim, WITHOUT pulling in editor.nim / illwill.
 # ============================================================
 
-import os, strutils, times
+import os, strutils, times, osproc
 
 var ExeDir*: string = ""
 
