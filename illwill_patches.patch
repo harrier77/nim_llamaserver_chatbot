@@ -1,0 +1,150 @@
+--- illwill.nim.bak	2026-06-02 20:28:53.477660512 +0200
++++ illwill.nim	2026-06-02 20:33:55.311970374 +0200
+@@ -414,6 +414,14 @@
+     let fd = getStdHandle(STD_INPUT_HANDLE)
+     var keyEvent = KEY_EVENT_RECORD()
+     var numRead: cint
++    # FIX: PeekConsoleInputA before readConsoleInput — if a mouse event
++    # is waiting, return without consuming it (preserves it for hasMouseInput).
++    var peekBuffer: array[1, INPUT_RECORD]
++    var peeked: DWORD
++    if peekConsoleInputA(fd, peekBuffer.addr, 1, peeked) != 0 and peeked > 0:
++      if peekBuffer[0].EventType == MOUSE_EVENT:
++        keyEvent.eventType = -1
++        return
+     while true:
+       case waitForSingleObject(fd, ms)
+       of WAIT_TIMEOUT:
+@@ -656,6 +664,24 @@
+                 result = Key.Insert
+               elif ch4 in "0134" and read(input, ch5.addr, 1) > 0 and ch5 == '~':
+                 result = KEYS_G[int(ch4) - int('0')]
++            elif ch3 == '<':
++              # --- SGR MOUSE EVENT (Phase 1 fix) ---
++              # ESC [ <button;x;y M (press) or m (release)
++              # Store raw bytes in keyBuf for fillGlobalMouseInfo
++              var keyIdx = 0
++              keyBuf[keyIdx] = ord('\e'); inc(keyIdx)
++              keyBuf[keyIdx] = ord('['); inc(keyIdx)
++              keyBuf[keyIdx] = ord('<'); inc(keyIdx)
++              var chNext: char
++              while keyIdx < KeySequenceMaxLen - 1 and read(input, chNext.addr, 1) > 0:
++                keyBuf[keyIdx] = ord(chNext); inc(keyIdx)
++                if chNext == 'M' or chNext == 'm':
++                  break
++              if keyIdx > 3:
++                fillGlobalMouseInfo(keyBuf)
++                return Key.Mouse
++              else:
++                discard
+             elif ch3 in "345678" and read(input, ch4.addr, 1) > 0 and ch4 == '~':
+               result = KEYS_E[int(ch3) - int('3')]
+             else:
+@@ -843,6 +869,11 @@
+ 
+     if toRead == 0: return false
+ 
++    # FIX: Only readConsoleInput if the FIRST event is a MOUSE_EVENT.
++    # This prevents consuming keyboard events when scanning for mouse.
++    if buffer[0].EventType != MOUSE_EVENT:
++      return false
++
+     discard readConsoleInput(getStdHandle(STD_INPUT_HANDLE), buffer.addr,
+                              toRead.DWORD, numberOfEventsRead.addr)
+ 
+@@ -861,11 +892,12 @@
+   ##
+   ## If the module is not intialised, `IllwillError` is raised.
+   checkInit()
+-  result = getKeyAsync(0)
+   when defined(windows):
+-    if result == Key.None:
+-      if hasMouseInput():
+-        return Key.Mouse
++    # FIX: check mouse BEFORE getKeyAsync so mouse events are captured
++    # before getchTimeout has a chance to peek at (and skip) them.
++    if hasMouseInput():
++      return Key.Mouse
++  result = getKeyAsync(0)
+ 
+ proc getKeyWithTimeout*(ms = 1000): Key =
+   ## Reads the next keystroke with a timeout. If there were no keypress events
+@@ -876,11 +908,11 @@
+   ##
+   ## If the module is not intialised, `IllwillError` is raised.
+   checkInit()
+-  result = getKeyAsync(ms)
+   when defined(windows):
+-    if result == Key.None:
+-      if hasMouseInput():
+-        return Key.Mouse
++    # FIX: check mouse BEFORE getKeyAsync
++    if hasMouseInput():
++      return Key.Mouse
++  result = getKeyAsync(ms)
+ 
+ type
+   TerminalChar* = object
+@@ -1172,6 +1204,32 @@
+ proc setXPos(x: Natural) =
+   terminal.setCursorXPos(x)
+ 
++proc isWideRune(cp: int): bool =
++  ## Returns true for East Asian wide chars and emoji (terminal width = 2).
++  cp >= 0x1100 and cp <= 0x115F or
++  cp >= 0x2E80 and cp <= 0x303E or
++  cp >= 0x3040 and cp <= 0x9FFF or
++  cp >= 0xAC00 and cp <= 0xD7AF or
++  cp >= 0xF900 and cp <= 0xFAFF or
++  cp >= 0xFE10 and cp <= 0xFE19 or
++  cp >= 0xFE30 and cp <= 0xFE6F or
++  cp >= 0xFF01 and cp <= 0xFF60 or
++  cp >= 0xFFE0 and cp <= 0xFFE6 or
++  cp >= 0x1B000 and cp <= 0x1B12F or
++  cp >= 0x1F100 and cp <= 0x1F2FF or
++  cp >= 0x1F300 and cp <= 0x1F9FF or
++  cp >= 0x20000 and cp <= 0x2FFFF
++
++proc visualWidth(s: string): int =
++  ## Returns the visual column width of a string.
++  ## Wide chars (CJK, emoji) count as 2, ASCII as 1.
++  result = 0
++  for r in runes(s):
++    if r.int > 0x1F:
++      result += 1
++      if isWideRune(r.int):
++        result += 1
++
+ proc displayFull(tb: TerminalBuffer) =
+   var buf = ""
+ 
+@@ -1182,12 +1240,20 @@
+ 
+   for y in 0..<tb.height:
+     setPos(0, y)
++    var visualCol = 0
+     for x in 0..<tb.width:
+       let c = tb[x,y]
+       if c.bg != gCurrBg or c.fg != gCurrFg or c.style != gCurrStyle:
+         flushBuf()
+         setAttribs(c)
+       buf &= $c.ch
++      if isWideRune(c.ch.int):
++        visualCol += 2
++        flushBuf()
++        # Reposition cursor after wide char to avoid rightward drift
++        setPos(visualCol, y)
++      else:
++        visualCol += 1
+     flushBuf()
+ 
+ 
+@@ -1208,7 +1274,7 @@
+         currXPos = bufXPos
+         setXPos(currXPos)
+       put buf
+-      inc(currXPos, buf.runeLen)
++      inc(currXPos, visualWidth(buf))
+       buf = ""
+ 
+   for y in 0..<tb.height:
