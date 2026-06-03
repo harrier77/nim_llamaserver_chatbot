@@ -7,3 +7,5 @@ nul
 bak
 my_include/status.json
 status.json
+llama_server.log
+*.bak
