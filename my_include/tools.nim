@@ -1,4 +1,4 @@
-import json, os, osproc, re, strutils
+import json, os, osproc, re, strutils, httpclient
 import config_web
 
 # ============================================================
@@ -60,6 +60,27 @@ const ToolsSchemaJson* = """[
           }
         },
         "required": ["path"]
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "websearch",
+      "description": "Search the public web for current information via Firecrawl API. Returns up to N Markdown results with title, URL, and snippet. Requires a free API key configured in auth.json under \"firecrawl\".",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "The search query. Be specific; quote exact phrases when needed."
+          },
+          "num_results": {
+            "type": "number",
+            "description": "Number of results to return (1-20, default 8)"
+          }
+        },
+        "required": ["query"]
       }
     }
   }
@@ -587,6 +608,107 @@ proc fileGlobSearchTool*(args: JsonNode): string =
   })
 
 
+# ============================================================
+# Web search tool — Firecrawl v2 Search API (POST JSON)
+# ============================================================
+
+const
+  WebSearchDefaultResults = 8
+  WebSearchMaxResults     = 20
+  WebSearchTimeoutMs      = 10_000
+
+proc websearchTool*(args: JsonNode): string {.gcsafe.} =
+  ## Web search via Firecrawl v2 Search API (requires API key in auth.json).
+  var logDir: string
+  var apiKey: string
+  {.cast(gcsafe).}:
+    logDir = config_web.ExeDir
+    apiKey = config_web.FirecrawlApiKey
+
+  let query = if args.hasKey("query") and args["query"].kind == JString:
+                args["query"].getStr() else: ""
+  config_web.writeLog(logDir, "[WEBSEARCH] ENTER query=\"" & query & "\" args=" & $args)
+  if query.len == 0:
+    config_web.writeLog(logDir, "[WEBSEARCH] ERROR: missing query")
+    return $(%*{"error": "Missing query parameter"})
+
+  let n = if args.hasKey("num_results"):
+            let r = args["num_results"].getInt()
+            if r < 1: 1 elif r > WebSearchMaxResults: WebSearchMaxResults else: r
+          else: WebSearchDefaultResults
+
+  if apiKey.len == 0:
+    config_web.writeLog(logDir, "[WEBSEARCH] ERROR: Firecrawl API key not configured")
+    return $(%*{"error": "Firecrawl API key not configured. " &
+                     "Add {\"firecrawler\": {\"key\": \"YOUR_KEY\"}} to ~/.nim_chatbot/auth.json"})
+
+  var client = newHttpClient()
+  try:
+    client.timeout = WebSearchTimeoutMs
+
+    let payload = %*{
+      "query": query,
+      "sources": ["web"],
+      "categories": [],
+      "limit": n,
+      "scrapeOptions": {
+        "onlyMainContent": true,
+        "maxAge": 172800000,
+        "parsers": ["pdf"],
+        "formats": []
+      }
+    }
+    client.headers["Authorization"] = "Bearer " & apiKey
+    client.headers["Content-Type"] = "application/json"
+
+    let url = "https://api.firecrawl.dev/v2/search"
+    config_web.writeLog(logDir, "[WEBSEARCH] POST " & url)
+    let resp = client.post(url, $payload)
+
+    if not resp.status.startsWith("2"):
+      config_web.writeLog(logDir, "[WEBSEARCH] HTTP " & resp.status)
+      return $(%*{"error": "Firecrawl API HTTP " & resp.status})
+
+    let body = resp.body
+    if body.len == 0:
+      return $(%*{"content": "No results."})
+
+    let j = parseJson(body)
+    # Expected response: {"success": true, "data": {"web": [{"title": ..., "url": ..., "description": ...}, ...]}}
+    var md = newStringOfCap(4096)
+    var count = 0
+
+    if j.hasKey("data") and j["data"].kind == JObject:
+      let data = j["data"]
+      # Results are in data.web (and optionally data.news, data.images)
+      if data.hasKey("web") and data["web"].kind == JArray:
+        for item in data["web"]:
+          if count >= n: break
+          let title = item{"title"}.getStr("")
+          let url   = item{"url"}.getStr("")
+          let desc  = item{"description"}.getStr(item{"snippet"}.getStr(""))
+          if title.len == 0 and url.len == 0 and desc.len == 0:
+            continue
+          md.add "## " & title & "\n" & url & "\n" & desc & "\n\n"
+          inc count
+
+    if md.len == 0:
+      md = "No results found. Try a different query."
+
+    config_web.writeLog(logDir,
+      "[WEBSEARCH] OK q=\"" & query & "\" n=" & $n & " results=" & $count)
+    return $(%*{"content": md})
+
+  except HttpRequestError as e:
+    config_web.writeLog(logDir, "[WEBSEARCH] HttpRequestError: " & e.msg)
+    return $(%*{"error": "Search failed: " & e.msg})
+  except Exception as e:
+    config_web.writeLog(logDir, "[WEBSEARCH] Exception: " & e.msg)
+    return $(%*{"error": e.msg})
+  finally:
+    client.close()
+
+
 proc executeTool*(name: string, args: JsonNode): string =
   ## Dispatch tool calls to the appropriate implementation.
   case name
@@ -594,6 +716,7 @@ proc executeTool*(name: string, args: JsonNode): string =
   of "get_file":
     return $(%*{"error": "Tool suspended: " & name & " is not available (use 'read' with max_bytes instead)"})
   of "file_glob_search": return fileGlobSearchTool(args)
+  of "websearch": return websearchTool(args)
   of "bash", "readDelibera":
-    return $(%*{"error": "Tool suspended: " & name & " is not available (only 'read' and 'file_glob_search' are active)"})
+    return $(%*{"error": "Tool suspended: " & name & " is not available (only 'read', 'file_glob_search', and 'websearch' are active)"})
   else: return $(%*{"error": "Unknown tool: " & name})

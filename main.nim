@@ -17,6 +17,7 @@ import server   # server and model management
 import system_prompt  # system prompt (initSystemPrompt)
 import providers  # external provider config loaders
 import input    # keyboard input handling
+from config_web import loadFirecrawlApiKey  # Firecrawl API key loader
 import ui       # TUI rendering
 import webui/httpdserver  # WebUI HTTP server
 
@@ -90,6 +91,9 @@ proc main() =
 
   # Load all providers from ~/.nim_chatbot/
   providers.loadProvidersConfig()
+
+  # --- Load Firecrawl API key from auth.json ---
+  loadFirecrawlApiKey()
 
   # --- Resolve ExeDir for PATH-independent resource lookup ---
   # FIX: when main.exe is launched via PATH from a different directory,

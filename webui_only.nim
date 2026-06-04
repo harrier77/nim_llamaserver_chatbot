@@ -32,6 +32,9 @@ proc main() =
   ExeDir = getAppFilename().parentDir()
   SessionDir = ExeDir
 
+  # --- Load Firecrawl API key from auth.json ---
+  config_web.loadFirecrawlApiKey()
+
   # --- Start WebUI server ---
   startServer(Port(8000))
 

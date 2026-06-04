@@ -5,7 +5,7 @@
 # from config.nim, WITHOUT pulling in editor.nim / illwill.
 # ============================================================
 
-import os, strutils, times, osproc
+import os, strutils, times, osproc, json
 
 var ExeDir*: string = ""
 
@@ -28,6 +28,38 @@ proc writeLog*(exeDir: string, msg: string) {.gcsafe.} =
   except:
     discard
 var SessionDir*: string = ""
+
+# ============================================================
+# Firecrawl API key — loaded from ~/.nim_chatbot/auth.json
+# ============================================================
+
+var FirecrawlApiKey*: string = ""
+
+proc loadFirecrawlApiKey*() =
+  ## Reads auth.json and extracts the "firecrawler" -> "key" entry.
+  ## Called once at app startup (from main.nim).
+  let authPath = getHomeDir() / ".nim_chatbot" / "auth.json"
+  writeLog(ExeDir, "[FIRECRAWL] authPath: " & authPath)
+  if not fileExists(authPath):
+    writeLog(ExeDir, "[FIRECRAWL] auth.json not found")
+    return
+  try:
+    let content = readFile(authPath)
+    writeLog(ExeDir, "[FIRECRAWL] file read OK, len=" & $content.len)
+    let j = parseJson(content)
+    var ks: seq[string] = @[]; for k in j.keys: ks.add(k)
+    writeLog(ExeDir, "[FIRECRAWL] JSON parsed OK, keys: " & $ks)
+    if j.hasKey("firecrawler"):
+      writeLog(ExeDir, "[FIRECRAWL] 'firecrawler' key FOUND")
+      if j["firecrawler"].hasKey("key"):
+        FirecrawlApiKey = j["firecrawler"]["key"].getStr("")
+        writeLog(ExeDir, "[FIRECRAWL] key loaded, len=" & $FirecrawlApiKey.len)
+      else:
+        writeLog(ExeDir, "[FIRECRAWL] 'firecrawler' has no 'key' subkey")
+    else:
+      writeLog(ExeDir, "[FIRECRAWL] 'firecrawler' NOT FOUND in JSON")
+  except Exception as e:
+    writeLog(ExeDir, "[FIRECRAWL] EXCEPTION: " & e.msg)
 
 when defined(windows):
   proc ShellExecuteA(hwnd: int, operation: cstring, file: cstring,

@@ -43,3 +43,12 @@ The `wv` build adds `--path:"webview2_nim" --app:gui`.
 ## Configuration
 
 Configuration files (providers, API keys, state) are stored in `~/.nim_chatbot/`.
+
+## Tools
+
+**websearch** — live web search (free, no API key). Dual-backend: DuckDuckGo
+Instant Answer API (reliable, Wikipedia/factual) first, then SearXNG public
+instances (real web results) as fallback. The model calls it with a `query` and
+optional `num_results` (1-20, default 8). Returns Markdown-formatted results
+(title, URL, snippet). Uses a synchronous HTTP client with a 10-second timeout.
+Enabled by default for all models.
