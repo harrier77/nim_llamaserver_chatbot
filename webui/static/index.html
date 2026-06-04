@@ -702,7 +702,7 @@
       // --- Level 3: regex extraction of known keys ---
       const out = {};
       const knownKeys = ['max_bytes', 'limit', 'offset',
-                         'file_path', 'from_tail', 'path', 'exclude'];
+                         'file_path', 'from_tail', 'path', 'include', 'exclude'];
       const source = fixed;
       for (const key of knownKeys) {
         let m = source.match(new RegExp('"' + key + '"\\s*:\\s*"([^"]*)"'));
@@ -737,14 +737,16 @@
       // Main loop: continues until there are no more tool calls
       while (true) {
         initConversation();
+        const logBubble = addChatMessage('system', 'Loading model...');
+        logBubble.classList.add('message-loading');
         const aiBubble = addChatMessage('assistant', '...');
-        // Poll llama-server log to show model loading progress instead of "..."
+        // Poll llama-server log to show model loading progress
         const logInterval = setInterval(async () => {
           try {
             const r = await fetch('/api/llama-log');
             const d = await r.json();
             if (d.lines && d.lines.length > 0) {
-              aiBubble.innerHTML = d.lines.map(l => l.replace(/\n/g, '<br/>')).join('<br/>');
+              logBubble.innerHTML = d.lines.map(l => l.replace(/\n/g, '<br/>')).join('<br/>');
               // Auto-scroll per mostrare l'ultima riga del log
               const wrapper = document.querySelector('.chat-messages-wrapper');
               if (wrapper) wrapper.scrollTop = wrapper.scrollHeight;
@@ -754,6 +756,7 @@
         
         let aiBuffer = '';
         let toolCallsCollected = [];
+        let currentTps = 0;
 
         try {
           const chatUrl = '/v1/chat/completions?provider=' + encodeURIComponent(currentProvider);
@@ -761,6 +764,8 @@
             model: currentModel,
             messages: conversationHistory,
             stream: true,
+            timings_per_token: true,
+            return_progress: true,
             tools: availableTools
           };
           //console.log('[DEBUG sendMessage] === FULL REQUEST DUMP ===');
@@ -780,6 +785,7 @@
             const errBody = await response.text();
             console.error('[DEBUG sendMessage] FETCH non-OK body:', errBody.substring(0, 500));
             clearInterval(logInterval);
+            if (logBubble) logBubble.innerHTML = 'Error ' + response.status + ': ' + errBody;
             if (aiBubble) aiBubble.textContent = 'Error ' + response.status + ': ' + errBody;
             break;
           }
@@ -813,6 +819,14 @@
                 if (jsonStr === '[DONE]') break;
                 try {
                   const chunk = JSON.parse(jsonStr);
+                  // Extract tokens/sec from timings (if available)
+                  if (chunk.timings) {
+                    const predictedN = parseFloat(chunk.timings.predicted_n) || 0;
+                    const predictedMs = Math.max(parseFloat(chunk.timings.predicted_ms) || 1, 1);
+                    if (predictedN > 0) {
+                      currentTps = (predictedN / predictedMs) * 1000;
+                    }
+                  }
                   const delta = chunk.choices?.[0]?.delta;
                   if (!delta) continue;
 
@@ -821,7 +835,8 @@
                   if (delta.content) {
                     aiBuffer += delta.content;
                     if (aiBubble) {
-                      aiBubble.innerHTML = aiBuffer.replace(/\n/g, '<br/>');
+                      const tpsBadge = currentTps > 0 ? '<br><span class="tps-badge">⚡ ' + currentTps.toFixed(1) + ' t/s</span>' : '';
+                      aiBubble.innerHTML = aiBuffer.replace(/\n/g, '<br/>') + tpsBadge;
                       // Auto-scroll durante lo streaming solo se l'utente è vicino al fondo
                       const wrapper = document.querySelector('.chat-messages-wrapper');
                       if (wrapper) {
@@ -879,8 +894,6 @@
               const toolArgs = safeParseToolArgs(tc.function.arguments);
               const toolId = tc.id;
 
-              addChatMessage('system', '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide-icon lucide lucide-wrench h-4 w-4" style="display:inline-block;vertical-align:middle;margin-right:8px"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path></svg> Tool Call -> ' + toolName + '(' + tc.function.arguments + ')');
-
               const result = await executeTool(toolName, toolArgs);
               let displayContent = '';
               let modelContent = '';
@@ -914,10 +927,78 @@
                 modelContent = JSON.stringify(result);
               }
 
-              // Format and display tool result like TUI (--- and ***Title***)
+              // Build collapsible tool result widget
               const toolTitle = (toolName === 'read' && toolArgs.file_path) ? toolArgs.file_path : toolName;
-              const formattedResult = `--- \n ***${toolTitle}***: \n ${displayContent}`;
-              addChatMessage('tool', formattedResult);
+              const mainEl = document.querySelector('[role="main"]');
+              const wrapperEl = mainEl?.querySelector('.chat-messages-wrapper');
+
+              // Hide welcome message
+              const h2El = mainEl?.querySelector('h2');
+              if (h2El) h2El.style.display = 'none';
+              const pEl = mainEl?.querySelector('p');
+              if (pEl) pEl.style.display = 'none';
+
+              let chatDivEl = wrapperEl?.querySelector('.chat-messages');
+              if (!chatDivEl) {
+                chatDivEl = document.createElement('div');
+                chatDivEl.className = 'chat-messages';
+                if (wrapperEl) {
+                  wrapperEl.insertBefore(chatDivEl, wrapperEl.firstChild);
+                }
+              }
+
+              const toolContainer = document.createElement('div');
+              toolContainer.className = 'flex justify-start';
+
+              const toolBubble = document.createElement('div');
+              toolBubble.className = 'message-bubble message-tool';
+
+              const trigger = document.createElement('button');
+              trigger.className = 'collapsible-trigger';
+              trigger.type = 'button';
+              trigger.setAttribute('data-state', 'closed');
+              trigger.setAttribute('aria-expanded', 'false');
+
+              const labelDiv = document.createElement('div');
+              labelDiv.className = 'collapsible-trigger-label';
+
+              const chevron = document.createElement('span');
+              chevron.className = 'collapsible-trigger-chevron';
+              chevron.textContent = '\u25B6';
+
+              const nameSpan = document.createElement('span');
+              nameSpan.style.fontWeight = '500';
+              nameSpan.textContent = toolTitle;
+
+              const callInfo = document.createElement('span');
+              callInfo.style.cssText = 'opacity:0.6;font-size:0.75rem;margin-left:0.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+              callInfo.textContent = toolName + '(' + tc.function.arguments + ')';
+
+              labelDiv.appendChild(chevron);
+              labelDiv.appendChild(nameSpan);
+              labelDiv.appendChild(callInfo);
+              trigger.appendChild(labelDiv);
+
+              const contentDiv = document.createElement('div');
+              contentDiv.className = 'collapsible-content collapsed';
+              contentDiv.innerHTML = displayContent.replace(/\n/g, '<br/>');
+
+              trigger.addEventListener('click', function() {
+                const isCollapsed = contentDiv.classList.contains('collapsed');
+                contentDiv.classList.toggle('collapsed');
+                chevron.classList.toggle('open');
+                trigger.setAttribute('data-state', isCollapsed ? 'open' : 'closed');
+                trigger.setAttribute('aria-expanded', isCollapsed ? 'true' : 'false');
+              });
+
+              toolBubble.appendChild(trigger);
+              toolBubble.appendChild(contentDiv);
+              toolContainer.appendChild(toolBubble);
+              chatDivEl.appendChild(toolContainer);
+
+              if (wrapperEl) {
+                wrapperEl.scrollTo({ top: wrapperEl.scrollHeight, behavior: 'smooth' });
+              }
 
               conversationHistory.push({
                 role: 'tool',
@@ -951,6 +1032,7 @@
         } catch (e) {
           console.error('[DEBUG sendMessage] CATCH error:', e.message, e.stack);
           clearInterval(logInterval);
+          if (logBubble) logBubble.innerHTML = 'Error: ' + e.message;
           if (aiBubble) aiBubble.textContent = 'Error: ' + e.message;
           break;
         }

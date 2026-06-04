@@ -10,7 +10,7 @@
 # IMPORTANT: do not import input.nim, ui.nim, main.nim
 # ============================================================
 
-import asyncdispatch, httpclient, json, strutils, os
+import asyncdispatch, httpclient, json, strutils, os, strformat
 import config
 import tools
 import config_web
@@ -85,6 +85,7 @@ proc sendToLLM*(prompt: string = "") {.async.} =
 
   if prompt.len > 0:
     aiResponseBuffer = ""
+    currentTokensPerSec = 0.0
     # Add the user message to history
     conversationHistory.add(%*{
       "role": "user",
@@ -103,6 +104,8 @@ proc sendToLLM*(prompt: string = "") {.async.} =
       "model": ModelName,
       "messages": conversationHistory,
       "stream": true,
+      "timings_per_token": true,
+      "return_progress": true,
       "tools": tools.ToolsSchema
     }
     config_web.writeLog(getCurrentDir(), "[CHAT] ▶ REQUEST: " & $body)
@@ -178,6 +181,12 @@ proc sendToLLM*(prompt: string = "") {.async.} =
 
             try:
               let jsonChunk = parseJson(jsonStr)
+              if jsonChunk.hasKey("timings"):
+                let t = jsonChunk["timings"]
+                let predictedN = t{"predicted_n"}.getFloat(0.0)
+                let predictedMs = max(t{"predicted_ms"}.getFloat(1.0), 1.0)
+                if predictedN > 0:
+                  currentTokensPerSec = (predictedN / predictedMs) * 1000.0
               if not modelDisplayed and jsonChunk.hasKey("model"):
                 outputLines.add("System: → " & jsonChunk["model"].getStr())
                 modelDisplayed = true
@@ -388,6 +397,8 @@ proc sendToLLM*(prompt: string = "") {.async.} =
           "role": "assistant",
           "content": aiResponseBuffer
         })
+      if currentTokensPerSec > 0 and outputLines.len > 0:
+        outputLines[^1] &= fmt"  ⚡ {currentTokensPerSec:.1f} t/s"
       break
 
   # Post-response cleanup

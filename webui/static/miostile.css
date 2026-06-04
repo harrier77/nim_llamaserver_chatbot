@@ -37,14 +37,67 @@ html.dark #upper_toolbar {
 .message-tool {
   background-color: #f0f0f0;
   border-left: 3px solid #4a9eff;
-  padding: 10px;
   margin: 5px 0;
   font-family: monospace;
-  white-space: pre-wrap;
+  padding: 0;
+  overflow: hidden;
 }
 .dark .message-tool {
   background-color: #2d2d2d;
   border-left-color: #4a9eff;
+}
+
+.collapsible-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: inherit;
+  text-align: left;
+  gap: 0.5rem;
+}
+.collapsible-trigger:hover {
+  background-color: rgba(0,0,0,0.04);
+}
+.dark .collapsible-trigger:hover {
+  background-color: rgba(255,255,255,0.04);
+}
+
+.collapsible-trigger-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+}
+
+.collapsible-trigger-chevron {
+  font-size: 10px;
+  transition: transform 0.2s ease;
+  display: inline-block;
+}
+.collapsible-trigger-chevron.open {
+  transform: rotate(90deg);
+}
+
+.collapsible-content {
+  padding: 8px 12px;
+  border-top: 1px solid rgba(0,0,0,0.08);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-size: 0.8rem;
+  line-height: 1.3;
+}
+.dark .collapsible-content {
+  border-top-color: rgba(255,255,255,0.08);
+}
+.collapsible-content.collapsed {
+  display: none;
 }
 
 /* Main chat area */
@@ -315,6 +368,20 @@ html.dark .sidebar-toggle-btn:hover { color: #d1d5db; }
 .chat-messages .message-user { background-color: #f0f0f0; color: black; }
 .chat-messages .message-assistant { background-color: white; color: #1f2937; }
 .chat-messages .message-system { background-color: #f0f0f0; color: black; font-size: 0.875rem; }
+.chat-messages .message-bubble.message-loading {
+  font-size: 0.75rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  opacity: 0.85;
+}
+
+.tps-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  opacity: 0.85;
+  margin-left: 90%;
+  white-space: nowrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
 
 /* Dark mode chat */
 html.dark .chat-messages .message-user { background-color: #3b82f6; color: #ffffff; }

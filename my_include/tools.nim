@@ -54,9 +54,13 @@ const ToolsSchemaJson* = """[
             "type": "string",
             "description": "Base directory to search in"
           },
+          "include": {
+            "type": "string",
+            "description": "Glob pattern: only files matching this pattern are shown. Example: '*.txt' shows only .txt files. Default: all files."
+          },
           "exclude": {
             "type": "string",
-            "description": "Glob pattern for files to exclude"
+            "description": "Glob pattern for files to EXCLUDE (skip) from results. Use this only to narrow down after include."
           }
         },
         "required": ["path"]
@@ -197,7 +201,7 @@ proc safeParseToolArgs*(raw: string): JsonNode =
   # Try to extract known keys (JSON-style "key": val)
   # Order matters: more specific keys first (max_bytes before limit)
   let knownKeys = @["max_bytes", "offset_bytes", "limit", "offset",
-                    "file_path", "from_tail", "path", "exclude"]
+                    "file_path", "from_tail", "path", "include", "exclude"]
 
   for key in knownKeys:
     # Pattern 1: "key": "string value"
@@ -560,9 +564,8 @@ proc fileGlobSearchTool*(args: JsonNode): string =
   if not dirExists(resolvedBase):
     return $(%*{"error": "Directory not found: " & resolvedBase})
 
-  # Fixed: always search all files. The model (0.8B) cannot be trusted with an include parameter
-  # — it keeps forcing *.nim regardless of the user's request.
-  const includeGlob = "**"
+  # Include filter: default to all files, model can override
+  let includeGlob = if args.hasKey("include"): args["include"].getStr() else: "**"
 
   # Collect exclude glob patterns
   var excludePatterns: seq[string] = @[]

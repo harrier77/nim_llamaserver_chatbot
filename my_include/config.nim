@@ -152,6 +152,7 @@ var
   scrollOffset*: int = 0
   isProcessing*: bool = false
   aiResponseBuffer*: string = ""
+  currentTokensPerSec*: float = 0.0
   serverAvailable*: bool = true
   lastServerCheck*: float = 0.0
   showingSlashMenu*: bool = false
@@ -191,6 +192,7 @@ proc resetConversation*() =
   ]
   outputLines = @[]
   aiResponseBuffer = ""
+  currentTokensPerSec = 0.0
   scrollOffset = 0
   isProcessing = false
   inputEditor.setText("")
