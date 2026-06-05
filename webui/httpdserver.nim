@@ -259,33 +259,38 @@ proc getModelsFromConfig*(providerUrl: string): Future[string] {.async.} =
     finally:
       client.close()
 
-  # Generic cloud provider handler: try /v1/models with API key.
+  # Generic cloud provider handler: try /v1/models with optional API key.
   # Works for any OpenAI-compatible provider (cerebras, together, groq, …).
+  # Providers without an API key (e.g. 2nd_llama) are also supported.
   let apiProviderName = getProviderNameByUrl(providerUrl)
   if apiProviderName.len > 0:
     let apiKey = getApiKey(apiProviderName)
-    if apiKey.len > 0:
-      var client = newAsyncHttpClient()
-      try:
+    var client = newAsyncHttpClient()
+    try:
+      if apiKey.len > 0:
         client.headers = newHttpHeaders({
           "Content-Type": "application/json",
           "Authorization": "Bearer " & apiKey
         })
-        # Construct /v1/models URL from the provider's baseUrl
-        var modelsUrl = providerUrl
-        modelsUrl.removeSuffix('/')
-        if modelsUrl.endsWith("/chat/completions"):
-          modelsUrl = modelsUrl.replace("/chat/completions", "/models")
-        elif modelsUrl.endsWith("/v1"):
-          modelsUrl = modelsUrl & "/models"
-        else:
-          modelsUrl = modelsUrl & "/v1/models"
-        let response = await client.getContent(modelsUrl)
-        return response
-      except:
-        discard
-      finally:
-        client.close()
+      else:
+        client.headers = newHttpHeaders({
+          "Content-Type": "application/json"
+        })
+      # Construct /v1/models URL from the provider's baseUrl
+      var modelsUrl = providerUrl
+      modelsUrl.removeSuffix('/')
+      if modelsUrl.endsWith("/chat/completions"):
+        modelsUrl = modelsUrl.replace("/chat/completions", "/models")
+      elif modelsUrl.endsWith("/v1"):
+        modelsUrl = modelsUrl & "/models"
+      else:
+        modelsUrl = modelsUrl & "/v1/models"
+      let response = await client.getContent(modelsUrl)
+      return response
+    except:
+      discard
+    finally:
+      client.close()
 
   let modelsJsonPath = getModelsJsonPath()
   let statusFile = getCurrentDir() / "my_include" / "status.json"
@@ -423,8 +428,7 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
       # Dynamic cloud detection: any provider in models.json that is not local
       let cloudProviderType = getProviderNameByUrl(providerUrl)
       let isCloud = cloudProviderType.len > 0 and
-                     cloudProviderType != "llamacpp" and
-                     cloudProviderType != "2nd_llama"
+                     cloudProviderType != "llamacpp"
 
       if isCloud:
         debugLog("/api/models isCloud=true -> getModelsFromConfig")

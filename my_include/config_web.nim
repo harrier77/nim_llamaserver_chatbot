@@ -6,6 +6,8 @@
 # ============================================================
 
 import os, strutils, times,  json
+when not defined(windows):
+  import osproc
 
 var ExeDir*: string = ""
 
@@ -76,4 +78,4 @@ proc launchDetached*(target: string) =
     else:
       discard ShellExecuteA(0, "open", target, nil, nil, 1)
   else:
-    discard execCmd("xdg-open " & target)
+    discard execProcess("xdg-open", args = [target])
