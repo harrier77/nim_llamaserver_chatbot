@@ -337,7 +337,8 @@ proc readTool*(args: JsonNode): string =
     return $(%*{"error": "Missing file_path parameter"})
 
   let offset = if args.hasKey("offset"): args["offset"].getInt() else: 1
-  let limit = if args.hasKey("limit"): args["limit"].getInt() else: -1
+  let limitSpecified = args.hasKey("limit")
+  let limit = if limitSpecified: args["limit"].getInt() else: -1
   let fromTail = if args.hasKey("from_tail"): args["from_tail"].getBool() else: false
   var maxBytes = if args.hasKey("max_bytes"): args["max_bytes"].getInt() else: MaxReadBytes
   # When reading from tail, raise byte limit to 4KB unless explicitly overridden
@@ -377,7 +378,13 @@ proc readTool*(args: JsonNode): string =
     if offset > lines.len:
       return $(%*{"error": "Offset beyond file length"})
 
-    let effectiveLimit = if limit == -1: MaxReadLines else: limit
+    # Determine effective limit:
+    # - limit not specified by model → use MaxReadLines default
+    # - limit == -1 (explicit) → read all remaining lines
+    # - limit >= 0 → use the specified value
+    let effectiveLimit = if not limitSpecified: MaxReadLines
+                         elif limit == -1: lines.len
+                         else: limit
     var startIdx: int
     var endIdx: int
     var truncatedBefore = false
@@ -420,7 +427,8 @@ proc bashTool*(args: JsonNode): string =
   if command == "": return $(%*{"error": "Missing command parameter"})
 
   let offset = if args.hasKey("offset"): args["offset"].getInt() else: 1
-  let limit = if args.hasKey("limit"): args["limit"].getInt() else: -1
+  let limitSpecified = args.hasKey("limit")
+  let limit = if limitSpecified: args["limit"].getInt() else: -1
 
   try:
     var res = ""
@@ -441,7 +449,13 @@ proc bashTool*(args: JsonNode): string =
       return $(%*{"error": "Offset beyond output length", "exit_code": exitCode})
 
     let startIdx = max(0, offset - 1)
-    let effectiveLimit = if limit == -1: MaxBashOutputLines else: min(limit, MaxBashOutputLines)
+    # Determine effective limit:
+    # - limit not specified by model → use MaxBashOutputLines default
+    # - limit == -1 (explicit) → read all remaining lines
+    # - limit >= 0 → use the specified value, capped to MaxBashOutputLines
+    let effectiveLimit = if not limitSpecified: MaxBashOutputLines
+                         elif limit == -1: lines.len
+                         else: min(limit, MaxBashOutputLines)
     let endIdx = min(lines.len - 1, startIdx + effectiveLimit - 1)
 
     let slice = lines[startIdx .. endIdx]
