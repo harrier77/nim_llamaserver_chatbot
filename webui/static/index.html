@@ -138,6 +138,38 @@
     function renderMarkdown(text) {
       if (!text) return '';
       try {
+        // === PRE-PROCESSING: convert pseudo-headings to valid markdown ===
+        // LLMs often emit patterns like === TEXT ===, --- TEXT ---, etc.
+        // These are NOT valid markdown headings. Convert them to ATX headings.
+        var preprocessed = text.replace(
+          /^(={3,})\s*(.+?)\s*\1\s*$/gm,
+          function(m, eq, title) {
+            var level = Math.min(eq.length, 6);
+            return '#'.repeat(level) + ' ' + title;
+          }
+        ).replace(
+          /^(-{3,})\s*(.+?)\s*\1\s*$/gm,
+          function(m, dash, title) {
+            var level = Math.min(dash.length, 6);
+            return '#'.repeat(level) + ' ' + title;
+          }
+        ).replace(
+          /^\*{3,}\s*(.+?)\s*\*{3,}\s*$/gm,
+          function(m, title) {
+            return '### ' + title;
+          }
+        ).replace(
+          /^(_{3,})\s*(.+?)\s*\1\s*$/gm,
+          function(m, us, title) {
+            return '## ' + title;
+          }
+        ).replace(
+          /^~{3,}\s*(.+?)\s*~{3,}\s*$/gm,
+          function(m, title) {
+            return '### ' + title;
+          }
+        );
+
         marked.setOptions({
           highlight: function(code, lang) {
             if (lang && hljs.getLanguage(lang)) {
@@ -148,7 +180,7 @@
           breaks: true,
           gfm: true
         });
-        var raw = marked.parse(text);
+        var raw = marked.parse(preprocessed);
         return DOMPurify.sanitize(raw);
       } catch (e) {
         console.error('Markdown render error:', e);
