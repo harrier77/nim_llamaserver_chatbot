@@ -33,6 +33,12 @@
     </svg>
     <span id="llama-btn-label">Llama</span>
   </button>
+  <button id="kill-llama-btn" class="toolbar-btn" type="button" title="Kill llama.cpp server">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;margin-right:4px">
+      <rect x="3" y="3" width="18" height="18" rx="2"/>
+    </svg>
+    <span id="kill-llama-btn-label">Kill</span>
+  </button>
 </div>
 
 <div style="display: flex; flex: 1; min-height: 0; overflow: hidden;">
@@ -502,6 +508,29 @@
       setTimeout(() => {
         btn.disabled = false;
         label.textContent = 'Llama';
+      }, 3000);
+    });
+
+    // ============ KILL LLAMA BUTTON ============
+    document.getElementById('kill-llama-btn').addEventListener('click', async () => {
+      const btn = document.getElementById('kill-llama-btn');
+      const label = document.getElementById('kill-llama-btn-label');
+      btn.disabled = true;
+      label.textContent = 'Killing...';
+      try {
+        const res = await fetch('/api/kill-llama');
+        const data = await res.json();
+        if (data.ok) {
+          label.textContent = '✅ Killed';
+          addChatMessage('system', 'Llama server terminated');
+        }
+      } catch (e) {
+        label.textContent = '❌ Error';
+        console.error('Failed to kill llama:', e);
+      }
+      setTimeout(() => {
+        btn.disabled = false;
+        label.textContent = 'Kill';
       }, 3000);
     });
 

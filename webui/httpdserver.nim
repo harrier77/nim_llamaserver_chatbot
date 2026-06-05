@@ -4,7 +4,7 @@
 ## Runs in a separate thread to avoid blocking the TUI
 ##
 
-import std/[asyncdispatch, asynchttpserver, asyncnet, httpclient, httpcore, json, os, strutils, strformat, times, random, uri]
+import std/[asyncdispatch, asynchttpserver, asyncnet, httpclient, httpcore, json, os, osproc, strutils, strformat, times, random, uri]
 import tools
 import system_prompt
 import config_web
@@ -841,6 +841,21 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
       launchDetached(r"C:\down\llama-latest\lancia_router.bat")
       debugLog("Launching llama server via /api/launch-llama endpoint")
       let response = %*{"ok": true, "message": "Llama server launched"}
+      await req.respond(Http200, $response, headers)
+      return
+
+    if path == "/api/kill-llama":
+      let headers = newHttpHeaders([("Content-Type", "application/json")])
+      var killOutput = ""
+      try:
+        when defined(windows):
+          (killOutput, _) = execCmdEx("taskkill /IM llama-server.exe /F")
+        else:
+          (killOutput, _) = execCmdEx("pkill -f llama-server")
+      except:
+        discard
+      debugLog("Killing llama server via /api/kill-llama endpoint")
+      let response = %*{"ok": true, "output": killOutput.strip()}
       await req.respond(Http200, $response, headers)
       return
 
