@@ -3,6 +3,10 @@
 <head>
   <meta charset="utf-8">
   <link rel="stylesheet" href="miostile.css?v=20260513">
+  <link id="hljs-theme" rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
 </head>
 <body spellcheck="false">
 <div id="upper_toolbar" style="width: 95%; margin-left:4rem;display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; ">
@@ -123,6 +127,28 @@
     var conversationHistory = [];
     var isProcessing = false;
     var availableTools = [];
+
+    // ============ MARKDOWN RENDERING ============
+    function renderMarkdown(text) {
+      if (!text) return '';
+      try {
+        marked.setOptions({
+          highlight: function(code, lang) {
+            if (lang && hljs.getLanguage(lang)) {
+              return hljs.highlight(code, { language: lang }).value;
+            }
+            return hljs.highlightAuto(code).value;
+          },
+          breaks: true,
+          gfm: true
+        });
+        var raw = marked.parse(text);
+        return DOMPurify.sanitize(raw);
+      } catch (e) {
+        console.error('Markdown render error:', e);
+        return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br/>');
+      }
+    }
 
     // ============ PATH NORMALIZATION ============
     function normalizePath(str) {
@@ -406,6 +432,15 @@
     }
 
     // ============ THEME TOGGLE ============
+    function updateHljsTheme(dark) {
+      var link = document.getElementById('hljs-theme');
+      if (link) {
+        link.href = dark
+          ? 'https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css'
+          : 'https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github.min.css';
+      }
+    }
+
     function initTheme() {
       // Check saved preference
       const savedTheme = localStorage.getItem('theme');
@@ -419,6 +454,7 @@
         document.documentElement.classList.remove('dark');
         if (themeBtn) themeBtn.textContent = 'Dark';
       }
+      updateHljsTheme(isDark);
     }
 
     // Theme toggle
@@ -431,6 +467,7 @@
         document.documentElement.classList.remove('dark');
         localStorage.setItem('theme', 'light');
       }
+      updateHljsTheme(isDark);
       // Update dropdown colors if open
       const dropdown = document.querySelector('.dropdown');
       if (dropdown) {
@@ -581,7 +618,7 @@
           role === 'system' ? 'message-system' :
           role === 'tool' ? 'message-tool' :
           'message-assistant');
-      bubble.innerHTML = content.replace(/\n/g, '<br/>');
+      bubble.innerHTML = renderMarkdown(content);
 
       msgDiv.appendChild(bubble);
       chatDiv.appendChild(msgDiv);
@@ -836,7 +873,7 @@
                     aiBuffer += delta.content;
                     if (aiBubble) {
                       const tpsBadge = currentTps > 0 ? '<br><span class="tps-badge">⚡ ' + currentTps.toFixed(1) + ' t/s</span>' : '';
-                      aiBubble.innerHTML = aiBuffer.replace(/\n/g, '<br/>') + tpsBadge;
+                      aiBubble.innerHTML = renderMarkdown(aiBuffer) + tpsBadge;
                       // Auto-scroll durante lo streaming solo se l'utente è vicino al fondo
                       const wrapper = document.querySelector('.chat-messages-wrapper');
                       if (wrapper) {
@@ -981,7 +1018,7 @@
 
               const contentDiv = document.createElement('div');
               contentDiv.className = 'collapsible-content collapsed';
-              contentDiv.innerHTML = displayContent.replace(/\n/g, '<br/>');
+              contentDiv.innerHTML = renderMarkdown(displayContent);
 
               trigger.addEventListener('click', function() {
                 const isCollapsed = contentDiv.classList.contains('collapsed');
