@@ -7,6 +7,7 @@ REM Usage:
 REM   compila            -> builds webui_only.exe (browser only, no TUI)
 REM   compila wv         -> builds webui_wv.exe (WebUI + WebView2)
 REM   compila tui        -> builds chatbot_main.exe (full TUI version)
+REM   compila mcp        -> builds mcp_tools_server.exe (standalone MCP tool server, port 8001)
 REM   compila both       -> builds all versions
 REM   compila clean      -> removes all executables
 REM
@@ -22,8 +23,10 @@ REM terminal UI dependency.
 REM ============================================================
 
 set FLAGS=--threads:on --path:"my_include" --path:"webui" --define:ssl
+set MCPFLAGS=%FLAGS%
 set WVFLAGS=%FLAGS% --path:"webview2_nim" --app:gui
 
+if /I "%1"=="mcp" goto mcp
 if /I "%1"=="wv" goto wv
 if /I "%1"=="tui" goto tui
 if /I "%1"=="both" goto both
@@ -74,6 +77,22 @@ echo.
 echo [OK] chatbot_main.exe created
 goto end
 
+:mcp
+echo.
+echo === Building mcp_tools_server.exe (MCP tool server, port 8001) ===
+echo.
+echo [INFO] Requires mcp_nim/mcp_server/mcpframework.nim
+echo.
+nim c %MCPFLAGS% --out:"mcp_tools_server.exe" mcp_tools_server.nim
+if %ERRORLEVEL% neq 0 (
+  echo.
+  echo [ERROR] mcp_tools_server build failed! (code %ERRORLEVEL%)
+  exit /b %ERRORLEVEL%
+)
+echo.
+echo [OK] mcp_tools_server.exe created
+goto end
+
 :both
 echo.
 echo === Building ALL versions ===
@@ -83,6 +102,8 @@ if %ERRORLEVEL% neq 0 exit /b %ERRORLEVEL%
 call :build_tui
 if %ERRORLEVEL% neq 0 exit /b %ERRORLEVEL%
 call :build_wv
+if %ERRORLEVEL% neq 0 exit /b %ERRORLEVEL%
+call :build_mcp
 if %ERRORLEVEL% neq 0 exit /b %ERRORLEVEL%
 echo.
 echo [OK] All executables built successfully
@@ -104,6 +125,10 @@ if exist webui_wv.exe (
   del webui_wv.exe
   echo [OK] webui_wv.exe deleted
 )
+if exist mcp_tools_server.exe (
+  del mcp_tools_server.exe
+  echo [OK] mcp_tools_server.exe deleted
+)
 echo.
 goto end
 
@@ -117,6 +142,10 @@ exit /b %ERRORLEVEL%
 
 :build_wv
 nim c %WVFLAGS% --out:"webui_wv.exe" webui_wv.nim
+exit /b %ERRORLEVEL%
+
+:build_mcp
+nim c %MCPFLAGS% --out:"mcp_tools_server.exe" mcp_tools_server.nim
 exit /b %ERRORLEVEL%
 
 :end
