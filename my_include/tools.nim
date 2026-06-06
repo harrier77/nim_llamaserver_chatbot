@@ -120,10 +120,12 @@ proc safeParseToolArgs*(raw: string): JsonNode =
     if braceStart < 0: break repair  # no JSON object at all
     if braceStart > 0: fixed = fixed[braceStart..^1]
 
-    # Normalize Python-style booleans (common with llama.cpp/python-finetuned models)
-    fixed = fixed.replace(": True", ": true")
-    fixed = fixed.replace(": False", ": false")
-    fixed = fixed.replace(": None", ": null")
+    # Normalize Python-style booleans (common with llama.cpp/python-finetuned models).
+    # Case-insensitive + handles missing space after colon (e.g. ":True", ": True", ":TRUE").
+    # Word boundary avoids corrupting string values like "C:\True.txt".
+    fixed = fixed.replace(re":\s*(?i)True\b", ": true")
+    fixed = fixed.replace(re":\s*(?i)False\b", ": false")
+    fixed = fixed.replace(re":\s*(?i)None\b", ": null")
 
     # Remove trailing comma before closing
     fixed = fixed.replace(",}", "}").replace(",]", "]")
@@ -224,11 +226,11 @@ proc safeParseToolArgs*(raw: string): JsonNode =
             result[key] = %captures[0]
         continue
 
-    # Pattern 3: "key": true/false
+    # Pattern 3: "key": true/false (case-insensitive, handles Python-style True/False)
     captures = @[]
-    if re.match(raw, re("\"" & key & "\"\\s*:\\s*(true|false)"), captures):
+    if re.match(raw, re("\"" & key & "\"\\s*:\\s*(?i)(true|false)"), captures):
       if captures.len > 0:
-        result[key] = %(captures[0] == "true")
+        result[key] = %(captures[0].toLowerAscii == "true")
         continue
 
     # Pattern 4: plain-text key=value

@@ -1592,11 +1592,11 @@
       if (chatInput) {
           var isDebug = currentDir.includes('database_pianificazione');
         if (isDebug) {
-          chatInput.value = 'use tool read "' + filePath + '" from_tail limit 3 and show user_email, included path and new value';
+          chatInput.value = 'use tool read ' + filePath + ' from_tail limit 3 and show user_email, included path and new value';
         } else if (currentDir.includes('delibere')) {
-          chatInput.value = 'use tool read "' + filePath + '" max_bytes 4096 and summarize in 200 words italian discoursive';
+          chatInput.value = 'use tool read on file ' + filePath + ' max_bytes 4096 and summarize in 200 words italian discoursive';
         } else {
-          chatInput.value = 'use tool read "' + filePath + '"';
+          chatInput.value = 'use tool read ' + filePath ;
         }
         chatInput.dispatchEvent(new Event('input', { bubbles: true }));
         chatInput.focus();
