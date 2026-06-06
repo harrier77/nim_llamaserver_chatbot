@@ -858,14 +858,23 @@
 
         try {
           const chatUrl = '/v1/chat/completions?provider=' + encodeURIComponent(currentProvider);
+          const pObj = getProviderObj(currentProvider);
+          const isRemoteProvider = pObj ? pObj.isRemote : false;
+          var hostname = window.location.hostname;
+          var isRemoteHost = hostname !== 'localhost' && hostname !== '127.0.0.1' && hostname !== '[::1]';
+          // timings_per_token e return_progress sono supportati solo da llama-server locale,
+          // non dai provider remoti (together, cerebras, groq, openrouter, etc.)
+          var isLocalLlamaserver = !isRemoteProvider && !isRemoteHost;
           const requestBody = {
             model: currentModel,
             messages: conversationHistory,
             stream: true,
-            timings_per_token: true,
-            return_progress: true,
             tools: availableTools
           };
+          if (isLocalLlamaserver) {
+            requestBody.timings_per_token = true;
+            requestBody.return_progress = true;
+          }
           //console.log('[DEBUG sendMessage] === FULL REQUEST DUMP ===');
           //console.log('[DEBUG sendMessage] URL:', chatUrl);
           //console.log('[DEBUG sendMessage] PROVIDER detail:', JSON.stringify(getProviderObj(currentProvider)));
