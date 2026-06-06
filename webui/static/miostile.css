@@ -384,9 +384,9 @@ html.dark .sidebar-toggle-btn:hover { color: #d1d5db; }
 }
 
 /* Dark mode chat */
-html.dark .chat-messages .message-user { background-color: #3b82f6; color: #ffffff; }
+html.dark .chat-messages .message-user { background-color: #1a1a1a; color: #ffffff; }
 html.dark .chat-messages .message-assistant { background-color: #1a1a1a; color: #f9fafb; }
-html.dark .chat-messages .message-system { background-color: #854d0e; color: #fef9c3; }
+html.dark .chat-messages .message-system { background-color: #1a1a1a; color: #fef9c3; }
 
 /* ============ MARKDOWN CONTENT ============ */
 .message-bubble p {
