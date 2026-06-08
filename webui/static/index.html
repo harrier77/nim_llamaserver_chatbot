@@ -477,6 +477,9 @@
       const p = document.querySelector('[role="main"] p#welcome-text');
       if (h2) h2.style.display = '';
       if (p) p.style.display = '';
+      // Riporta la form in flusso normale (sotto il welcome text)
+      const fw = document.querySelector('.conversation-chat-form-wrapper');
+      if (fw) fw.style.marginTop = '';
     });
 
     function initConversation() {
@@ -881,6 +884,10 @@
     async function sendMessage(message) {
       if (isProcessing) return;
       isProcessing = true;
+
+      // Sposta la form a fondo pagina quando inizia lo stream
+      const fw = document.querySelector('.conversation-chat-form-wrapper');
+      if (fw) fw.style.marginTop = 'auto';
 
       // Create abort controller for this request
       abortController = new AbortController();
