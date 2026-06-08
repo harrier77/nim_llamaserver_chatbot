@@ -292,6 +292,44 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
   width: 1.25rem !important;
   height: 1.25rem !important;
 }
+
+/* Stop button */
+#stop-btn {
+  display: inline-flex;
+  align-items: center !important;
+  justify-content: center !important;
+  background-color: #ef4444 !important;
+  color: #ffffff !important;
+  width: 2.5rem !important;
+  height: 2.5rem !important;
+  border-radius: 9999px !important;
+  border: none !important;
+  cursor: pointer !important;
+  flex-shrink: 0 !important;
+  margin-left: 0.5rem !important;
+}
+
+#stop-btn:hover {
+  background-color: #dc2626 !important;
+}
+
+#stop-btn:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+
+#stop-btn svg {
+  width: 1.25rem !important;
+  height: 1.25rem !important;
+}
+
+html.dark #stop-btn {
+  background-color: #ef4444 !important;
+}
+
+html.dark #stop-btn:hover {
+  background-color: #dc2626 !important;
+}
 .bg-muted { background-color: #f3f4f6; }
 .bg-background { background-color: #ffffff; }
 .bg-popover { background-color: #ffffff; }

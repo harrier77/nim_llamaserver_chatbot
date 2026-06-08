@@ -123,6 +123,12 @@
                       <path d="M12 19V5"></path>
                     </svg>
                   </button>
+                  <button id="stop-btn" type="button" style="display:none" title="Stop generation">
+                    <span class="sr-only">Stop</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                      <rect x="6" y="6" width="12" height="12" rx="2"/>
+                    </svg>
+                  </button>
                 </div>
               </div>
             </div>
@@ -140,6 +146,7 @@
     var currentModel = null;
     var conversationHistory = [];
     var isProcessing = false;
+    var abortController = null;
     var availableTools = [];
 
     // ============ MARKDOWN RENDERING ============
@@ -681,6 +688,21 @@
       }
     })();
 
+    // ============ STOP BUTTON HANDLER ============
+    document.getElementById('stop-btn')?.addEventListener('click', function() {
+      if (abortController) {
+        abortController.abort();
+      }
+    });
+
+    // ============ UPDATE SEND/STOP BUTTON VISIBILITY ============
+    function updateSendStopButtons(showStop) {
+      var sendBtn = document.getElementById('send-btn');
+      var stopBtn = document.getElementById('stop-btn');
+      if (sendBtn) sendBtn.style.display = showStop ? 'none' : '';
+      if (stopBtn) stopBtn.style.display = showStop ? '' : 'none';
+    }
+
     // ============ ADD CHAT MESSAGE ============
     function addChatMessage(role, content) {
       const mainDiv = document.querySelector('[role="main"]');
@@ -853,6 +875,9 @@
       if (isProcessing) return;
       isProcessing = true;
 
+      // Create abort controller for this request
+      abortController = new AbortController();
+
       // Normalizza i backslash in slash nel messaggio dell'utente
       message = normalizePath(message);
 
@@ -914,7 +939,8 @@
           const response = await fetch(chatUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody)
+            body: JSON.stringify(requestBody),
+            signal: abortController ? abortController.signal : undefined
           });
           console.log('[DEBUG sendMessage] FETCH done status=' + response.status + ' ' + response.statusText + ' ok=' + response.ok + ' contentType=' + (response.headers.get('content-type')||'none'));
 
@@ -935,14 +961,23 @@
           console.log('[DEBUG sendMessage] STREAM reader created');
 
           while (true) {
+            // Check if user aborted
+            if (abortController && abortController.signal.aborted) {
+              console.log('[DEBUG sendMessage] Stream aborted by user');
+              if (aiBubble) aiBubble.innerHTML = renderMarkdown(aiBuffer) + '\n\n*⏹️ Generation stopped by user*';
+              clearInterval(logInterval);
+              break;
+            }
             const { done, value } = await reader.read();
             if (done) {
+              updateSendStopButtons(false);
               console.log('[DEBUG sendMessage] STREAM done totalChunks=' + chunkCount + ' aiBufferLen=' + aiBuffer.length);
               break;
             }
             chunkCount++;
             if (chunkCount === 1) {
               clearInterval(logInterval);
+              updateSendStopButtons(true);
               console.log('[DEBUG sendMessage] STREAM first chunk arrived');
             }
 
@@ -1168,14 +1203,26 @@
             break;
           }
         } catch (e) {
-          console.error('[DEBUG sendMessage] CATCH error:', e.message, e.stack);
-          clearInterval(logInterval);
-          if (logBubble) logBubble.innerHTML = 'Error: ' + e.message;
-          if (aiBubble) aiBubble.textContent = 'Error: ' + e.message;
+          if (e.name === 'AbortError') {
+            console.log('[DEBUG sendMessage] Fetch aborted by user');
+            clearInterval(logInterval);
+            if (logBubble && logBubble.innerHTML === 'Loading model...') logBubble.innerHTML = 'Generation stopped by user';
+            if (aiBubble && !aiBubble.innerHTML.includes('Generation stopped')) {
+              aiBubble.innerHTML = renderMarkdown(aiBuffer) + '\n\n*⏹️ Generation stopped by user*';
+            }
+          } else {
+            console.error('[DEBUG sendMessage] CATCH error:', e.message, e.stack);
+            clearInterval(logInterval);
+            if (logBubble) logBubble.innerHTML = 'Error: ' + e.message;
+            if (aiBubble) aiBubble.textContent = 'Error: ' + e.message;
+          }
           break;
         }
       }
 
+      // Cleanup
+      abortController = null;
+      updateSendStopButtons(false);
       isProcessing = false;
     }
 
