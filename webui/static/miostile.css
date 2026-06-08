@@ -100,21 +100,44 @@ html.dark #upper_toolbar {
   display: none;
 }
 
-/* Main chat area */
+/* Main chat area — now the scroll container */
 [role="main"] {
   display: flex;
   flex-direction: column;
   padding: 1rem 1.5rem;
   min-width: 500px;
   flex: 1;
+  overflow-y: auto;
+  scroll-behavior: smooth;
 }
 .pointer-events-auto { pointer-events: auto; }
 
-/* Chat messages wrapper - scrolls independently */
-.chat-messages-wrapper {
+/* Inner wrapper — flex grow: fills main, pushes form to bottom with mt-auto */
+.chat-inner-wrapper {
+  display: flex;
+  flex-direction: column;
   flex: 1;
-  overflow-y: auto;
+  /* NOTE: min-height NOT set to 0 (default = auto). This prevents content
+     from being clipped/overflowing when messages exceed viewport. */
+}
+
+/* Chat messages wrapper - natural block height (NO flex:1 — that caused overflow) */
+.chat-messages-wrapper {
   min-height: 0;
+}
+
+/* Sticky wrapper for the chat form — stays at bottom of viewport */
+.conversation-chat-form-wrapper {
+  position: sticky;
+  bottom: 0;
+  flex-shrink: 0;
+  margin-top: auto;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(5px);
+}
+html.dark .conversation-chat-form-wrapper {
+  background: rgba(0, 0, 0, 0.9);
 }
 
 /* Welcome message */
@@ -393,6 +416,7 @@ html.dark .sidebar-toggle-btn:hover { color: #d1d5db; }
   margin-right: auto;
   padding-left: 1rem;
   padding-right: 1rem;
+  //padding-bottom: 9rem; /* Spazio per evitare che l'ultimo messaggio (es. TPS badge) finisca sotto la form sticky (~7.6rem) */
 }
 .chat-messages > div { display: flex;}
 .chat-messages .message-bubble {

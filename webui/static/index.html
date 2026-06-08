@@ -69,15 +69,18 @@
   </div>
   </div>
 <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
-<div role="main" style="min-height:80vh;position: relative; display: flex; flex-direction: column">
-    <div class="chat-messages-wrapper" style="flex: 1; overflow-y: auto;">
+<div role="main" style="min-height:80vh; display: flex; flex-direction: column; overflow-y: auto; scroll-behavior: smooth;">
+  <div class="chat-inner-wrapper" style="display: flex; flex-direction: column; flex: 1;">
+    <div class="chat-messages-wrapper">
       <div>
         <div class="mb-8 text-center">
           <h2 id="welcome-title" style="margin-top:23rem;margin-bottom:0;font-size:1.8rem;font-weight:500">Hello there</h2>
           <p id="welcome-text" class="text-muted-foreground" style="margin-block-start: 1rem; margin-block-end: 0px">Type a message to get started...</p>
         </div> 
-      </div> 
-      <div class="conversation-chat-form" style="top:35rem;flex-shrink: 0; position: sticky; bottom: 5px; backdrop-filter: blur(5px); z-index: 10; padding: 0.5rem 1rem;">
+      </div>
+    </div><!--end of chat message wrapper -->
+    <div class="conversation-chat-form-wrapper" style="position: sticky; bottom: 0; flex-shrink: 0; margin-top: auto; z-index: 10; backdrop-filter: blur(5px);">
+      <div class="conversation-chat-form" style="padding: 0.5rem 1rem;">
       <div class="relative" style="margin:auto">
         <input type="file" multiple class="hidden">
         <form>
@@ -136,11 +139,11 @@
         </form>
        
       </div>
+      </div>
     </div>
-    </div><!--end of chat message wrapper -->
+  </div>
 
-</div>
-</div><!-- 0 --> 
+</div><!-- 0 -->
   <script>
     var isDark = false;
     var currentModel = null;
@@ -737,9 +740,9 @@
       msgDiv.appendChild(bubble);
       chatDiv.appendChild(msgDiv);
       
-      // Scroll the wrapper, not the main container
-      if (wrapper) {
-        wrapper.scrollTo({ top: wrapper.scrollHeight, behavior: 'smooth' });
+      // Scroll the main container (now the scroll container)
+      if (mainDiv) {
+        mainDiv.scrollTo({ top: mainDiv.scrollHeight, behavior: 'smooth' });
       }
 
       // Restituisci il bubble per aggiornarlo dopo in streaming
@@ -902,8 +905,8 @@
             if (d.lines && d.lines.length > 0) {
               logBubble.innerHTML = d.lines.map(l => l.replace(/\n/g, '<br/>')).join('<br/>');
               // Auto-scroll per mostrare l'ultima riga del log
-              const wrapper = document.querySelector('.chat-messages-wrapper');
-              if (wrapper) wrapper.scrollTop = wrapper.scrollHeight;
+              const mainEl = document.querySelector('[role="main"]');
+              if (mainEl) mainEl.scrollTop = mainEl.scrollHeight;
             }
           } catch(e) {}
         }, 1500);
@@ -1011,11 +1014,11 @@
                       const tpsBadge = currentTps > 0 ? '<br><span class="tps-badge">⚡ ' + currentTps.toFixed(1) + ' t/s</span>' : '';
                       aiBubble.innerHTML = renderMarkdown(aiBuffer) + tpsBadge;
                       // Auto-scroll durante lo streaming solo se l'utente è vicino al fondo
-                      const wrapper = document.querySelector('.chat-messages-wrapper');
-                      if (wrapper) {
-                        const isNearBottom = (wrapper.scrollHeight - wrapper.scrollTop - wrapper.clientHeight) < 100;
+                      const mainEl = document.querySelector('[role="main"]');
+                      if (mainEl) {
+                        const isNearBottom = (mainEl.scrollHeight - mainEl.scrollTop - mainEl.clientHeight) < 100;
                         if (isNearBottom) {
-                          wrapper.scrollTo({ top: wrapper.scrollHeight, behavior: 'instant' });
+                          mainEl.scrollTo({ top: mainEl.scrollHeight, behavior: 'instant' });
                         }
                       }
                     }
@@ -1169,8 +1172,8 @@
               toolContainer.appendChild(toolBubble);
               chatDivEl.appendChild(toolContainer);
 
-              if (wrapperEl) {
-                wrapperEl.scrollTo({ top: wrapperEl.scrollHeight, behavior: 'smooth' });
+              if (mainEl) {
+                mainEl.scrollTo({ top: mainEl.scrollHeight, behavior: 'smooth' });
               }
 
               conversationHistory.push({
