@@ -87,6 +87,23 @@ const ToolsSchemaJson* = """[
         "required": ["query"]
       }
     }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "change_dir",
+      "description": "Change the working directory of the MCP server. All subsequent file operations with relative paths will be resolved relative to this new directory. Tip: replace backslashes with forward slashes in Windows paths (e.g. C:/Users instead of C:\\Users). Do NOT add a leading slash before the drive letter.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Path to the new working directory. For Windows paths use forward slash as separator (e.g. C:/Users/name). Do NOT prefix with a slash."
+          }
+        },
+        "required": ["path"]
+      }
+    }
   }
 ]"""
 
@@ -728,6 +745,56 @@ proc websearchTool*(args: JsonNode): string {.gcsafe.} =
     client.close()
 
 
+proc fixWindowsPath(path: string): string =
+  ## Detect and repair a corrupted Windows path where the backslash
+  ## after the drive letter was stripped by lenient JSON parsing.
+  ## E.g. "C:Users\..." → "C:\Users\..." when the original was
+  ## `C:\Users\...` but \U was treated as an invalid escape and
+  ## the backslash was dropped.
+  ##
+  ## Only applies the fix if the corrected path actually exists.
+  result = path.replace("\\", "/")
+  # Fix 1: strip leading slash before drive letter (models sometimes add /X:)
+  # e.g. "/C:/Users/..." → "C:/Users/..."
+  if result.len >= 3 and
+     result[0] == '/' and
+     result[2] == ':' and
+     result[1] in {'A'..'Z', 'a'..'z'}:
+    result = result[1..^1]
+  # Fix 2: re-add separator after colon if missing (JSON escape stripped it)
+  # e.g. "C:Users/..." → "C:/Users/..."
+  if result.len >= 3 and
+     result[0] in {'A'..'Z', 'a'..'z'} and
+     result[1] == ':' and
+     result[2] != '/':
+    let fixed = result[0..1] & "/" & result[2..^1]
+    if dirExists(fixed):
+      return fixed
+
+proc changeDirTool*(args: JsonNode): string =
+  let path = if args.hasKey("path") and args["path"].kind == JString:
+               args["path"].getStr()
+             else: ""
+  if path == "":
+    return $(%*{"error": "Missing path parameter"})
+
+  # Normalize: unify separator → forward slashes
+  # Also try to fix Windows paths corrupted by JSON escape stripping
+  var resolvedPath = fixWindowsPath(path)
+
+  # Resolve relative paths
+  if not resolvedPath.startsWith("/") and not (resolvedPath.len >= 2 and resolvedPath[1] == ':'):
+    resolvedPath = getCurrentDir() / resolvedPath
+
+  if not dirExists(resolvedPath):
+    return $(%*{"error": "Directory not found: " & resolvedPath})
+
+  try:
+    setCurrentDir(resolvedPath)
+    return $(%*{"content": "Working directory changed to: " & getCurrentDir()})
+  except Exception as e:
+    return $(%*{"error": e.msg})
+
 proc executeTool*(name: string, args: JsonNode): string =
   ## Dispatch tool calls to the appropriate implementation.
   case name
@@ -736,6 +803,7 @@ proc executeTool*(name: string, args: JsonNode): string =
     return $(%*{"error": "Tool suspended: " & name & " is not available (use 'read' with max_bytes instead)"})
   of "file_glob_search": return fileGlobSearchTool(args)
   of "websearch": return websearchTool(args)
+  of "change_dir": return changeDirTool(args)
   of "bash", "readDelibera":
-    return $(%*{"error": "Tool suspended: " & name & " is not available (only 'read', 'file_glob_search', and 'websearch' are active)"})
+    return $(%*{"error": "Tool suspended: " & name & " is not available (only 'read', 'file_glob_search', 'websearch', and 'change_dir' are active)"})
   else: return $(%*{"error": "Unknown tool: " & name})

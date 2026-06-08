@@ -58,7 +58,7 @@ proc registerChatbotTools(server: McpServer) =
     # Expose only the ACTIVE tools (read, file_glob_search, websearch);
     # suspended tools (get_file, bash, readDelibera) are not registered.
     case name
-    of "read", "file_glob_search", "websearch":
+    of "read", "file_glob_search", "websearch", "change_dir":
       server.addOpenAITool(entry, makeHandler(name))
     else:
       discard  # suspended tools not exposed on MCP
@@ -90,7 +90,7 @@ proc main() =
   echo "  Nim LlamaServer Chatbot - MCP Tools Server"
   echo repeat("=", 60)
   echo "  Endpoint: http://localhost:" & $port & "/mcp"
-  echo "  Tools:    read, file_glob_search, websearch"
+  echo "  Tools:    read, file_glob_search, websearch, change_dir"
   echo "  Press Ctrl+C to stop"
   echo repeat("=", 60)
   echo ""
