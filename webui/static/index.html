@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <link rel="stylesheet" href="miostile.css?v=20260513">
-  <link id="hljs-theme" rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/highlight.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+  <link id="hljs-theme" rel="stylesheet" href="github.min.css">
+  <script src="marked.min.js"></script>
+  <script src="highlight.min.js"></script>
+  <script src="purify.min.js"></script>
 </head>
 <body spellcheck="false">
 <div id="upper_toolbar" style="width: 95%; margin-left:4rem;display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; ">
@@ -492,8 +492,8 @@
       var link = document.getElementById('hljs-theme');
       if (link) {
         link.href = dark
-          ? 'https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github-dark.min.css'
-          : 'https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11/build/styles/github.min.css';
+          ? 'github-dark.min.css'
+          : 'github.min.css';
       }
     }
 
@@ -549,8 +549,7 @@
         const data = await res.json();
         if (data.ok) {
           label.textContent = '✅ Launched';
-          document.getElementById('open-server-btn').style.display = '';
-          document.getElementById('kill-llama-btn').style.display = '';
+          updateServerButtons(true);
           addChatMessage('system', 'Llama server launched');
           // Switch provider to localhost:8080 now that we launched the server
           var newProviderUrl = 'http://localhost:8080';
@@ -584,8 +583,7 @@
         const data = await res.json();
         if (data.ok) {
           label.textContent = '✅ Killed';
-          document.getElementById('open-server-btn').style.display = 'none';
-          document.getElementById('kill-llama-btn').style.display = 'none';
+          updateServerButtons(false);
           addChatMessage('system', 'Llama server terminated');
           // Reset model dropdown since the server is no longer running
           window.dispatchEvent(new Event('reset-models'));
@@ -704,6 +702,12 @@
       var stopBtn = document.getElementById('stop-btn');
       if (sendBtn) sendBtn.style.display = showStop ? 'none' : '';
       if (stopBtn) stopBtn.style.display = showStop ? '' : 'none';
+    }
+
+    // ============ UPDATE SERVER BUTTONS VISIBILITY ============
+    function updateServerButtons(running) {
+      document.getElementById('open-server-btn').style.display = running ? '' : 'none';
+      document.getElementById('kill-llama-btn').style.display = running ? '' : 'none';
     }
 
     // ============ ADD CHAT MESSAGE ============
@@ -1011,7 +1015,7 @@
                   if (delta.content) {
                     aiBuffer += delta.content;
                     if (aiBubble) {
-                      const tpsBadge = currentTps > 0 ? '<br><span class="tps-badge">⚡ ' + currentTps.toFixed(1) + ' t/s</span>' : '';
+                      const tpsBadge = currentTps > 0 ? '<span class="tps-badge">⚡ ' + currentTps.toFixed(1) + ' t/s</span>' : '';
                       aiBubble.innerHTML = renderMarkdown(aiBuffer) + tpsBadge;
                       // Auto-scroll durante lo streaming solo se l'utente è vicino al fondo
                       const mainEl = document.querySelector('[role="main"]');
@@ -1309,10 +1313,15 @@
             selectedModel = null;
             label.textContent = 'Select model';
           }
+
+          // Sync button visibility based on whether llamaserver has real models
+          var hasRealModels = models.some(function(m) { return m.id !== 'llamaserver missing'; });
+          updateServerButtons(hasRealModels);
         } catch (e) {
           console.error('[DEBUG] fetchModels FAILED:', e.message);
           label.textContent = 'Select model';
           models = [];
+          updateServerButtons(false);
         }
       }
 
@@ -1553,6 +1562,7 @@
         currentModel = null;
         models = [];
         document.getElementById('model-selector-label').textContent = 'Select model';
+        updateServerButtons(false);
       });
     })();
     // ============ DIRECTORY BROWSER ============
