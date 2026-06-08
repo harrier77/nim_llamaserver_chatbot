@@ -542,6 +542,16 @@
           document.getElementById('open-server-btn').style.display = '';
           document.getElementById('kill-llama-btn').style.display = '';
           addChatMessage('system', 'Llama server launched');
+          // Switch provider to localhost:8080 now that we launched the server
+          var newProviderUrl = 'http://localhost:8080';
+          currentProvider = newProviderUrl;
+          localStorage.setItem('provider', newProviderUrl);
+          var pObj = getProviderObj(newProviderUrl);
+          var displayLabel = pObj ? pObj.name : newProviderUrl;
+          document.getElementById('provider-label').textContent = displayLabel;
+          updateProviderBadge(pObj);
+          addChatMessage('system', 'Provider changed to: ' + displayLabel + ' (' + newProviderUrl + ')');
+          window.dispatchEvent(new CustomEvent('provider-changed', { detail: newProviderUrl }));
         }
       } catch (e) {
         label.textContent = '❌ Error';
@@ -567,6 +577,9 @@
           document.getElementById('open-server-btn').style.display = 'none';
           document.getElementById('kill-llama-btn').style.display = 'none';
           addChatMessage('system', 'Llama server terminated');
+          // Reset model dropdown since the server is no longer running
+          window.dispatchEvent(new Event('reset-models'));
+          addChatMessage('system', 'Models reset — server no longer available');
         }
       } catch (e) {
         label.textContent = '❌ Error';
@@ -1458,6 +1471,38 @@
         currentModel = null;
         models = [];
         await fetchModels();
+
+        // Retry loop: if the server was just launched and isn't ready yet,
+        // we may only get the "llamaserver missing" placeholder from backend.
+        // Poll until real models appear or timeout (~20s).
+        if (models.length > 0 && models.every(function(m) { return m.id === 'llamaserver missing'; })) {
+          var retries = 0;
+          var maxRetries = 10;
+          var retryInterval = 2000;
+          (function doRetry() {
+            if (retries >= maxRetries) return;
+            if (e.detail !== currentProvider) return;  // provider changed again, stop
+            setTimeout(async function() {
+              retries++;
+              modelsLoaded = false;
+              await fetchModels();
+              var hasRealModels = models.some(function(m) { return m.id !== 'llamaserver missing'; });
+              if (!hasRealModels) {
+                doRetry();
+              }
+            }, retryInterval);
+          })();
+        }
+      });
+
+      // Listen for model reset (e.g., after killing llama server)
+      window.addEventListener('reset-models', function() {
+        console.log('[DEBUG] reset-models event');
+        modelsLoaded = false;
+        selectedModel = null;
+        currentModel = null;
+        models = [];
+        document.getElementById('model-selector-label').textContent = 'Select model';
       });
     })();
     // ============ DIRECTORY BROWSER ============
