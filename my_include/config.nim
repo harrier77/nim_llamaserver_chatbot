@@ -162,6 +162,9 @@ var
   # --- Cancel flag for pending async requests ---
   cancelRequested*: bool = false
 
+  # --- Force full redraw on next frame (set after /new reset) ---
+  fullRedrawNeeded*: bool = false
+
   # --- Conversation ---
   conversationHistory*: seq[JsonNode] = @[
     %*{
@@ -204,6 +207,7 @@ proc resetConversation*() =
   slashMenuIndex = 0
   hoveredButton = ""
   cancelRequested = true
+  fullRedrawNeeded = true
 
 proc countRunes*(s: string): int =
   ## Returns the number of Unicode codepoints in s.

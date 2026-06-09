@@ -191,8 +191,13 @@ proc handleInput*(key: illwill.Key): bool =
           let idx = parseInt(modelSelectionBuffer) - 1
           if idx >= 0 and idx < availableModels.len:
             ModelName = availableModels[idx]
+            let selectedProvider = findProviderForModel(ModelName)
+            updateServerUrl(selectedProvider.baseUrl)
             server.saveModelStatus()
-            outputLines.add("System: Model changed to " & ModelName)
+            if selectedProvider.isRemote and selectedProvider.name != "llamacpp":
+              outputLines.add("System: Model changed to " & ModelName & " (" & selectedProvider.name & ")")
+            else:
+              outputLines.add("System: Model changed to " & ModelName)
         except: discard
       modelSelectionBuffer = ""
       modelSelectionScroll = 0

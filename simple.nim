@@ -53,6 +53,11 @@ proc main() =
   # --- TUI initialization (no mouse) ---
   illwillInit(fullscreen = true, mouse = false)
   hideCursor()
+  # WSL2: explicitly disable mouse tracking that Windows Terminal may leak
+  when defined(linux):
+    if isWSL2():
+      stdout.write("\e[?1000l\e[?1002l\e[?1006l")
+      stdout.flushFile()
   ui.setOpenInMicroExit(exitProc)
   setControlCHook(exitProc)
 
@@ -144,7 +149,7 @@ proc main() =
 
   # --- Welcome messages ---
   if isRemoteProv:
-    outputLines.add("Chat TUI - Remote provider: " & provName & " (" & provUrl & ")")
+    outputLines.add("Chat TUI - startup provider: " & provName & " (" & provUrl & ")")
   else:
     outputLines.add("Chat TUI - Local llama.cpp at " & ServerBaseUrl)
   outputLines.add("   Press Enter to send, Esc or /q to quit")
@@ -199,6 +204,9 @@ proc main() =
 
     # Reset attributes and display the buffer
     tb.resetAttributes()
+    if config.fullRedrawNeeded:
+      setDoubleBuffering(true)
+      config.fullRedrawNeeded = false
     tb.display()
 
     # (e) Get key → handleInput
