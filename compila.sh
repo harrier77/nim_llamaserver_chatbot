@@ -7,6 +7,7 @@
 #   ./compila.sh            -> builds webui_only (browser only, no TUI)
 #   ./compila.sh wv         -> prints info (WebView2 is Windows-only)
 #   ./compila.sh tui        -> builds chatbot_main (full TUI version)
+#   ./compila.sh smp        -> builds simple (simplified TUI, no mouse, no webui)
 #   ./compila.sh mcp        -> builds mcp_tools_server (standalone MCP server, port 8001)
 #   ./compila.sh both       -> builds all Linux-supported versions
 #   ./compila.sh clean      -> removes all executables
@@ -35,16 +36,23 @@ print_banner() {
 
 build_webui() {
     print_banner "webui_only (browser only, no TUI)"
-    nim c $FLAGS --out:"webui_only.exe" webui_only.nim
+    nim c $FLAGS --out:"webui_only" webui_only.nim
     echo ""
-    echo "[OK] webui_only.exe created"
+    echo "[OK] webui_only created"
 }
 
 build_tui() {
     print_banner "chatbot_main (full TUI version)"
-    nim c $FLAGS --out:"chatbot_main.exe" main.nim
+    nim c $FLAGS --out:"chatbot_main" main.nim
     echo ""
-    echo "[OK] chatbot_main.exe created"
+    echo "[OK] chatbot_main created"
+}
+
+build_simple() {
+    print_banner "simple (simplified TUI, no mouse, no webui)"
+    nim c $FLAGS --out:"simple" simple.nim
+    echo ""
+    echo "[OK] simple created"
 }
 
 build_wv() {
@@ -59,16 +67,16 @@ build_mcp() {
     print_banner "mcp_tools_server (MCP tool server, port 8001)"
     echo "[INFO] Requires mcp_nim/mcp_server/mcpframework.nim"
     echo ""
-    nim c $MCPFLAGS --out:"mcp_tools_server.exe" mcp_tools_server.nim
+    nim c $MCPFLAGS --out:"mcp_tools_server" mcp_tools_server.nim
     echo ""
-    echo "[OK] mcp_tools_server.exe created"
+    echo "[OK] mcp_tools_server created"
 }
 
 clean_all() {
     echo ""
     echo "=== Cleaning executables ==="
     echo ""
-    for exe in webui_only.exe chatbot_main.exe webui_wv.exe mcp_tools_server.exe; do
+    for exe in webui_only chatbot_main simple webui_wv mcp_tools_server; do
         if [ -f "$exe" ]; then
             rm "$exe"
             echo "[OK] $exe deleted"
@@ -83,6 +91,9 @@ case "${1:-}" in
     mcp)
         build_mcp
         ;;
+    smp)
+        build_simple
+        ;;
     wv)
         build_wv
         ;;
@@ -94,6 +105,7 @@ case "${1:-}" in
         echo "=== Building ALL Linux-supported versions ==="
         echo ""
         build_webui
+        build_simple
         build_tui
         build_mcp
         echo ""

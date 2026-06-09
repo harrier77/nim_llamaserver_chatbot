@@ -159,6 +159,9 @@ var
   slashMenuIndex*: int = 0
   hoveredButton*: string = ""  # "new", "modelli", "webui", "llama", "quit", or "" for toolbar hover effect
 
+  # --- Cancel flag for pending async requests ---
+  cancelRequested*: bool = false
+
   # --- Conversation ---
   conversationHistory*: seq[JsonNode] = @[
     %*{
@@ -196,6 +199,11 @@ proc resetConversation*() =
   scrollOffset = 0
   isProcessing = false
   inputEditor.setText("")
+  inputBuffer = ""
+  showingSlashMenu = false
+  slashMenuIndex = 0
+  hoveredButton = ""
+  cancelRequested = true
 
 proc countRunes*(s: string): int =
   ## Returns the number of Unicode codepoints in s.
@@ -263,6 +271,17 @@ proc initOpenCodeSession*() {.gcsafe.} =
 proc nextOpenCodeRequestId*(): string {.gcsafe.} =
   inc(opencodeRequestCount)
   return "req_" & opencodeRequestCount.toHex
+
+proc isWSL2*(): bool =
+  ## Returns true if running inside WSL (Windows Subsystem for Linux).
+  ## WSL kernels always contain "Microsoft" in their version string.
+  when defined(linux):
+    try:
+      result = readFile("/proc/version").contains("Microsoft")
+    except:
+      result = false
+  else:
+    result = false
 
 # ============================================================
 # 7. Detached process launcher (Windows shell32 / POSIX xdg-open)

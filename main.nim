@@ -80,7 +80,16 @@ proc main() =
 
   # --- TUI initialization ---
   if tuiEnabled:
-    illwillInit(fullscreen = true, mouse = true)
+    illwillInit(fullscreen = true, mouse = not isWSL2())
+    # Explicitly disable mouse tracking to prevent stray SGR mouse escape
+    # sequences from appearing as text in the chat.  This is especially
+    # needed on WSL2 (Windows Terminal) where the terminal may already
+    # have mouse tracking active from a previous session or send mouse
+    # events regardless of the DEC mode settings.
+    when defined(linux):
+      if isWSL2():
+        stdout.write("\e[?1000l\e[?1002l\e[?1006l")
+        stdout.flushFile()
     hideCursor()
     ui.setOpenInMicroExit(exitProc)
   setControlCHook(exitProc)

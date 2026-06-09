@@ -81,6 +81,9 @@ proc sendToLLM*(prompt: string = "") {.async.} =
   let currentProvider = findProviderForModel(ModelName)
   let requestUrl = currentProvider.baseUrl
 
+  # Reset cancel flag for this new request
+  cancelRequested = false
+
   isProcessing = true
 
   if prompt.len > 0:
@@ -99,6 +102,9 @@ proc sendToLLM*(prompt: string = "") {.async.} =
 
   # Main loop: continues until there are no more tool calls
   while true:
+    # Check if a /new (or other reset) was requested while we were running
+    if cancelRequested:
+      break
     # Build the request body
     let body = %*{
       "model": ModelName,
@@ -162,6 +168,9 @@ proc sendToLLM*(prompt: string = "") {.async.} =
       while true:
         let (hasMore, chunk) = await response.bodyStream.read()
         if not hasMore or chunk.len == 0: break
+        # Check if the conversation was reset while streaming
+        if cancelRequested:
+          break
         inc(tokenCount)
 
 
