@@ -1054,7 +1054,9 @@
                       }
                     }
                   }
-                } catch(e) {}
+                } catch(e) {
+                  console.error('[DEBUG] SSE parse error:', e.message, 'line:', line.substring(0, 200));
+                }
               }
             }
 
@@ -1574,6 +1576,7 @@
     })();
     // ============ DIRECTORY BROWSER ============
     var currentDir = '';
+    var currentAction = 'default';
     var dirHistory = [];
 
     function renderDirEntries(data) {
@@ -1595,13 +1598,13 @@
         var entries = data.entries || [];
         // Sort: dirs first, then files, alphabetically
         entries.sort(function(a, b) {
-          if (a.type !== b.type) return a.type === 'dir' ? -1 : 1;
+          if (a.isDir !== b.isDir) return a.isDir ? -1 : 1;
           return a.name.localeCompare(b.name);
         });
 
         entries.forEach(function(entry) {
           const el = document.createElement('div');
-          if (entry.type === 'dir') {
+          if (entry.isDir) {
             el.className = 'dir-entry dir-entry-dir';
             el.innerHTML = '<span class="dir-icon">📁</span> ' + entry.name + '/';
             el.addEventListener('click', function(dirName) {
@@ -1643,7 +1646,7 @@
 
       // ============ BOOKMARKS ============
       function loadBookmarks() {
-        fetch('/bookmarks.json')
+        fetch('/api/bookmarks')
           .then(function(res) { return res.json(); })
           .then(function(bookmarks) {
             renderBookmarkEntries(bookmarks);
@@ -1666,8 +1669,9 @@
           el.className = 'dir-entry dir-entry-dir';
           el.innerHTML = '<span class="dir-icon">🔖</span> ' + bm.label;
           el.title = bm.path;
-          el.addEventListener('click', function(path) {
+          el.addEventListener('click', function(path, action) {
             return function() {
+              currentAction = action;
               fetch('/api/cd?path=' + encodeURIComponent(path))
                 .then(function(res) { return res.json(); })
                 .then(function(data) {
@@ -1675,13 +1679,21 @@
                     loadDir();
                   } else {
                     console.error('cd failed for bookmark:', data.error);
+                    var pathDiv = document.getElementById('dir-path');
+                    if (pathDiv) {
+                      pathDiv.innerHTML = '❌ ' + data.error;
+                    }
                   }
                 })
                 .catch(function(err) {
                   console.error('Failed to cd via bookmark:', err);
+                  var pathDiv = document.getElementById('dir-path');
+                  if (pathDiv) {
+                    pathDiv.innerHTML = '❌ Network error: ' + err.message;
+                  }
                 });
             };
-          }(bm.path));
+          }(bm.path, bm.action || 'default'));
           entriesDiv.appendChild(el);
         });
       }
@@ -1692,17 +1704,27 @@
           .then(function(res) { return res.json(); })
           .then(function(data) {
             if (data.ok) {
+              currentAction = 'default';
               loadDir();
             } else {
               console.error('cd failed:', data.error);
+              var pathDiv = document.getElementById('dir-path');
+              if (pathDiv) {
+                pathDiv.innerHTML = '❌ ' + data.error;
+              }
             }
           })
           .catch(function(err) {
             console.error('Failed to cd into directory:', err);
+            var pathDiv = document.getElementById('dir-path');
+            if (pathDiv) {
+              pathDiv.innerHTML = '❌ Network error: ' + err.message;
+            }
           });
       }
 
       function goUp() {
+        currentAction = 'default';
         fetch('/api/cd?path=..')
           .then(function(res) { return res.json(); })
           .then(function(data) {
@@ -1710,28 +1732,35 @@
               loadDir();
             } else {
               console.error('cd up failed:', data.error);
+              var pathDiv = document.getElementById('dir-path');
+              if (pathDiv) {
+                pathDiv.innerHTML = '❌ ' + data.error;
+              }
             }
           })
           .catch(function(err) {
             console.error('Failed to go up:', err);
+            var pathDiv = document.getElementById('dir-path');
+            if (pathDiv) {
+              pathDiv.innerHTML = '❌ Network error: ' + err.message;
+            }
           });
       }
-    function openFile(filename) {
-      var filePath = filename;
-      var chatInput = document.querySelector('.conversation-chat-form textarea');
-      if (chatInput) {
-          var isDebug = currentDir.includes('database_pianificazione');
-        if (isDebug) {
-          chatInput.value = 'use tool read ' + filePath + ' from_tail limit 3 and show user_email, included path and new value';
-        } else if (currentDir.includes('delibere')) {
-          chatInput.value = 'use tool read on file ' + filePath + ' max_bytes 4096 and summarize in 200 words italian discoursive';
-        } else {
-          chatInput.value = 'use tool read ' + filePath ;
+      function openFile(filename) {
+        var filePath = filename;
+        var chatInput = document.querySelector('.conversation-chat-form textarea');
+        if (chatInput) {
+          if (currentAction === 'debug') {
+            chatInput.value = 'use tool read ' + filePath + ' from_tail limit 3 and show user_email, included path and new value';
+          } else if (currentAction === 'delibere') {
+            chatInput.value = 'use tool read on file ' + filePath + ' max_bytes 4096 and summarize in 200 words italian discoursive';
+          } else {
+            chatInput.value = 'use tool read ' + filePath ;
+          }
+          chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+          chatInput.focus();
         }
-        chatInput.dispatchEvent(new Event('input', { bubbles: true }));
-        chatInput.focus();
       }
-    }
 
     // ============ SIDEBAR TOGGLE & RESIZE ============
     (function() {

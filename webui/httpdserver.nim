@@ -819,7 +819,7 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
           let fullPath = targetDir / filePath
           var entry = %*{
             "name": filePath,
-            "type": if kind == pcDir: "dir" else: "file"
+            "isDir": %(kind == pcDir)
           }
           if kind == pcFile:
             entry["size"] = %getFileSize(fullPath)
@@ -857,6 +857,18 @@ proc requestCallback(req: Request) {.async, gcsafe.} =
       debugLog("Killing llama server via /api/kill-llama endpoint")
       let response = %*{"ok": true, "output": killOutput.strip()}
       await req.respond(Http200, $response, headers)
+      return
+
+    if path == "/api/bookmarks":
+      let headers = newHttpHeaders([("Content-Type", "application/json")])
+      let configPath = getAppDir() / "my_include" / "bookmarks_config.json"
+      let fallbackPath = getAppDir() / "webui" / "static" / "bookmarks.json"
+      var response = "[]"
+      if fileExists(configPath):
+        response = readFile(configPath)
+      elif fileExists(fallbackPath):
+        response = readFile(fallbackPath)
+      await req.respond(Http200, response, headers)
       return
 
     if path == "/api/llama-log":

@@ -17,7 +17,7 @@ import server   # server and model management
 import system_prompt  # system prompt (initSystemPrompt)
 import providers  # external provider config loaders
 import input    # keyboard input handling
-from config_web import loadFirecrawlApiKey  # Firecrawl API key loader
+from config_web import loadFirecrawlApiKey, setExeDir  # Firecrawl API key loader
 import ui       # TUI rendering
 import webui/httpdserver  # WebUI HTTP server
 
@@ -111,6 +111,7 @@ proc main() =
   # lookups (e.g., status.json). Without this, CWD would be used instead.
   ExeDir = getAppFilename().parentDir()
   SessionDir = ExeDir
+  setExeDir(ExeDir)  # sync config_web.ExeDir (used by httpdserver.nim)
   StatusFile = ExeDir / "my_include" / "status.json"
   SystemPromptPath = ExeDir / "my_include" / "system_prompt.yaml"  # same fix: absolute path instead of CWD-relative
 

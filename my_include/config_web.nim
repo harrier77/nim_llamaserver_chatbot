@@ -31,6 +31,10 @@ proc writeLog*(exeDir: string, msg: string) {.gcsafe.} =
     discard
 var SessionDir*: string = ""
 
+proc setExeDir*(dir: string) =
+  ExeDir = dir
+  SessionDir = dir
+
 # ============================================================
 # Firecrawl API key — loaded from ~/.nim_chatbot/auth.json
 # ============================================================
